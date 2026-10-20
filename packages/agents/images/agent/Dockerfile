@@ -11,7 +11,7 @@
 # passed as PI_MCP_MAILBOX_SHA256. The Publish image workflow
 # (workflows/publish-image.yml) builds it and pushes it as
 # ghcr.io/<owner>/flax-agent; workspaces pin it by digest in box.yml.
-FROM ubuntu:24.04
+FROM ubuntu:25.10
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
