@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agents-kit.dev/schema/media.schema.json",
+  "title": "Media manifest",
+  "description": "The media.json a job's media.ts writes into FLAX_AGENTS_MEDIA_DIR: every media file with its size and sha256, a hash over them all, and job-specific data for collect.ts. Rules the schema cannot say (each file exists and matches, the total size, the hash) are checked by the runner.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "files", "hash"],
+  "properties": {
+    "version": { "const": 1 },
+    "files": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "bytes", "type"],
+        "properties": {
+          "path": {
+            "description": "Relative to the media directory: names of letters, digits, dots, dashes and underscores, separated by /; no . or .. names, no leading /.",
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+          },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "type": {
+            "description": "The media type, such as video/mp4, text/vtt or image/png.",
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^[a-z]+/[a-z0-9][a-z0-9.+-]*$"
+          }
+        }
+      }
+    },
+    "hash": {
+      "description": "sha256 hex of the lines `<path> <sha256>`, one per file, sorted, joined with a newline and no newline at the end.",
+      "$ref": "#/$defs/sha256"
+    },
+    "data": {
+      "description": "Job-specific JSON that collect.ts may pass on to the model, such as a scene list, timings or screenshot ids."
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

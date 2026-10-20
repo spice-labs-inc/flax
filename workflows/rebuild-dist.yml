@@ -1,0 +1,65 @@
+name: Rebuild dist
+
+# Copied to the repository's .github/workflows by the monorepo (paths filter
+# packages/agents/**): the kit's own dist check, run against its fixture
+# workspace at packages/agents/test/fixtures/workspace. Not generated into
+# workspaces.
+#
+# A workspace runs the runner bundles committed in its dist/ and rebuilds
+# them on main after each merge; its bundled runner refuses to start a job
+# whose sources changed since, judging by the manifest's source hashes. That
+# only works when the same sources give the same bundles on every machine,
+# which this proves: it builds the fixture workspace's dist/ twice from this
+# commit and fails if the two builds differ. Nothing is pushed; the kit
+# repository never commits a workspace's dist.
+
+on:
+  push:
+    branches: [main]
+    paths: ["packages/agents/**", "pnpm-lock.yaml"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rebuild-dist
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - name: Build the fixture workspace's dist
+        run: pnpm -C packages/agents exec node bin/flax-agents.mjs generate --dist --workspace test/fixtures/workspace
+      - name: Build it again from nothing and compare
+        run: |
+          set -euo pipefail
+          fixture=packages/agents/test/fixtures/workspace
+          first="$RUNNER_TEMP/dist-first"
+          rm -rf "$first"
+          cp -R "$fixture/dist" "$first"
+          rm -rf "$fixture/dist"
+          pnpm -C packages/agents exec node bin/flax-agents.mjs generate --dist --workspace test/fixtures/workspace
+          if ! diff -r "$first" "$fixture/dist"; then
+            echo "::error::two builds of dist/ from the same sources differ; a workspace's rebuilt dist would never match its manifest"
+            exit 1
+          fi
+          {
+            echo "### dist rebuilt twice for ${GITHUB_SHA::12}, identical"
+            echo
+            echo '```'
+            jq -r 'to_entries[] | select(.key != "sources") | "\(.key): \(.value | tostring)"' "$fixture/dist/manifest.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

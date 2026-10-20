@@ -1,0 +1,246 @@
+name: Publish image
+
+# Copied to the repository's .github/workflows by the monorepo (paths filter
+# packages/agents/**): the kit's own image build. Not generated into
+# workspaces.
+#
+# Builds the agent image for one sandbox (lbx) release and pushes it as
+# ghcr.io/<owner>/flax-agent. Started by hand with the release tag. It:
+#   - reads the release notes block and requires its commit to be the one
+#     the tag names;
+#   - downloads the release binary and its checksum file and verifies them;
+#   - takes entrypoint.sh from the release's tagged source;
+#   - builds and pushes the image from packages/agents/images/agent/Dockerfile
+#     with that entrypoint: Pi and the provider plugin at the versions pinned
+#     there, and the pi-mcp-mailbox plugin bundled from this commit by
+#     `flax-agents bundle-pi-plugin`, and nothing else;
+#   - starts the pushed image with the release's own `lbx --run` (no network,
+#     fresh data directory) and runs `pi --version` in it, which proves the
+#     image meets the run box contract without calling a model;
+#   - prints the four values a workspace pins in box.yml (box_release,
+#     box_commit, lbx_sha256, image) as the job summary. It opens no pull
+#     request: each workspace pastes the values into its own box.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      box_release:
+        description: Sandbox (lbx) release tag vX.Y.Z
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: publish-image
+  cancel-in-progress: false
+
+env:
+  AGENT_IMAGE: ghcr.io/${{ github.repository_owner }}/flax-agent
+  BOX_REPO: spice-labs-inc/lbx
+  BOX_RELEASE: ${{ inputs.box_release }}
+  LBX_BINARY: lbx-x86_64-unknown-linux-musl
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check the release tag
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          release_tag='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          if [[ ! $BOX_RELEASE =~ $release_tag ]]; then
+            printf '::error::box_release must be a sandbox (lbx) release tag vX.Y.Z, got %q\n' "$BOX_RELEASE"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+
+      # The notes block (the sandbox's docs/releasing.md) names the commit;
+      # the notes stay editable, so it must be the commit the tag names.
+      - name: Read the release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          body="$(gh release view "$BOX_RELEASE" --repo "$BOX_REPO" --json body --jq .body | tr -d '\r')"
+          commits="$(printf '%s\n' "$body" | sed -n 's/^- Commit: `\{0,1\}\([0-9a-f]\{40\}\)`\{0,1\} *$/\1/p')"
+          if [ "$(printf '%s\n' "$commits" | grep -c .)" != 1 ]; then
+            echo "::error::the release notes of $BOX_REPO $BOX_RELEASE need exactly one '- Commit: <40 hex>' line"
+            exit 1
+          fi
+          tagged="$(gh api "repos/$BOX_REPO/commits/$BOX_RELEASE" --jq .sha)"
+          if [ "$tagged" != "$commits" ]; then
+            echo "::error::the release notes name commit $commits, but tag $BOX_RELEASE names $tagged"
+            exit 1
+          fi
+          echo "commit=$commits" >> "$GITHUB_OUTPUT"
+          echo "$BOX_REPO $BOX_RELEASE is $commits"
+
+      - name: Download and verify the release binary
+        id: binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/lbx-release"
+          rm -rf "$dir"
+          mkdir -p "$dir"
+          gh release download "$BOX_RELEASE" --repo "$BOX_REPO" --dir "$dir" \
+            --pattern "$LBX_BINARY" --pattern "$LBX_BINARY.sha256"
+          (cd "$dir" && sha256sum -c "$LBX_BINARY.sha256")
+          chmod 0755 "$dir/$LBX_BINARY"
+          "$dir/$LBX_BINARY" --help > /dev/null
+          echo "sha256=$(cut -d' ' -f1 < "$dir/$LBX_BINARY.sha256")" >> "$GITHUB_OUTPUT"
+          echo "path=$dir/$LBX_BINARY" >> "$GITHUB_OUTPUT"
+
+      # The image's entrypoint is the release's own, from the tagged source.
+      - name: Take entrypoint.sh from the tagged source
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ steps.release.outputs.commit }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/lbx-source"
+          rm -rf "$dir"
+          mkdir -p "$dir"
+          gh api "repos/$BOX_REPO/tarball/$BOX_RELEASE" > "$dir/source.tar.gz"
+          tar -xzf "$dir/source.tar.gz" -C "$dir" --wildcards --strip-components=1 '*/entrypoint.sh'
+          test -s "$dir/entrypoint.sh"
+          echo "entrypoint=$dir/entrypoint.sh" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push the agent image
+        id: build
+        env:
+          COMMIT: ${{ steps.release.outputs.commit }}
+          ENTRYPOINT: ${{ steps.source.outputs.entrypoint }}
+        run: |
+          set -euo pipefail
+          tag="$BOX_RELEASE"
+          build_tag="$BOX_RELEASE-${GITHUB_SHA::12}"
+          # The context holds only the entrypoint and the plugin bundle, so
+          # nothing else of the checkout can end up in the image.
+          context="$RUNNER_TEMP/agent-image-context"
+          rm -rf "$context"
+          mkdir -p "$context"
+          cp "$ENTRYPOINT" "$context/entrypoint.sh"
+          pnpm -C packages/agents exec node bin/flax-agents.mjs bundle-pi-plugin "$context/pi-mcp-mailbox.mjs"
+          plugin_sha="$(sha256sum "$context/pi-mcp-mailbox.mjs" | cut -d' ' -f1)"
+          docker buildx build --pull --push --platform linux/amd64 \
+            --build-arg "BOX_COMMIT=$COMMIT" \
+            --build-arg "PI_MCP_MAILBOX_SHA256=$plugin_sha" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.version=$build_tag" \
+            --metadata-file "$RUNNER_TEMP/build-metadata.json" \
+            -f packages/agents/images/agent/Dockerfile \
+            -t "$AGENT_IMAGE:$tag" \
+            -t "$AGENT_IMAGE:$build_tag" \
+            "$context"
+          digest="$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/build-metadata.json")"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "image=$AGENT_IMAGE@$digest" >> "$GITHUB_OUTPUT"
+          # The digest pins the exact image; a tag can be pushed again.
+          docker pull "$AGENT_IMAGE@$digest"
+
+      - name: Smoke run through lbx --run
+        env:
+          AGENT_REF: ${{ steps.build.outputs.image }}
+          LBX: ${{ steps.binary.outputs.path }}
+        run: |
+          set -euo pipefail
+          # The same layout run-job uses: private directories under
+          # RUNNER_TEMP, outside the home directory, with the data directory
+          # apart from the configuration and lbx's state.
+          smoke="$(mktemp -d "$RUNNER_TEMP/agent-smoke.XXXXXX")"
+          chmod 0700 "$smoke"
+          mkdir -m 0700 "$smoke/data" "$smoke/lbx" "$smoke/state"
+          printf 'image.docker=%s\n' "$AGENT_REF" > "$smoke/lbx/config"
+          chmod 0600 "$smoke/lbx/config"
+          name="agent-smoke-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          rc=0
+          LBX_CONFIG="$smoke/lbx/config" LBX_STATE_DIR="$smoke/state" \
+            "$LBX" --run --runtime docker \
+              --no-network \
+              --data "$smoke/data" \
+              --timeout 120 \
+              "$name" -- sh -c 'pi --version' | tee "$smoke/out.txt" || rc=$?
+          status="$(cat "$smoke/state/runs/$name/status" 2>/dev/null || true)"
+          echo "lbx exited $rc; status file: ${status:-missing}"
+          if [ "$status" != "status=exited code=0" ]; then
+            echo "::error::the agent image failed the lbx --run smoke run ($status)"
+            exit 1
+          fi
+          want="$(docker image inspect --format '{{index .Config.Labels "io.flax.agent-image.pi"}}' "$AGENT_REF")"
+          if [ "$(tr -d '\r' < "$smoke/out.txt")" != "$want" ]; then
+            echo "::error::pi --version in the run box printed '$(cat "$smoke/out.txt")', expected '$want'"
+            exit 1
+          fi
+
+      - name: Summary
+        env:
+          COMMIT: ${{ steps.release.outputs.commit }}
+          LBX_SHA256: ${{ steps.binary.outputs.sha256 }}
+          TAG: ${{ steps.build.outputs.tag }}
+          AGENT_REF: ${{ steps.build.outputs.image }}
+        run: |
+          set -euo pipefail
+          label() {
+            docker image inspect --format "{{index .Config.Labels \"io.flax.agent-image.$1\"}}" "$AGENT_REF"
+          }
+          size="$(docker image inspect --format '{{.Size}}' "$AGENT_REF")"
+          provider="$(label provider-plugin)"
+          {
+            echo "### Agent image published"
+            echo
+            echo "Sandbox (lbx) release \`$BOX_RELEASE\` (commit \`$COMMIT\`), kit \`$GITHUB_SHA\`, pushed as \`$AGENT_IMAGE:$TAG\`."
+            echo
+            echo "Pin it in a workspace's box.yml:"
+            echo
+            echo '```yaml'
+            echo "pinned: true"
+            echo "box_release: \"$BOX_RELEASE\""
+            echo "box_commit: \"$COMMIT\""
+            echo "lbx_sha256: \"$LBX_SHA256\""
+            echo "image: $AGENT_REF"
+            echo '```'
+            echo
+            echo "| In the agent image | Version |"
+            echo "| --- | --- |"
+            echo "| Node | $(label node) |"
+            echo "| Pi (@earendil-works/pi-coding-agent) | $(label pi) |"
+            if [ -n "$provider" ]; then
+              echo "| Provider plugin ($provider) | $(label provider-plugin-version) |"
+            else
+              echo "| Provider plugin | none (Pi's built-in provider) |"
+            fi
+            echo "| Model shim and tools plugin (pi-mcp-mailbox) | $(label mcp-mailbox-plugin), sha256 \`$(label mcp-mailbox-plugin-sha256)\` |"
+            echo "| entrypoint.sh from the sandbox release | $(label box-commit) |"
+            echo "| Size, unpacked | $((size / 1000000)) MB |"
+            echo
+            echo "The smoke run (\`lbx --run\`, \`pi --version\`) passed."
+          } >> "$GITHUB_STEP_SUMMARY"
