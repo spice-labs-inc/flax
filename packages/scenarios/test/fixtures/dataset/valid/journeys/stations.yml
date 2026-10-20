@@ -1,0 +1,24 @@
+stations:
+  - key: home
+    name: Read the website
+    stage: Discover
+    kind: surface
+    match:
+      - websites:www.example.test/
+  - key: install
+    name: Install the CLI
+    stage: Start
+    kind: surface
+    match:
+      - install:installer:*
+  - key: teams
+    name: Teams
+    stage: Start
+    kind: surface
+    match:
+      - api:* /org/{orgId}/team*
+  - key: offline
+    name: Offline survey
+    stage: Survey
+    kind: elsewhere
+    match: []

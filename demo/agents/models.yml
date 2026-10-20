@@ -1,0 +1,7 @@
+# Models a job may name. Prices are USD per million tokens, as the provider bills them;
+# thinking lists the Pi thinking levels the model takes.
+- id: anthropic/claude-sonnet-4-5
+  provider: anthropic
+  usd_per_million_input: 3
+  usd_per_million_output: 15
+  thinking: [off, low, medium, high]

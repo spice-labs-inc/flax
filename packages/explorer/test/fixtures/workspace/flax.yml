@@ -1,0 +1,58 @@
+# A three-environment workspace shaped like a product with several surfaces, so the ported tests keep their env and surface literals.
+org: acme
+github: acme
+environments:
+  - { id: prod, label: Prod }
+  - { id: staging, label: Staging }
+  - { id: dev, label: Dev }
+scenarios:
+  name: acme-scenarios
+  repo: acme/acme-scenarios
+  http: { userAgent: acme-scenarios, syntheticHeader: x-acme-client, syntheticValue: live-test }
+  envPrefix: ACME_SCENARIOS
+  envs:
+    prod:
+      hosts: { api: https://api.example, dashboard: https://app.example }
+      excludeTags: ["@admin"]
+      fixtures: when-asked
+    staging:
+      hosts: { api: https://api.staging.example, dashboard: https://app.staging.example, admin: https://admin.staging.example }
+      fixtures: always
+    dev:
+      hosts: { api: https://api.dev.example, dashboard: https://app.dev.example, admin: https://admin.dev.example }
+      fixtures: always
+  surfaces:
+    - { name: dashboard, title: Dashboard, linkHost: dashboard, kinds: { bySegment: { route: Page }, default: Element } }
+    - { name: api, title: Public API, role: service, kinds: { default: API operation } }
+    - { name: mcp, title: MCP, role: service, kinds: { bySegment: { tool: MCP tool }, byDetailKind: { parameter: Tool parameter }, default: MCP sign-in step } }
+    - { name: admin, title: Internal Admin, envs: [dev, staging], linkHost: admin, kinds: { bySegment: { route: Page }, default: Element } }
+    - { name: cli, title: Product CLI, kinds: { byDetailKind: { argument: Command argument, option: Command option }, default: CLI command } }
+    - { name: action, title: GitHub Action, kinds: { bySegment: { mode: Action mode }, default: Action input } }
+    - { name: install, title: Install, kinds: { bySegment: { installer: Installer, release: Release download, image: Container image, maven: Maven artifact }, byDetailKind: { download: Download }, default: Install step } }
+    - name: websites
+      title: Websites
+      role: site
+      singleHome: true
+      kinds: { byDetailKind: { page: Web page, share: Share control, redirect: Redirect, api-section: API reference section, copy-code: Copy-code buttons, video-player: Video player, cast: Terminal recording, cta: Call to action }, default: Web page }
+      islands:
+        - { island: docs, title: Docs, areas: [docs.example.com], features: [features/websites/documentation.feature], notes: "^docs\\.example\\.com\\b" }
+        - { island: blog, title: Blog, areas: [blog.example.com], features: [features/websites/blog.feature], notes: "^blog\\.example\\.com\\b" }
+        - { island: website, title: Website, areas: [www.example.com, example.com/v short links], features: [features/websites/company-website.feature, features/websites/video-short-links.feature], notes: "^www\\.example\\.com\\b|short links" }
+    - { name: email, title: Email, kinds: { byDetailKind: { action-button: Email button, landing: Landing page }, default: Email } }
+  vocabulary:
+    personaTypes: [primary, secondary, supplemental, internal, buyer, negative]
+    stages: [Discover, Start, Survey, Understand, Act, Prove]
+    stationKinds: [surface, planned, elsewhere]
+    editions: [cli, it, itpro, otpro, hosted]
+    editionTitles: { cli: Product CLI, it: Product IT, itpro: Product IT Pro, otpro: Product OT Pro, hosted: Hosted }
+    elsewhere: Verified per release by the build pipeline
+  textRules:
+    - { pattern: "\\u2014", message: "em-dash; use a comma, colon or parentheses" }
+    - { pattern: "\\bmint(?:s|ed|ing)?\\b", message: "the word \"mint\"; say create or issue" }
+    - { pattern: "\\bpolitical\\s+capital\\b", message: "\"political capital\"; say friction" }
+    - { pattern: "minefield", message: "\"minefield\"; say friction" }
+  tagLabels: { "@admin": Uses Internal Admin }
+  timezone: America/Los_Angeles
+explorer:
+  title: Acme Scenarios
+  description: What the Acme product verifies for customers.

@@ -1,0 +1,39 @@
+{
+ "generatedAt": "2026-10-16T00:27:13.600Z",
+ "atlasCommit": "unknown",
+ "stats": {
+  "nodes": 22,
+  "edges": 40,
+  "flows": 1,
+  "layer.build": 13,
+  "layer.data": 2,
+  "layer.queue": 2,
+  "layer.network": 6,
+  "layer.delivery": 17,
+  "kind.component": 9,
+  "kind.library": 1,
+  "kind.env": 2,
+  "kind.registry": 1,
+  "kind.outlet": 3,
+  "kind.store": 1,
+  "kind.queue": 1,
+  "kind.broker": 1,
+  "kind.external": 3
+ },
+ "droppedEdges": [],
+ "rejectedInfra": [],
+ "dependencyDrift": [],
+ "uncheckedRepos": [
+  "action-build-notes",
+  "notes-api",
+  "notes-cli",
+  "notes-core",
+  "notes-docs",
+  "notes-gitops",
+  "notes-installer",
+  "notes-web",
+  "notes-worker"
+ ],
+ "unmappedDeployments": [],
+ "machineDrift": []
+}

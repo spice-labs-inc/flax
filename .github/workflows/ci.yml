@@ -1,0 +1,48 @@
+name: CI
+
+# Every package: install, build, type checks, tests. The agents package's
+# own workflows live beside this one as agents-*.yml and are the files in
+# packages/agents/workflows; the last step keeps the two sets identical.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -C packages/agents exec playwright install --with-deps chromium
+      - run: pnpm -r --if-present check
+      - run: pnpm -r --if-present test
+      - name: The agents workflows here are the ones in packages/agents/workflows
+        run: |
+          set -euo pipefail
+          status=0
+          for f in packages/agents/workflows/*.yml; do
+            copy=".github/workflows/agents-$(basename "$f")"
+            if ! diff -u "$f" "$copy"; then
+              echo "::error::$copy differs from $f; copy the file over"
+              status=1
+            fi
+          done
+          exit $status

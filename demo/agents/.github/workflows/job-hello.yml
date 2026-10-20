@@ -1,0 +1,74 @@
+# Generated from jobs/hello/job.yml by flax agents generate. Do not edit.
+
+name: job-hello
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model for this run (models.yml)
+        type: choice
+        options:
+          - anthropic/claude-sonnet-4-5
+        default: anthropic/claude-sonnet-4-5
+      thinking:
+        description: Thinking level for this run (Pi --thinking)
+        type: choice
+        options:
+          - "off"
+          - "low"
+          - "medium"
+          - "high"
+        default: "high"
+permissions: {}
+concurrency:
+  group: job-hello
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: [ubuntu-24.04]
+    timeout-minutes: 70
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check the job and the pinned box
+        env:
+          RUN_MODEL: ${{ inputs.model }}
+          RUN_THINKING: ${{ inputs.thinking }}
+        run: node dist/run-job.mjs hello --preflight --model "$RUN_MODEL" --thinking "$RUN_THINKING"
+      - name: Run the job with the kit
+        uses: spice-labs-inc/flax/packages/agents@main
+        with:
+          job: hello
+          workspace: .
+          box-image: ghcr.io/spice-labs-inc/flax-agent@sha256:59bb71dd9dc9768eb1fd4b8eb4e5bfc04f7f871ce79d4173ac5bd679316d5c8c
+          box-repository: spice-labs-inc/lbx
+          box-release: v0.2.0
+          box-sha256: c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70
+          args: --model "$RUN_MODEL" --thinking "$RUN_THINKING" --out "$RUNNER_TEMP/job-output"
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          RUN_MODEL: ${{ inputs.model }}
+          RUN_THINKING: ${{ inputs.thinking }}
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-hello-report
+          path: ${{ runner.temp }}/job-output/
+          retention-days: 90
+          if-no-files-found: ignore
+      - name: Keep the maintainer notes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-hello-maintainer-notes
+          path: ${{ runner.temp }}/job-output/maintainer-notes.json
+          retention-days: 90
+          if-no-files-found: ignore

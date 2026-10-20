@@ -1,0 +1,128 @@
+{
+  "description": "42 changed lines in internal-docs, over the limit of 40, even with evidence for each.",
+  "expect": "reject",
+  "reasons": [
+    "notes-co/internal-docs: 42 changed lines, more than the limit of 40"
+  ],
+  "answer": {
+    "pages": [
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-state.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/runtime-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_linux.md",
+        "decision": "patch",
+        "reason": "Many lines.",
+        "patch": "--- a/src/content/docs/runbooks/testing/test_cli_and_dash_linux.md\n+++ b/src/content/docs/runbooks/testing/test_cli_and_dash_linux.md\n@@ -397,27 +397,27 @@\n \n ### 4.6 Sample V3 (hybrid PQC)\n \n-**Run:**\n-\n-```bash\n-notes survey runtime ps-001-v3-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v3-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v3-sample-payment-gateway/target/ps-001-v3-sample-payment-gateway-1.0.0-v3.jar\"\n-```\n-\n-**Pass if the Dashboard shows (hybrid-PQC invariant):**\n-\n-- No `des` / `md5`.\n-- **GREEN includes the post-quantum algorithms `ml-kem` and `ml-dsa`**: this is the key signal that the hybrid PQC path ran and was captured. (If GREEN has no `ml-kem`/`ml-dsa`, first suspect the JDK requirement above; a JDK 25 target silently drops them.)\n-- Classical algorithms retained for the hybrid pairs (RSA, SHA256withRSA) still appear as YELLOW / TRANSITION; that is expected in hybrid mode.\n-\n-### 4.7 Sample V4 (PQC-first)\n-\n-**Run:**\n-\n-```bash\n-notes survey runtime ps-001-v4-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v4-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v4-sample-payment-gateway/target/ps-001-v4-sample-payment-gateway-1.0.0.jar\"\n-```\n-\n-**Pass if the Dashboard shows (PQC-first invariant):**\n+**Run:** (checked)\n+ (checked)\n+```bash (checked)\n+notes survey runtime ps-001-v3-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v3-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v3-sample-payment-gateway/target/ps-001-v3-sample-payment-gateway-1.0.0-v3.jar\" (checked)\n+``` (checked)\n+ (checked)\n+**Pass if the Dashboard shows (hybrid-PQC invariant):** (checked)\n+ (checked)\n+- No `des` / `md5`. (checked)\n+- **GREEN includes the post-quantum algorithms `ml-kem` and `ml-dsa`**: this is the key signal that the hybrid PQC path ran and was captured. (If GREEN has no `ml-kem`/`ml-dsa`, first suspect the JDK requirement above; a JDK 25 target silently drops them.) (checked)\n+- Classical algorithms retained for the hybrid pairs (RSA, SHA256withRSA) still appear as YELLOW / TRANSITION; that is expected in hybrid mode. (checked)\n+ (checked)\n+### 4.7 Sample V4 (PQC-first) (checked)\n+ (checked)\n+**Run:** (checked)\n+ (checked)\n+```bash (checked)\n+notes survey runtime ps-001-v4-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v4-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v4-sample-payment-gateway/target/ps-001-v4-sample-payment-gateway-1.0.0.jar\" (checked)\n+``` (checked)\n+ (checked)\n+**Pass if the Dashboard shows (PQC-first invariant):** (checked)\n \n - **GREEN includes `ml-kem`** (and the modern KDF `hkdf`): the PQC-first key exchange ran and was captured.\n - No `des` / `md5` from application code. The fat JAR embeds unmodified Bouncy Castle, so incidental RED/TRANSITION findings from unused provider classes may appear; test 4.8 covers the stripped build.\n",
+        "changes": [
+          {
+            "removed": [
+              "**Run:**",
+              "",
+              "```bash",
+              "notes survey runtime ps-001-v3-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v3-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v3-sample-payment-gateway/target/ps-001-v3-sample-payment-gateway-1.0.0-v3.jar\"",
+              "```",
+              "",
+              "**Pass if the Dashboard shows (hybrid-PQC invariant):**",
+              "",
+              "- No `des` / `md5`.",
+              "- **GREEN includes the post-quantum algorithms `ml-kem` and `ml-dsa`**: this is the key signal that the hybrid PQC path ran and was captured. (If GREEN has no `ml-kem`/`ml-dsa`, first suspect the JDK requirement above; a JDK 25 target silently drops them.)",
+              "- Classical algorithms retained for the hybrid pairs (RSA, SHA256withRSA) still appear as YELLOW / TRANSITION; that is expected in hybrid mode.",
+              "",
+              "### 4.7 Sample V4 (PQC-first)",
+              "",
+              "**Run:**",
+              "",
+              "```bash",
+              "notes survey runtime ps-001-v4-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v4-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v4-sample-payment-gateway/target/ps-001-v4-sample-payment-gateway-1.0.0.jar\"",
+              "```",
+              "",
+              "**Pass if the Dashboard shows (PQC-first invariant):**"
+            ],
+            "added": [
+              "**Run:** (checked)",
+              " (checked)",
+              "```bash (checked)",
+              "notes survey runtime ps-001-v3-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v3-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v3-sample-payment-gateway/target/ps-001-v3-sample-payment-gateway-1.0.0-v3.jar\" (checked)",
+              "``` (checked)",
+              " (checked)",
+              "**Pass if the Dashboard shows (hybrid-PQC invariant):** (checked)",
+              " (checked)",
+              "- No `des` / `md5`. (checked)",
+              "- **GREEN includes the post-quantum algorithms `ml-kem` and `ml-dsa`**: this is the key signal that the hybrid PQC path ran and was captured. (If GREEN has no `ml-kem`/`ml-dsa`, first suspect the JDK requirement above; a JDK 25 target silently drops them.) (checked)",
+              "- Classical algorithms retained for the hybrid pairs (RSA, SHA256withRSA) still appear as YELLOW / TRANSITION; that is expected in hybrid mode. (checked)",
+              " (checked)",
+              "### 4.7 Sample V4 (PQC-first) (checked)",
+              " (checked)",
+              "**Run:** (checked)",
+              " (checked)",
+              "```bash (checked)",
+              "notes survey runtime ps-001-v4-sample --jfr --log-level debug --log-file \"$HOME/notes-test/logs/ps-001-v4-sample.log\" -- java -jar \"$HOME/notes-test/sample-apps/ps-001-v4-sample-payment-gateway/target/ps-001-v4-sample-payment-gateway-1.0.0.jar\" (checked)",
+              "``` (checked)",
+              " (checked)",
+              "**Pass if the Dashboard shows (PQC-first invariant):** (checked)"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/dashboard",
+                "commit": "2d05e36"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/quick-start.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/notes-cli.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/dashboard.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/dashboard-setup.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-facts.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/inventory-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_zsh.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      }
+    ]
+  }
+}

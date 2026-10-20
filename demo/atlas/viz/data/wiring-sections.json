@@ -1,0 +1,9 @@
+{
+ "notes-api": "5340cfda0a2acea8",
+ "notes-cli": "5626dd176b2b137f",
+ "notes-core": "a4fdfa1ea3dca3d5",
+ "notes-gitops": "ff9577cf69d930cb",
+ "notes-installer": "d36620a2eb9016c9",
+ "notes-web": "cab558bf7ba6d793",
+ "notes-worker": "a8fdb00156f56460"
+}

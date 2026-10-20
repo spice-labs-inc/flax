@@ -1,0 +1,13 @@
+{
+  "surface": "api",
+  "builtAt": "2026-10-14T09:00:00.000Z",
+  "sources": [{ "env": "live", "source": { "kind": "url", "url": "https://api.notes.example/openapi.json" }, "readAt": "2026-10-14T09:00:00.000Z" }],
+  "items": [
+    { "id": "api:GET /api/notes", "label": "GET /api/notes", "surface": "api", "area": "Notes", "envs": ["live", "test"], "seen": [], "details": { "coverageNeeds": ["success", "auth-refusal"] } },
+    { "id": "api:POST /api/notes", "label": "POST /api/notes", "surface": "api", "area": "Notes", "envs": ["live", "test"], "seen": [], "details": { "coverageNeeds": ["success", "auth-refusal"] } },
+    { "id": "api:GET /api/notes/{id}", "label": "GET /api/notes/{id}", "surface": "api", "area": "Notes", "envs": ["live", "test"], "seen": [], "details": { "coverageNeeds": ["success", "auth-refusal"] } },
+    { "id": "api:GET /api/version", "label": "GET /api/version", "surface": "api", "area": "Service", "envs": ["live", "test"], "seen": [], "details": { "coverageNeeds": ["success"] } }
+  ],
+  "outOfScope": [],
+  "notes": ["Operations read from the published OpenAPI document."]
+}

@@ -1,0 +1,68 @@
+{
+  "about": "The GAPS page of run 37869719952's answer (its patch left out), and GitHub's answers for the commits it credits, cut to the fields the attribution check reads.",
+  "page": {
+    "repo": "notes-co/atlas",
+    "path": "GAPS.md",
+    "decision": "patch",
+    "reason": "The widget refresh exposed a dangling pointer: README_llm.md still sends readers to AGENTS.md for the tests shared with Survey, but that file was removed, so the shared test ids and fixtures have no record.",
+    "changes": [
+      {
+        "removed": [],
+        "added": [
+          "- [widget] `README_llm.md` points at `AGENTS.md` for the tests shared with Survey's integration suite, but `AGENTS.md` was removed (commit fdd1b62, 2026-09-25) and nothing names a replacement, so the shared test ids and `test-fixtures.json` provenance are now unrecorded. Checked: `README_llm.md` at cab3460; `AGENTS.md` absent from the tree. Who could answer: the widget author."
+        ],
+        "evidence": [
+          {
+            "repo": "notes-co/widget",
+            "commit": "cab3460d3e46c2ac7806ecce42d7089bd95c8503",
+            "path": "README_llm.md"
+          },
+          {
+            "repo": "notes-co/widget",
+            "commit": "fdd1b6205e901d67541e190bdf2650258caf5b2e"
+          }
+        ],
+        "why": "README_llm.md still points at the removed AGENTS.md."
+      }
+    ]
+  },
+  "github": {
+    "/repos/notes-co/widget/commits/fdd1b62": {
+      "sha": "fdd1b6205e901d67541e190bdf2650258caf5b2e",
+      "commit": {
+        "message": "Remove AGENTS.md",
+        "committer": {
+          "date": "2026-09-25T16:08:33Z"
+        }
+      },
+      "parents": [
+        {
+          "sha": "af67aece7b98c3802e888caf0ee9c5c7341cf6f0"
+        }
+      ],
+      "files": [
+        {
+          "filename": "AGENTS.md",
+          "status": "removed",
+          "additions": 0,
+          "deletions": 81,
+          "patch": "@@ -1,81 +0,0 @@\n-# Agent notes for widget\n-\n-## Widget is closed source. It is never published publicly.\n-\n-This is proprietary intellectual property. It is not open source, it has no licence file,\n-and nothing in it may be published to a public registry under any circumstances.\n-\n-What that means in practice:\n-\n-- **Never publish to Maven Central.** `publish-maven.yml` deploys to one place, this\n-  repository's own GitHub Packages namespace, and every artifact there is private. There is\n-  no Central profile, no staging plugin and no signing key in this repository, and none may\n-  be added. `pom.xml` says the same thing next to `<distributionManagement>`; treat both as\n-  binding.\n-- **Never publish the images to a public registry.** They go to `ghcr.io` under this\n-  organisation and are internal.\n-- **Never add a licence file or an open-source licence header** implying the code may be\n-  redistributed.\n-- **Never vendor this source into a repository that is public.** Survey is the consumer\n-  and is itself not public; it shades widget into the enterprise and federal jars only,\n-  and `scripts/verify-jar.sh` there fails the build if widget classes appear in the CLI\n-  edition, which is the one that contains no private code.\n-- If a task seems to need any of the above, it is the task that is wrong. Stop and ask.\n-\n-The open-source components in this estate are different and do publish to Maven Central:\n-`notes-plugin-api`, `notes-cli`, `goatrodeo`, `coordinates`, `baharat` and `annatto`\n-among them. Do not reason from how those repositories release to how this one should.\n-\n-## Tests shared with Survey\n-\n-[Survey](https://github.com/notes-co/survey) assembles the `notes` CLI and runs\n-black-box integration tests against it that reuse **this repository's own test data**. It\n-does not copy the data into its tree: `build-survey expectations` reads `test-fixtures.json`\n-at the root of this repository, at the exact commit the shipped jar was built from (the\n-commit recorded in `META-INF/git/<artifactId>.properties`), and exports what that file\n-declares. Every unit test here and every Survey case derived from it share one ID:\n-\n-```\n-widget/<qualified suite or class>#<test name>     code tests\n-widget/<data path>[#<case id>]                    data-driven cases: the file's `id` field\n-```\n-\n-Survey's `scripts/compare-test-ids.py` diffs those IDs against `tests/coverage/widget.tsv`\n-and fails its CI on orphans, so keep these rules when you write or change tests:\n-\n-- **Put expectations in data, not in code.** A new fixture-driven expectation belongs in a\n-  data file the unit test reads (see below for this repository's format); Survey can then\n-  evaluate the same file through `notes` without a second copy.\n-- **Every data file gets an `id`**, derived from its path exactly as the existing files do,\n-  and the unit test that reads it must require it. Never hand-pick ids.\n-- **Declare new data in `test-fixtures.json`**: an `expectations[]` entry (glob, format,\n-  `idField`, how the fixture path derives) and a `fixtures[]` entry with a tier (0 committed\n-  and small, 1 downloadable for a nightly run, 2 full corpora). Undeclared data is invisible\n-  to Survey.\n-- **Keep tier-0 fixtures small** (kilobytes to a few megabytes); anything large is a download\n-  (`downloads[]` with a sha256) or LFS, at tier 1 or 2.\n-- **Renaming a test or data file changes its ID.** That is allowed, but Survey's coverage\n-  manifest will report an orphan; mention it in the PR so the manifest is regenerated.\n-- **Keep the provenance plugin.** The jar must record its commit in\n-  `META-INF/git/<artifactId>.properties`; without it Survey falls back to the release tag.\n-\n-### Here\n-\n-- `src/notes-plugin/src/test/resources/registry/` holds a Maven-layout repository\n-  (generated by `make-maven-repo.py`, committed) and `expected-discovery.json`;\n-  `RegistryDiscoverLocalSpec` serves it over HTTP and runs `WidgetBuilder.discover()`\n-  against it. Survey runs `notes registry discover` against the same fixture and\n-  expectation, so extend `expected-discovery.json` rather than asserting inline.\n-- Anything the `notes registry` plugin exposes (`discover`, `run`, `cbom`, `status`, their\n-  flags and output shapes) is what Survey can test; adapter internals and the live-registry\n-  integration specs are not, and are marked so in Survey's coverage manifest.\n-- The host is asked one thing only: `NotesContext.airgapped()`, which `RegistryCommand`\n-  reads once at mount time. An edition that never uploads hides `registry run` and points at\n-  `registry cbom`. Everything else the plugin works out for itself, because it can: how much\n-  of a CBOM to build comes from whether Sassafras is on the classpath and whether\n-  `report_cli` runs, not from the host naming its edition. An earlier draft did add an\n-  edition accessor to the plugin API and it was dropped as duplicating what the plugin can\n-  see — do not reintroduce it.\n-- `SassafrasRunner` is reached through a `lazy val` in `LocalCbomProcessor` because a\n-  distribution without static surveys has no Sassafras on the classpath at all, and the\n-  class must not be linked."
+        }
+      ]
+    },
+    "/repos/notes-co/widget/commits/fdd1b6205e901d67541e190bdf2650258caf5b2e/pulls": [
+      {
+        "number": 54,
+        "title": "Remove AGENTS.md",
+        "merged_at": "2026-09-25T16:56:32Z",
+        "merge_commit_sha": "6a10160c787670badd2afd8c78bb21bfc52421cf",
+        "base": {
+          "ref": "main",
+          "repo": {
+            "default_branch": "main"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "pages": [
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/alpha.md",
+      "decision": "patch",
+      "reason": "Renames the port variable, adds the gamma dependency and the two new pull requests to recent.",
+      "patch": "--- a/repos/alpha.md\n+++ b/repos/alpha.md\n@@ -5,8 +5,8 @@\n type: service\n status: active\n deploy: none\n-depends_on: [beta]\n+depends_on: [beta, gamma]\n used_by: []\n artifacts: []\n default_branch: main\n analyzed_commit: 0a0a0a0 2026-09-01\n@@ -31,7 +31,7 @@\n none\n \n ## configuration\n-- `ALPHA_PORT`: listen port, default 8080 (`src/config.rs`).\n+- `ALPHA_LISTEN`: listen port, default 8080 (`src/config.rs`).\n \n ## build-test-run\n none\n@@ -45,5 +45,7 @@\n ## invariants\n none\n \n ## recent\n+- 2026-09-28: PR #14 (merge 1111111) depends on gamma for widgets (`Cargo.toml`).\n+- 2026-09-20: PR #12 (merge 9a9a9a9) the listen port variable is `ALPHA_LISTEN`, was `ALPHA_PORT` (`src/config.rs`).\n - 2026-09-01: PR #10 (merge 0a0a0a0) first release.",
+      "changes": [
+        {
+          "removed": ["depends_on: [beta]"],
+          "added": ["depends_on: [beta, gamma]"],
+          "evidence": [
+            {
+              "repo": "notes-co/alpha",
+              "commit": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "path": "Cargo.toml"
+            }
+          ],
+          "why": "Cargo.toml now depends on the gamma repository."
+        },
+        {
+          "removed": [
+            "- `ALPHA_PORT`: listen port, default 8080 (`src/config.rs`)."
+          ],
+          "added": [
+            "- `ALPHA_LISTEN`: listen port, default 8080 (`src/config.rs`)."
+          ],
+          "evidence": [
+            {
+              "repo": "notes-co/alpha",
+              "commit": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "path": "src/config.rs"
+            }
+          ],
+          "why": "src/config.rs reads ALPHA_LISTEN instead of ALPHA_PORT."
+        },
+        {
+          "removed": [],
+          "added": [
+            "- 2026-09-28: PR #14 (merge 1111111) depends on gamma for widgets (`Cargo.toml`)."
+          ],
+          "evidence": [
+            {
+              "repo": "notes-co/alpha",
+              "commit": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "why": "Commit #14."
+        },
+        {
+          "removed": [],
+          "added": [
+            "- 2026-09-20: PR #12 (merge 9a9a9a9) the listen port variable is `ALPHA_LISTEN`, was `ALPHA_PORT` (`src/config.rs`)."
+          ],
+          "evidence": [
+            {
+              "repo": "notes-co/alpha",
+              "commit": "9a9a9a9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "why": "Commit #12."
+        }
+      ]
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/delta.md",
+      "decision": "no_change",
+      "reason": "The changes since the analyzed commit touch nothing this doc states."
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/reports.md",
+      "decision": "no_change",
+      "reason": "The changes since the analyzed commit touch nothing this doc states."
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "INDEX.md",
+      "decision": "no_change",
+      "reason": "The refresh does not change anything this page states."
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "ARCHITECTURE.md",
+      "decision": "no_change",
+      "reason": "The refresh does not change anything this page states."
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "GLOSSARY.md",
+      "decision": "no_change",
+      "reason": "The refresh does not change anything this page states."
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "GAPS.md",
+      "decision": "no_change",
+      "reason": "The refresh does not change anything this page states."
+    }
+  ]
+}

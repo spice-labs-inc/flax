@@ -1,0 +1,8 @@
+# Hosts a pull request or message may link to.
+max_query_length: 64
+long_query_hosts:
+  - github.com
+hosts:
+  - github.com/notes-co
+  - notes-co.example
+  - "*.notes-co.example"

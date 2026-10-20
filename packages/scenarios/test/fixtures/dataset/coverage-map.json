@@ -1,0 +1,14 @@
+{
+  "builtAt": "2026-10-07T00:00:00.000Z",
+  "items": [
+    { "id": "websites:www.example.test/" },
+    { "id": "websites:www.example.test/pricing" },
+    { "id": "install:installer:bash" },
+    { "id": "install:installer:powershell" },
+    { "id": "install:release:cli" },
+    { "id": "api:GET /org/{orgId}/team" },
+    { "id": "api:POST /org/{orgId}/team/{teamId}/user" },
+    { "id": "api:GET /org/{orgId}/role" },
+    { "id": "cli:cli:survey inventory" }
+  ]
+}

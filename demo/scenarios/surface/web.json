@@ -1,0 +1,17 @@
+{
+  "surface": "web",
+  "builtAt": "2026-10-14T09:00:00.000Z",
+  "sources": [{ "source": { "kind": "repo", "repo": "example-org/notes-web", "ref": "main", "commit": "0123456789abcdef0123456789abcdef01234567" }, "readAt": "2026-10-14T09:00:00.000Z" }],
+  "items": [
+    { "id": "web:route:/", "label": "Page /", "surface": "web", "area": "Home", "envs": ["live", "test"], "seen": [], "details": { "routeId": "/" } },
+    { "id": "web:route:/sign-in", "label": "Page /sign-in", "surface": "web", "area": "Account", "envs": ["live", "test"], "seen": [], "details": { "routeId": "/sign-in" } },
+    { "id": "web:route:/notes", "label": "Page /notes", "surface": "web", "area": "Notes", "envs": ["live", "test"], "seen": [], "details": { "routeId": "/notes" } },
+    { "id": "web:route:/notes/[id]", "label": "Page /notes/[id]", "surface": "web", "area": "Notes", "envs": ["live", "test"], "seen": [], "details": { "routeId": "/notes/[id]", "params": ["id"] } },
+    { "id": "web:testid:new-note", "label": "Test id new-note", "surface": "web", "area": "Notes", "parent": "web:route:/notes", "envs": ["live", "test"], "seen": [], "details": { "files": ["src/routes/notes/+page.svelte"] } },
+    { "id": "web:testid:save-note", "label": "Test id save-note", "surface": "web", "area": "Notes", "parent": "web:route:/notes/[id]", "envs": ["live", "test"], "seen": [], "details": { "files": ["src/routes/notes/[id]/+page.svelte"] } },
+    { "id": "web:route:/settings", "label": "Page /settings", "surface": "web", "area": "Account", "envs": ["live", "test"], "seen": [], "details": { "routeId": "/settings" } },
+    { "id": "web:route:/admin", "label": "Page /admin", "surface": "web", "area": "Admin", "envs": ["test"], "seen": [], "details": { "routeId": "/admin" } }
+  ],
+  "outOfScope": [{ "label": "The marketing site", "reason": "static pages with no product behavior" }],
+  "notes": ["Routes read from src/routes at main; test ids from every data-testid."]
+}

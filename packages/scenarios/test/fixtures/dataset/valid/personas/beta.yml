@@ -1,0 +1,30 @@
+id: beta
+name: Beta
+type: negative
+summary: Not designed for now.
+who: Someone the product does not target.
+titles: []
+goals: []
+needs: []
+consumes: ""
+prize:
+  test: No scenario targets this persona.
+journey:
+  name: ""
+  steps: []
+friction: []
+antiGoals: []
+surfaces: []
+neverTouches: []
+editions: []
+fixtureRole: none
+tensions: []
+evidence:
+  - claim: Listed as a negative persona.
+    source: Fixture source
+    date: 2026-10-07
+    assumption: false
+sources:
+  - title: Fixture source
+    date: 2026-10-07
+    where: test fixtures

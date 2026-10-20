@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-service/
+target/
+*.log
+.DS_Store
+demo/explorer-site/
+demo/explorer-data/
+demo/explorer-state/
+.svelte-kit/
+build/
+.single/
+.single-routes/
+demo/explorer-single/
+
+# The user-level gitignore may hide markdown; this repository tracks it.
+!*.md

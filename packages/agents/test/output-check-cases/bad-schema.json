@@ -1,0 +1,14 @@
+{
+  "description": "An answer that is not a patch set at all.",
+  "expect": "reject",
+  "reasons": ["the answer does not match the patch-set schema"],
+  "answer": {
+    "pages": [
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/quick-start.mdx",
+        "decision": "rewrite"
+      }
+    ]
+  }
+}

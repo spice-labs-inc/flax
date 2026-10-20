@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "messages.ndjson",
+      "sha256": "6aece030c27c63481407f53de9a74d33a676cb971e05b35452c66a89da648f0d",
+      "bytes": 9324,
+      "type": "application/x-ndjson"
+    },
+    {
+      "path": "planned.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3,
+      "type": "application/json"
+    },
+    {
+      "path": "run.json",
+      "sha256": "08bdbf1679b61f584cf9801b03688d8acc943f193ee1ca091afd171360abe720",
+      "bytes": 1888,
+      "type": "application/json"
+    }
+  ],
+  "hash": "33c77d01efaedeb3a1e4040d42f3b9507bde84b671a8c782ea5aa3e73166d6e2",
+  "data": {
+    "env": "test",
+    "runId": "test-2026-10-08T20-40-50-449Z",
+    "scenarios": {
+      "repo": "notes-co/notes-scenarios",
+      "commit": "f88082d6e1fc2264bb3e44b90ef8a3566640d021",
+      "fixtures": true
+    },
+    "checks": {
+      "features/sharing/notebooks.feature:9": {
+        "name": "Sharing notebooks: A member sees every shared notebook",
+        "status": "passed"
+      },
+      "features/sharing/notebooks.feature:16": {
+        "name": "Sharing notebooks: An editor creates and deletes a shared notebook",
+        "status": "failed",
+        "step": "I ask it to create a notebook in my workspace",
+        "detail": "AssertionError [ERR_ASSERTION]: the create call answers without an error: {\"status\":404,\"truncated\":false,\"body\":{\"error\":\"sharing not enabled\",\"status\":404,\"code\":\"not_found\"}}\n    + expected - actual\n\n    -false\n    +true\n\n    at createNotebook (/runner/_work/agents/agents/media-sources/scenarios/src/steps/sharing.ts:448:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async ScenarioWorld.<anonymous> (/runner/_work/agents/agents/media-sources/scenarios/src/steps/sharing.ts:993:20)",
+        "screenshots": 1
+      }
+    },
+    "builds": {
+      "api.release": "3cebe5b832f4f2e7e594f7a8cd8fd404f77f126e",
+      "api.commit": "3cebe5b832f4f2e7e594f7a8cd8fd404f77f126e",
+      "api.built_at": "2026-10-08T19:19:40.301Z",
+      "scenarios": "f88082d6e1fc2264bb3e44b90ef8a3566640d021"
+    }
+  }
+}

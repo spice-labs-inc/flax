@@ -1,0 +1,121 @@
+{
+  "env": "live",
+  "runId": "live-2026-10-16T00-05-39-718Z",
+  "startedAt": "2026-10-16T00:05:39.718Z",
+  "finishedAt": "2026-10-16T00:05:39.833Z",
+  "versions": {},
+  "scenarios": [
+    {
+      "id": "scenarios/features/api/notes.feature:4",
+      "name": "Listing notes",
+      "feature": "Notes API",
+      "tags": [],
+      "status": "passed",
+      "durationMs": 2,
+      "touches": [
+        {
+          "item": "api:GET /api/notes",
+          "need": "success",
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "scenarios/features/api/notes.feature:9",
+      "name": "Reading one note",
+      "feature": "Notes API",
+      "tags": [],
+      "status": "passed",
+      "durationMs": 1,
+      "touches": [
+        {
+          "item": "api:GET /api/notes",
+          "need": "success",
+          "step": 1
+        },
+        {
+          "item": "api:GET /api/notes/{id}",
+          "need": "success",
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "scenarios/features/api/notes.feature:14",
+      "name": "A request without a token is refused",
+      "feature": "Notes API",
+      "tags": [],
+      "status": "passed",
+      "durationMs": 1,
+      "touches": [
+        {
+          "item": "api:GET /api/notes",
+          "need": "auth-refusal",
+          "step": 0
+        }
+      ]
+    },
+    {
+      "id": "scenarios/features/web/notes.feature:4",
+      "name": "The notes list opens",
+      "feature": "Notes",
+      "tags": [],
+      "status": "passed",
+      "durationMs": 0,
+      "touches": [
+        {
+          "item": "web:route:/sign-in",
+          "step": 0
+        },
+        {
+          "item": "web:route:/notes",
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "scenarios/features/web/notes.feature:9",
+      "name": "A note is created and saved",
+      "feature": "Notes",
+      "tags": [],
+      "status": "passed",
+      "durationMs": 1,
+      "touches": [
+        {
+          "item": "web:route:/sign-in",
+          "step": 0
+        },
+        {
+          "item": "web:route:/notes",
+          "step": 1
+        },
+        {
+          "item": "web:testid:new-note",
+          "step": 2
+        },
+        {
+          "item": "web:route:/notes/[id]",
+          "step": 3
+        },
+        {
+          "item": "web:testid:save-note",
+          "step": 3
+        }
+      ]
+    },
+    {
+      "id": "scenarios/features/web/sign-in.feature:4",
+      "name": "The sign-in page loads",
+      "feature": "Sign in",
+      "tags": [],
+      "status": "passed",
+      "durationMs": 0,
+      "touches": [
+        {
+          "item": "web:route:/sign-in",
+          "step": 0
+        }
+      ]
+    }
+  ]
+}

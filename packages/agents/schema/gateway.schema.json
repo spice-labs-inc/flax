@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agents-kit.dev/schema/gateway.schema.json",
+  "title": "Model gateway",
+  "description": "The contents of gateway.yml: the model gateway every run calls its model through (LiteLLM on hosta, app-gitops apps/hetzner/hosta/llm-gateway), the internal address the runner reaches it at, and the private CA root it is pinned to.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "url",
+    "server_name",
+    "team",
+    "ca",
+    "key_max_usd",
+    "key_max_minutes"
+  ],
+  "properties": {
+    "url": {
+      "description": "Where the runner reaches the gateway: an https URL at an internal address (no public name, no path). Only the runner process calls it; the box never does.",
+      "type": "string",
+      "pattern": "^https://[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?$"
+    },
+    "server_name": {
+      "description": "The name the gateway's certificate is issued for (GATEWAY_HOST in the stack's .env). The runner sends it as the TLS server name and checks the certificate against it, so the URL may be an address.",
+      "type": "string",
+      "pattern": "^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+    },
+    "team": {
+      "description": "The LiteLLM team every run key belongs to; the issuer key can issue keys for this team only.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,62}$"
+    },
+    "ca": {
+      "description": "The file at the repository root holding the gateway's private CA root certificate (PEM). The runner trusts only this root when it talks to the gateway.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,62}\\.pem$"
+    },
+    "key_max_usd": {
+      "description": "The most a key may be given to spend: the gateway's own ceiling (upperbound_key_generate_params.max_budget). A run whose worst case is higher is refused before any key is asked for.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "key_max_minutes": {
+      "description": "The longest a key may live: the gateway's own ceiling (upperbound_key_generate_params.duration), in minutes.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1440
+    }
+  }
+}

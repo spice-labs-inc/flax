@@ -1,0 +1,26 @@
+stations:
+  - key: signIn
+    name: Sign in
+    stage: Discover
+    kind: surface
+    match: ["web:route:/sign-in"]
+  - key: openList
+    name: Open the notes list
+    stage: Write
+    kind: surface
+    match: ["web:route:/notes", "web:testid:new-note"]
+  - key: writeNote
+    name: Write and save a note
+    stage: Write
+    kind: surface
+    match: ["web:route:/notes/*", "web:testid:save-note"]
+  - key: listViaApi
+    name: List notes through the API
+    stage: Review
+    kind: surface
+    match: ["api:* /api/notes"]
+  - key: passkey
+    name: Sign in with a passkey
+    stage: Discover
+    kind: planned
+    match: []

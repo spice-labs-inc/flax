@@ -1,0 +1,10 @@
+[
+  {
+    "id": "scenarios/features/web/sign-in.feature:9",
+    "name": "Sign in with a passkey",
+    "feature": "Sign in",
+    "tags": [
+      "@planned"
+    ]
+  }
+]

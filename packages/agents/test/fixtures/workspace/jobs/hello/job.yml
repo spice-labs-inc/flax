@@ -1,0 +1,47 @@
+# Job definition. Schema: schema/job.schema.json. Rules: docs/guardrails.md.
+# After editing, run pnpm generate and pnpm check.
+
+name: hello # must equal the folder name
+
+# GitHub handle that gets failure alerts.
+owner: octocat
+
+# One sentence on what this job does.
+purpose: Summarizes a short piece of text, to prove the job kit end to end.
+
+# Exactly one of:
+#   schedule: "0 13 * * *"   five-field cron, UTC
+#   after: other-job         runs when that job succeeds
+#   manual: true             runs only when started by hand
+trigger:
+  manual: true
+
+# Must be listed in models.yml.
+model: acme/acme-deepseek-v4.1-flash
+
+# Pi thinking level for every run, one the model takes (models.yml). A run
+# started by hand can pick another.
+thinking: high
+
+# true: Pi also gets a shell (bash) inside the box.
+shell: true
+
+limits:
+  turns: 30 # at most 200
+  tokens_per_run: 400000 # at most 2000000
+  usd_per_month: 1 # all jobs together share $175 a month
+
+# Names of directories under tools/. Tools are read-only.
+tools: []
+
+# kind is one of:
+#   file    the run's result is kept as a file; nothing else to set
+#   slack   also set channel: <a channel from channels.yml>
+#   pr      also set repos: [owner/name, ...] from repos.yml,
+#           paths: [globs the job may change], max_changed_lines: <number>
+output:
+  kind: file
+
+# shadow runs deliver nowhere public. live needs SHADOW_RUNS.md with 4 run
+# links and code owner approval.
+mode: shadow

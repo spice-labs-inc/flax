@@ -1,0 +1,16 @@
+{
+  "name": "flax-monorepo",
+  "private": true,
+  "description": "flax: scheduled agents, an architecture atlas, a scenario library and its explorer, with your content kept in a separate workspace",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.19.0",
+  "scripts": {
+    "check": "pnpm -r --if-present check",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "prettier-plugin-svelte": "^3.4.0"
+  }
+}

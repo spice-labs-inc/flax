@@ -1,0 +1,363 @@
+{
+  "builtAt": "2026-10-15T23:59:21.322Z",
+  "envs": [
+    "live",
+    "test"
+  ],
+  "surfaces": [
+    {
+      "surface": "web",
+      "builtAt": "2026-10-14T09:00:00.000Z",
+      "items": 8,
+      "areas": 4,
+      "perEnv": {
+        "live": 7,
+        "test": 8
+      },
+      "sources": [
+        {
+          "source": {
+            "kind": "repo",
+            "repo": "example-org/notes-web",
+            "ref": "main",
+            "commit": "0123456789abcdef0123456789abcdef01234567"
+          },
+          "readAt": "2026-10-14T09:00:00.000Z"
+        }
+      ],
+      "notes": [
+        "Routes read from src/routes at main; test ids from every data-testid."
+      ],
+      "outOfScope": [
+        {
+          "label": "The marketing site",
+          "reason": "static pages with no product behavior"
+        }
+      ]
+    },
+    {
+      "surface": "api",
+      "builtAt": "2026-10-14T09:00:00.000Z",
+      "items": 4,
+      "areas": 2,
+      "perEnv": {
+        "live": 4,
+        "test": 4
+      },
+      "sources": [
+        {
+          "env": "live",
+          "source": {
+            "kind": "url",
+            "url": "https://api.notes.example/openapi.json"
+          },
+          "readAt": "2026-10-14T09:00:00.000Z"
+        }
+      ],
+      "notes": [
+        "Operations read from the published OpenAPI document."
+      ],
+      "outOfScope": []
+    }
+  ],
+  "items": [
+    {
+      "id": "web:route:/",
+      "label": "Page /",
+      "surface": "web",
+      "area": "Home",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "uncovered",
+        "test": "uncovered"
+      },
+      "scenarios": []
+    },
+    {
+      "id": "web:route:/sign-in",
+      "label": "Page /sign-in",
+      "surface": "web",
+      "area": "Account",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "passing",
+        "test": "passing"
+      },
+      "scenarios": [
+        "features/web/notes.feature:17",
+        "features/web/notes.feature:4",
+        "features/web/notes.feature:9",
+        "features/web/sign-in.feature:4",
+        "scenarios/features/web/notes.feature:17",
+        "scenarios/features/web/notes.feature:4",
+        "scenarios/features/web/notes.feature:9",
+        "scenarios/features/web/sign-in.feature:4"
+      ],
+      "laterFailed": {
+        "test": [
+          "features/web/notes.feature:9",
+          "scenarios/features/web/notes.feature:9"
+        ]
+      }
+    },
+    {
+      "id": "web:route:/notes",
+      "label": "Page /notes",
+      "surface": "web",
+      "area": "Notes",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "passing",
+        "test": "passing"
+      },
+      "scenarios": [
+        "features/web/notes.feature:4",
+        "features/web/notes.feature:9",
+        "scenarios/features/web/notes.feature:4",
+        "scenarios/features/web/notes.feature:9"
+      ],
+      "laterFailed": {
+        "test": [
+          "features/web/notes.feature:9",
+          "scenarios/features/web/notes.feature:9"
+        ]
+      }
+    },
+    {
+      "id": "web:route:/notes/[id]",
+      "label": "Page /notes/[id]",
+      "surface": "web",
+      "area": "Notes",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "passing",
+        "test": "passing"
+      },
+      "scenarios": [
+        "features/web/notes.feature:9",
+        "scenarios/features/web/notes.feature:9"
+      ],
+      "laterFailed": {
+        "test": [
+          "features/web/notes.feature:9",
+          "scenarios/features/web/notes.feature:9"
+        ]
+      }
+    },
+    {
+      "id": "web:testid:new-note",
+      "label": "Test id new-note",
+      "surface": "web",
+      "area": "Notes",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "passing",
+        "test": "passing"
+      },
+      "scenarios": [
+        "features/web/notes.feature:9",
+        "scenarios/features/web/notes.feature:9"
+      ],
+      "laterFailed": {
+        "test": [
+          "features/web/notes.feature:9",
+          "scenarios/features/web/notes.feature:9"
+        ]
+      }
+    },
+    {
+      "id": "web:testid:save-note",
+      "label": "Test id save-note",
+      "surface": "web",
+      "area": "Notes",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "passing",
+        "test": "passing"
+      },
+      "scenarios": [
+        "features/web/notes.feature:9",
+        "scenarios/features/web/notes.feature:9"
+      ],
+      "laterFailed": {
+        "test": [
+          "features/web/notes.feature:9",
+          "scenarios/features/web/notes.feature:9"
+        ]
+      }
+    },
+    {
+      "id": "web:route:/settings",
+      "label": "Page /settings",
+      "surface": "web",
+      "area": "Account",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "uncovered",
+        "test": "uncovered"
+      },
+      "scenarios": []
+    },
+    {
+      "id": "web:route:/admin",
+      "label": "Page /admin",
+      "surface": "web",
+      "area": "Admin",
+      "envs": [
+        "test"
+      ],
+      "status": {
+        "test": "passing"
+      },
+      "scenarios": [
+        "features/web/notes.feature:17",
+        "scenarios/features/web/notes.feature:17"
+      ]
+    },
+    {
+      "id": "api:GET /api/notes",
+      "label": "GET /api/notes",
+      "surface": "api",
+      "area": "Notes",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "passing",
+        "test": "passing"
+      },
+      "scenarios": [
+        "features/api/notes.feature:14",
+        "features/api/notes.feature:4",
+        "features/api/notes.feature:9",
+        "scenarios/features/api/notes.feature:14",
+        "scenarios/features/api/notes.feature:4",
+        "scenarios/features/api/notes.feature:9"
+      ],
+      "proven": {
+        "live": [
+          "success",
+          "auth-refusal"
+        ],
+        "test": [
+          "success",
+          "auth-refusal"
+        ]
+      }
+    },
+    {
+      "id": "api:POST /api/notes",
+      "label": "POST /api/notes",
+      "surface": "api",
+      "area": "Notes",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "uncovered",
+        "test": "uncovered"
+      },
+      "scenarios": []
+    },
+    {
+      "id": "api:GET /api/notes/{id}",
+      "label": "GET /api/notes/{id}",
+      "surface": "api",
+      "area": "Notes",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "uncovered",
+        "test": "uncovered"
+      },
+      "scenarios": [
+        "features/api/notes.feature:9",
+        "scenarios/features/api/notes.feature:9"
+      ],
+      "proven": {
+        "live": [
+          "success"
+        ],
+        "test": [
+          "success"
+        ]
+      }
+    },
+    {
+      "id": "api:GET /api/version",
+      "label": "GET /api/version",
+      "surface": "api",
+      "area": "Service",
+      "envs": [
+        "live",
+        "test"
+      ],
+      "status": {
+        "live": "uncovered",
+        "test": "uncovered"
+      },
+      "scenarios": []
+    }
+  ],
+  "runs": [
+    {
+      "env": "live",
+      "runId": "live-2026-10-15T20-29-44-969Z",
+      "startedAt": "2026-10-15T20:29:44.969Z",
+      "scenarios": 6,
+      "passed": 6,
+      "failed": 0
+    },
+    {
+      "env": "test",
+      "runId": "test-2026-10-15T23-58-54-787Z",
+      "startedAt": "2026-10-15T20:29:43.384Z",
+      "scenarios": 14,
+      "passed": 12,
+      "failed": 2
+    }
+  ],
+  "planned": [
+    {
+      "id": "features/web/sign-in.feature:9",
+      "name": "Sign in with a passkey",
+      "feature": "Sign in",
+      "tags": [
+        "@planned"
+      ]
+    },
+    {
+      "id": "scenarios/features/web/sign-in.feature:9",
+      "name": "Sign in with a passkey",
+      "feature": "Sign in",
+      "tags": [
+        "@planned"
+      ]
+    }
+  ]
+}

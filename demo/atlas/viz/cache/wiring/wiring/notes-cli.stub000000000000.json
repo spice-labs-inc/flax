@@ -1,0 +1,1 @@
+{"edges":[{"from":"notes-cli","to":"notes-api","layer":"network","label":"HTTPS /api/v1/notes","detail":"The CLI syncs notes with the API.","anchor":"src/api.rs","unverified":false}],"infra":[]}

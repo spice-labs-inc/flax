@@ -1,0 +1,35 @@
+id: writer
+name: Wren the writer
+type: primary
+summary: Writes notes every day and wants them back fast.
+who: A person who keeps working notes in the app.
+titles: [Analyst, Student]
+goals: [Capture a thought in under ten seconds, Find any note again later]
+needs: [A notes list that loads at once, Saving that never loses text]
+consumes: The notes list and the note page.
+prize:
+  quote: It just remembers things for me.
+  test: A note written yesterday opens today with every word in it.
+journey:
+  name: Daily notes
+  steps: [Sign in, Open the list, Write a note, Save it]
+friction: [Sign-in asks for a password every morning]
+antiGoals: [Sharing notes with anyone]
+surfaces: [web]
+neverTouches: [api]
+editions: []
+fixtureRole: writer account
+tensions:
+  - with: reviewer
+    conflict: Writers want nothing shared; reviewers want to read notes.
+    rule: Sharing is off until a writer turns it on for one note.
+evidence:
+  - claim: Writers open the list several times a day.
+    source: usage interview 2026-09
+    date: 2026-09-10
+    assumption: false
+sources:
+  - title: Writer interviews
+    date: 2026-09-10
+    where: research/writers.md
+team: product

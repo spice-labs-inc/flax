@@ -1,0 +1,26 @@
+{
+  "name": "@flax/core",
+  "version": "0.0.1",
+  "description": "Shared pieces of flax: the workspace file, config loading, and helpers every package uses",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./workspace": "./dist/workspace.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p .",
+    "check": "tsc --noEmit -p .",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "@types/node": "^24.0.0"
+  }
+}

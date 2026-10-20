@@ -1,0 +1,9 @@
+# The box every job runs in: the sandbox (lbx) release binary and the agent image, by digest.
+# Schema: @flax/agents schema/box.schema.json. These demo values are made up so that stub runs
+# work offline; a real workspace runs the Publish image workflow, then
+# flax agents box-release pin --release <tag> --commit <sha> --sha256 <hex> --image <ref>.
+pinned: true
+box_release: "v0.2.0"
+box_commit: "79032f3dac23f82dea99c65346cc22a2dde99f23"
+lbx_sha256: "c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70"
+image: ghcr.io/spice-labs-inc/flax-agent@sha256:59bb71dd9dc9768eb1fd4b8eb4e5bfc04f7f871ce79d4173ac5bd679316d5c8c

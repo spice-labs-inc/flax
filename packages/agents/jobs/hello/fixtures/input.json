@@ -1,0 +1,3 @@
+{
+  "text": "The agents pool runs scheduled AI jobs on self-hosted runners. Each job lives in its own folder with a job.yml, a prompt and an output schema. A check runs on every pull request and rejects jobs that name unlisted models, exceed the shared monthly budget, or contain secrets. New jobs start in shadow mode, where results are kept but not delivered, and switch to live only after four shadow runs and a code owner's approval."
+}

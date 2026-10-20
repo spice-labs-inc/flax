@@ -1,0 +1,115 @@
+# Generated from jobs/scenario-checks/job.yml by flax agents generate. Do not edit.
+
+name: job-scenario-checks
+on:
+  schedule:
+    - cron: "20 0-21/3 * * *"
+    - cron: "20 1-22/3 * * *"
+  workflow_dispatch:
+    inputs:
+      env:
+        description: The environment this run checks
+        type: choice
+        options:
+          - live
+          - test
+        default: live
+        required: true
+      reason:
+        description: Why this run, such as the deploy it follows (one line of printable ASCII); empty for a run by hand
+        type: string
+        required: false
+        default: ""
+permissions: {}
+concurrency:
+  group: job-scenario-checks-${{ inputs.env || (github.event.schedule == '20 0-21/3 * * *' && 'live') || (github.event.schedule == '20 1-22/3 * * *' && 'test') || '' }}
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: [ubuntu-24.04]
+    timeout-minutes: 190
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check the job
+        env:
+          RUN_ENV: ${{ inputs.env || (github.event.schedule == '20 0-21/3 * * *' && 'live') || (github.event.schedule == '20 1-22/3 * * *' && 'test') || '' }}
+        run: node dist/run-job.mjs scenario-checks --preflight --env "$RUN_ENV"
+      - name: Find the previous results
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ENV: ${{ inputs.env || (github.event.schedule == '20 0-21/3 * * *' && 'live') || (github.event.schedule == '20 1-22/3 * * *' && 'test') || '' }}
+        run: node dist/run-job.mjs scenario-checks --env "$RUN_ENV" --find-previous
+      - name: Download the previous results
+        if: ${{ steps.previous.outputs.run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: scenario-checks-shadow-${{ inputs.env || (github.event.schedule == '20 0-21/3 * * *' && 'live') || (github.event.schedule == '20 1-22/3 * * *' && 'test') || '' }}
+          run-id: ${{ steps.previous.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/previous-results
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+      - name: Install the locked packages
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium for Playwright
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Make a read token for the media sources
+        id: media-sources-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AGENTS_READER_APP_ID }}
+          private-key: ${{ secrets.AGENTS_READER_PRIVATE_KEY }}
+          owner: notes-co
+          repositories: notes-scenarios
+          permission-contents: read
+      - name: Check out notes-co/notes-scenarios
+        uses: actions/checkout@v5
+        with:
+          repository: notes-co/notes-scenarios
+          token: ${{ steps.media-sources-token.outputs.token }}
+          path: media-sources/notes-scenarios
+          persist-credentials: false
+      - name: Make a workflow dispatch token for media.ts
+        id: media-dispatch-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.AGENTS_WRITER_APP_ID }}
+          private-key: ${{ secrets.AGENTS_WRITER_PRIVATE_KEY }}
+          owner: notes-co
+          repositories: notes-scenarios
+          permission-actions: write
+      - name: Run the job
+        env:
+          SLACK_AGENTS_POST_TOKEN: ${{ secrets.SLACK_AGENTS_POST_TOKEN }}
+          EXPLORER_INGEST_TOKEN: ${{ secrets.EXPLORER_INGEST_TOKEN }}
+          FLAX_AGENTS_MEDIA_DISPATCH_TOKEN: ${{ steps.media-dispatch-token.outputs.token }}
+          RUN_ENV: ${{ inputs.env || (github.event.schedule == '20 0-21/3 * * *' && 'live') || (github.event.schedule == '20 1-22/3 * * *' && 'test') || '' }}
+          RUN_REASON: ${{ inputs.reason }}
+        run: node dist/run-job.mjs scenario-checks --out "$RUNNER_TEMP/job-output" --env "$RUN_ENV" ${RUN_REASON:+--reason "$RUN_REASON"} --previous "$RUNNER_TEMP/previous-results" --results-out "$RUNNER_TEMP/results"
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scenario-checks-shadow-${{ inputs.env || (github.event.schedule == '20 0-21/3 * * *' && 'live') || (github.event.schedule == '20 1-22/3 * * *' && 'test') || '' }}
+          path: ${{ runner.temp }}/results/
+          retention-days: 90
+          if-no-files-found: ignore
+          overwrite: true
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-scenario-checks-report
+          path: ${{ runner.temp }}/job-output/
+          retention-days: 90
+          if-no-files-found: ignore

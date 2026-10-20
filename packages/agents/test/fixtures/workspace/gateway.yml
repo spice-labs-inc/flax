@@ -1,0 +1,13 @@
+# The model gateway the runner talks to (keyMode litellm). Schema: schema/gateway.schema.json.
+#
+# Where the runner reaches the gateway: an internal address, no public name.
+url: https://192.168.128.1:8443
+# The name the gateway's certificate is issued for; the runner checks the certificate against it.
+server_name: llm-gateway.internal
+# The LiteLLM team run keys belong to; LLM_GATEWAY_ISSUER_KEY issues keys for it only.
+team: agents
+# The gateway's private CA root (PEM), the only root the runner trusts for it.
+ca: gateway-ca.pem
+# Per run key: the gateway's own ceiling on one key, and the runner's limit on its lifetime.
+key_max_usd: 25
+key_max_minutes: 120

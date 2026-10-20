@@ -1,0 +1,62 @@
+# The fixture workspace the kit's own tests run against: notes-co, a fictional company.
+org: notes-co
+github: notes-co
+environments:
+  - { id: dev, label: Dev }
+  - { id: staging, label: Staging }
+  - { id: prod, label: Prod }
+agents:
+  repo: notes-co/agents
+  board: { number: 3, statuses: [Backlog, Ready, In progress, In review, Done] }
+  epicsRepo: product
+  clusters:
+    dev: KUBECONFIG_DEV
+    staging: KUBECONFIG_STAGING
+    prod: KUBECONFIG_PROD
+    shared-services: KUBECONFIG_SHARED_SERVICES
+  openobserve:
+    cluster: shared-services
+    namespace: openobserve
+    labelSelector: app=openobserve
+    port: 5080
+    org: default
+    hosts:
+      - openobserve.shared-services.svc.notes-co.example
+      - openobserve-ingest.shared-services.svc.notes-co.example
+      - logs.svc.notes-co.example
+  budgetUsdPerMonth: 175
+  runsOn: [self-hosted, pool-a, agents]
+  sandbox: { repo: spice-labs-inc/lbx }
+  agentImage: ghcr.io/notes-co/flax-agent
+  networkJoins:
+    tailnet:
+      join:
+        - name: Join the tailnet
+          uses: tailscale/github-action@v4
+          with: { oauth-client-id: "${{ secrets.TS_OAUTH_CLIENT_ID }}", oauth-secret: "${{ secrets.TS_OAUTH_SECRET }}", tags: "tag:ci" }
+      leave:
+        - name: Leave the tailnet
+          run: sudo tailscale logout || true
+  setupSteps:
+    notes-cli:
+      - name: Install the notes-co CLI
+        run: |
+          set -eu
+          curl -sSfL -o "$RUNNER_TEMP/install-notes.sh" https://install.notes-co.example && bash "$RUNNER_TEMP/install-notes.sh"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+  provider: { name: acme, keyMode: litellm, plugin: pi-provider-acme }
+  mediaSecrets: [ELEVENLABS_API_KEY, EXPLORER_INGEST_TOKEN, LIVETESTS_MAILBOX_USER, LIVETESTS_MAILBOX_APP_PASSWORD, NOTES_LABS_PROD_API_TOKEN, NOTES_LABS_PROD_PROJECT]
+  trustedLinkHosts: [notes-co.example, notes-co.dev]
+  displayName: Notes Agent
+  commitAuthor: { name: notes-agents, email: notes-agents@users.noreply.github.com }
+  video: { channel: Notes Co YouTube, footer: "Questions? Read the docs at https://docs.notes-co.example or contact us at https://www.notes-co.example/#contact" }
+  neverEvidenceRepos: [notes-co/atlas]
+  docsLint:
+    repo: notes-co/public-docs
+    sections: [Get started, Survey]
+    componentTags: [Only, Edition, Credential, Verbatim, OsCommand, Cast, Step, When, "Edition[A-Z]\\w*", "\\w+Badges?"]
+    always: ["\\bedition", "depending on (your|the) (version|licen[cs]e|plan)", "other (versions|products)"]
+    byTrait:
+      online: ["Notes Licen[cs]e", "NOTES_LICENSE"]
+      airgapped: ["Notes Pass\\b", "NOTES_PASS"]
+  kitAction: spice-labs-inc/flax/packages/agents@main

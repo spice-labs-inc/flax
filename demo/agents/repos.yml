@@ -1,0 +1,4 @@
+# Repositories pull request jobs may change, and what tools may read with a pinned commit.
+- notes-co/notes
+- notes-co/agents
+- notes-co/scenarios

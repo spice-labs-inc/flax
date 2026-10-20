@@ -1,0 +1,179 @@
+# notes-co's flax workspace. Shared keys here; each package reads its own section below.
+org: notes-co
+github: notes-co
+# Display order and merge precedence: the first environment is the reference one and its reading wins a merge.
+environments:
+  - { id: live, label: Live }
+  - { id: test, label: Test }
+agents:
+  # Read by @flax/agents from demo/agents (its flax.yml is a link to this file).
+  repo: notes-co/agents
+  budgetUsdPerMonth: 50
+  runsOn: [ubuntu-24.04]
+  sandbox: { repo: spice-labs-inc/lbx }
+  agentImage: ghcr.io/spice-labs-inc/flax-agent
+  # The simplest model path: the provider's own Messages API behind one key (secret MODEL_API_KEY).
+  provider: { name: anthropic, baseUrl: https://api.anthropic.com, keyMode: static }
+  mediaSecrets: [EXPLORER_INGEST_TOKEN]
+  trustedLinkHosts: [notes-co.example]
+  displayName: Notes Agent
+  commitAuthor: { name: notes-agents, email: notes-agents@users.noreply.github.com }
+  kitAction: spice-labs-inc/flax/packages/agents@main
+# The architecture atlas: pages under atlas/, the map's curated tables, and the viewer.
+atlas:
+  root: atlas
+  org:
+    registry: ghcr.io/notes-co
+    packageGroups: [co.notes]
+    ownHosts: [notes.example]
+  site:
+    title: notes-co Atlas
+    searchPlaceholder: notes-api, note-events, notes-db
+    timezone: America/Los_Angeles
+  # One list of planes: `index` rows a plane in INDEX.md under its heading, `map` draws it.
+  planes:
+    - { id: app, label: Notes app, color: "#6BE3C4", index: true, heading: "## App plane", map: true, anchor: [-900, 0, 0] }
+    - { id: delivery, label: Delivery & CI, color: "#FF7189", index: true, heading: "## Delivery plane", map: true, anchor: [0, 800, -300] }
+    - { id: docs, label: Docs, color: "#78899A", index: true, heading: "## Docs plane", map: true, anchor: [-600, -800, -600] }
+    - { id: infra, label: Environments, color: "#9FB2C1", index: false, map: true, anchor: [100, 400, 800] }
+    - { id: external, label: Third party, color: "#7E8FA0", index: false, map: true, anchor: [900, -600, 500] }
+  map:
+    defaultPlanes: [app, infra, external]
+    planeRules:
+      byRepo:
+        app: [notes-web, notes-api, notes-worker, notes-core, notes-cli]
+      byType: { gh-action: delivery, gitops: delivery, docs: docs, tool: delivery }
+      fallback: delivery
+    views:
+      - { id: runtime, label: Runtime, hint: what calls what, layers: [network, queue], planes: [app, infra, external] }
+      - { id: storage, label: Data & storage, hint: who owns what, layers: [data, network], planes: [app, infra, external] }
+      - { id: delivery, label: Delivery, hint: code to environment, layers: [delivery], planes: [app, delivery, infra, docs] }
+      - { id: all, label: Everything, hint: the full graph, layers: [network, queue, data, build, delivery], planes: [app, delivery, docs, infra, external] }
+    # The role sentence of each workspace environment (the list itself is the top-level `environments`).
+    environments:
+      live: The customer-facing cluster, promoted from test by a release PR.
+      test: The test cluster. Every merge to main rolls here first.
+    deliveryNodes:
+      - { id: "reg:ghcr", label: ghcr.io, kind: registry, role: The org container registry; images are tagged by commit sha. }
+      - { id: "svc:flux", label: Flux, kind: component, role: Polls notes-gitops and reconciles the pinned versions onto each cluster. }
+    sites:
+      - { id: "ship:docs", label: Docs site, host: "^docs\\.", role: "The documentation site on GitHub Pages, published by its repo's own workflow." }
+    outlets:
+      - { id: "ship:releases", label: Releases, role: Versioned downloads people install themselves. }
+      - { id: "ship:actions", label: Action tags, role: GitHub Actions consumed by ref. }
+    curatedEdges:
+      - { id: "delivery:notes-gitops->flux", source: notes-gitops, target: "svc:flux", layer: delivery, label: poll 5m, detail: Flux watches notes-gitops main and upgrades releases when a pin changes., anchor: notes-gitops clusters/ }
+      - { id: "delivery:flux->env:test", source: "svc:flux", target: "env:test", layer: delivery, label: HelmRelease, detail: Flux applies the pinned versions to test., anchor: notes-gitops apps/test/ }
+      - { id: "delivery:flux->env:live", source: "svc:flux", target: "env:live", layer: delivery, label: HelmRelease, detail: Flux applies the pinned versions to live., anchor: notes-gitops apps/live/ }
+    delivery:
+      registryMatch: ghcr
+      registryNode: "reg:ghcr"
+      pinActions: { immediate: [action-build-notes], pr: [] }
+    gitops:
+      repo: notes-gitops
+      checkout: ../notes-gitops
+      overlays: { test: "env:test", live: "env:live" }
+    resolve:
+      aliases:
+        smtp: "ext:smtp"
+        auth0: "ext:auth0"
+        rabbitmq: "broker:rabbitmq"
+        amqp: "broker:rabbitmq"
+        postgres: "store:notes-db"
+        github: "ext:github"
+        githubreleases: "ext:github"
+      canonical:
+        "ext:auth0": { label: Auth0, role: The identity provider; the web app and the API validate its tokens. }
+        "broker:rabbitmq": { label: RabbitMQ, role: The message broker carrying note events from the API to the worker. }
+      storeNames:
+        "store:notes-db": { label: notes-db, role: "The Postgres database holding notes, users and the event outbox." }
+      ownedDb: { notes-api: "store:notes-db" }
+      # Nine pages make a small graph; the method default (100/100) is for a real org.
+      minGraph: { nodes: 5, edges: 5 }
+  # Off by default: every `apps/<env>/...` path a page cites must exist in the gitops checkout (or at its head through gh).
+  checks:
+    gitopsPaths:
+      enabled: true
+      prefixes: ["apps/(test|live)"]
+  llm:
+    concurrency: 2
+
+# The scenario library: a tiny fictional product with a web app and an API, checked in two environments.
+scenarios:
+  name: notes-scenarios
+  repo: notes-co/notes-scenarios
+  http:
+    userAgent: notes-scenarios
+    syntheticHeader: x-notes-client
+    syntheticValue: scenario-check
+  envPrefix: NOTES_SCENARIOS
+  envs:
+    live:
+      hosts:
+        api: https://api.notes.example
+        web: https://notes.example
+      excludeTags: ["@admin"]
+      fixtures: never
+    test:
+      hosts:
+        api: https://api.test.notes.example
+        web: https://test.notes.example
+      fixtures: always
+  versionProbe: null
+  surfaces:
+    - name: web
+      title: Notes web app
+      role: ui
+      linkHost: web
+      pageKind: Page
+      elementKind: Element
+      kinds:
+        bySegment: { route: Page, testid: Element }
+        default: Page
+    - name: api
+      title: Notes API
+      role: service
+      kinds:
+        default: API operation
+  vocabulary:
+    personaTypes: [primary, secondary, negative]
+    stages: [Discover, Write, Share, Review]
+    stationKinds: [surface, planned, elsewhere]
+    editions: []
+    elsewhere: Verified by the release pipeline, not by these scenarios
+  personaRequiredFields: [team]
+  textRules:
+    - pattern: "\\u2014"
+      message: em-dash; use a comma, colon or parentheses
+  matchers:
+    apiPath: true
+  cucumber:
+    imports: ["scenarios/support/**/*.ts", "scenarios/steps/**/*.ts"]
+    features: scenarios/features
+  paths:
+    surfaces: scenarios/surface
+    features: scenarios/features
+    personas: scenarios/personas
+    journeys: scenarios/journeys
+    results: explorer/results
+    coverageMap: scenarios/coverage-map.json
+    gaps: scenarios/GAPS.md
+    journeysOut: scenarios/journeys.json
+    board: explorer/board.json
+    documentation: scenarios/documentation.json
+  timezone: America/Los_Angeles
+  tagLabels:
+    "@admin": Admin only
+    "@fixture": Creates a fixture account
+  recorder:
+    name: notes
+
+# The explorer: the living map of what the scenarios prove.
+explorer:
+  title: Notes Scenarios
+  description: What the Notes product verifies for its users on live and test, feature by feature.
+  # Uncomment to read scheduled runs' results from GitHub workflow artifacts (needs EXPLORER_GH_APP_ID and EXPLORER_GH_APP_KEY):
+  # results:
+  #   repo: notes-co/notes-scenarios
+  #   workflow: scenario-checks.yml
+  #   job: scenario-checks

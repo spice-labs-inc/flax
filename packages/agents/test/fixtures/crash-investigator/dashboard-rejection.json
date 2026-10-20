@@ -1,0 +1,59 @@
+{
+  "rows": {
+    "prod:apps:dashboard": [
+      {
+        "_timestamp": 1792008600000000,
+        "k8s_pod_name": "dashboard-6d5f7c8b9-fgh2j",
+        "k8s_namespace_name": "dashboard",
+        "level": "error",
+        "logger": "hooks",
+        "msg": "Unhandled rejection in load",
+        "error": "TypeError: Cannot read properties of undefined (reading 'id')\n    at load (file:///app/build/server/entries/pages/app/projects/_id_/_page.server.ts.js:14:31)\n    at async load_server_data (file:///app/build/server/index.js:2201:15)\n    at async node:internal/process/task_queues:105:5",
+        "container_image_tag": "sha-1111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "repos": {
+    "dashboard": {
+      "commits": [
+        "1111111111111111111111111111111111111111",
+        "2222222222222222222222222222222222222222"
+      ],
+      "head": "2222222222222222222222222222222222222222",
+      "files": {
+        "src/hooks.server.ts": [
+          "import type { HandleServerError } from '@sveltejs/kit';",
+          "",
+          "export const handleError: HandleServerError = ({ error }) => {",
+          "  console.error('Unhandled rejection in load', error);",
+          "  return { message: 'Something went wrong' };",
+          "};"
+        ],
+        "src/routes/app/projects/[id]/+page.server.ts": [
+          "import type { PageServerLoad } from './$types';",
+          "",
+          "export const load: PageServerLoad = async ({ locals, params }) => {",
+          "  const project = await locals.api.project(params.id);",
+          "  return { project: { id: project.id, name: project.name } };",
+          "};"
+        ]
+      },
+      "more": [
+        "package.json",
+        "svelte.config.js",
+        "src/routes/app/+layout.svelte"
+      ]
+    }
+  },
+  "history": {
+    "apps/prod/dashboard/dashboard-patch.yml": [
+      {
+        "sha": "aaaa111100000000000000000000000000000000",
+        "date": "2026-10-13T17:00:00Z",
+        "headline": "release: dashboard v2.4.1 @ 1111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "releases": {},
+  "pods": "NAMESPACE   NAME                        READY   STATUS    RESTARTS   AGE\ndashboard   dashboard-6d5f7c8b9-fgh2j   1/1     Running   0          1d\n"
+}

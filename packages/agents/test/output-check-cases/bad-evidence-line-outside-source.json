@@ -1,0 +1,415 @@
+{
+  "description": "Cites a line of a real file that the run was not given.",
+  "expect": "reject",
+  "reasons": [
+    "SignUpService.java:200 is not among the sources given to the run"
+  ],
+  "answer": {
+    "pages": [
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-state.mdx",
+        "decision": "patch",
+        "reason": "Portfolios are no longer enabled per project; the Composition report row is still correct (reports.composition is still a flag) and stays.",
+        "patch": "--- a/src/content/docs/product/product-state.mdx\n+++ b/src/content/docs/product/product-state.mdx\n@@ -105,7 +105,7 @@\n | Inventory + runtime surveys, PQC report, CBOM reports, exports, comparisons, org admin, CI action | <Pill kind=\"shipped\" />     | All in production.                                                                                                                                                                   |\n | Enterprise + federal editions (registry scanning, static analysis, offline reports)               | <Pill kind=\"arrangement\" /> | Built and working; no published distribution channel yet, so each customer is granted access individually. Registry-type coverage varies; engineering can confirm any specific type. |\n | Composition report (component tree explorer)                                                      | <Pill kind=\"early\" />       | Enabled per customer; no announced GA date.                                                                                                                                          |\n-| Portfolios (scoring and data health across the applications in a project)                         | <Pill kind=\"dev\" />         | The concept is in development; visible only on projects where it is enabled for iteration; no announced dates.                                                                       |\n+| Portfolios (scoring and data health across the applications in a project)                         | <Pill kind=\"dev\" />         | The concept is in development; visible on every project; no announced dates.                                                                                                         |\n \n ## How we are different, in plain words\n \n",
+        "changes": [
+          {
+            "removed": [
+              "| Portfolios (scoring and data health across the applications in a project)                         | <Pill kind=\"dev\" />         | The concept is in development; visible only on projects where it is enabled for iteration; no announced dates.                                                                       |"
+            ],
+            "added": [
+              "| Portfolios (scoring and data health across the applications in a project)                         | <Pill kind=\"dev\" />         | The concept is in development; visible on every project; no announced dates.                                                                                                         |"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/repo/FeatureFlag.java",
+                "line": 14
+              },
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/repo/FeatureFlag.java",
+                "line": 15
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/+page.ts",
+                "line": 5
+              },
+              {
+                "repo": "notes-co/engine",
+                "path": "cumin/src/portfolio/mod.rs",
+                "line": 3241
+              },
+              {
+                "repo": "notes-co/backend",
+                "commit": "42837a1"
+              }
+            ],
+            "why": "No portfolio flag remains and every project lands on its portfolio."
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/runtime-surveys.mdx",
+        "decision": "no_change",
+        "reason": "Every checkable fact matches the CLI: JDK 11 or later, the default ~/.notesco/runtime-survey/ folder with a survey-<random> folder, the 1 GB warning, the native-only fallback and keeping JAVA_TOOL_OPTIONS."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_linux.md",
+        "decision": "patch",
+        "reason": "The dashboard's upload page was removed, and /demo now sends a logged-out visitor to the login page because demo projects are off.",
+        "patch": "--- a/src/content/docs/runbooks/testing/test_cli_and_dash_linux.md\n+++ b/src/content/docs/runbooks/testing/test_cli_and_dash_linux.md\n@@ -495,8 +495,6 @@\n \n Back in the browser:\n \n-- [ ] Go to **Upload** → choose a JAR\n-- [ ] Confirm the upload progress bar\n - [ ] Confirm the new survey updates its status live, without a page reload\n \n Invite a user:\n@@ -553,6 +551,6 @@\n Account:\n \n - [ ] **Preferences**: change name and timezone; timestamps follow the timezone\n-- [ ] **Demo mode**: open /demo in a logged-out window; read-only demo loads and the Notes Pass page is blocked\n+- [ ] **Demo mode**: open /demo in a logged-out window; confirm it redirects to the login page (demo projects are off)\n - [ ] Log out\n ```\n",
+        "changes": [
+          {
+            "removed": ["- [ ] Go to **Upload** → choose a JAR"],
+            "added": [],
+            "evidence": [
+              {
+                "repo": "notes-co/dashboard",
+                "commit": "2d05e36"
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/upload/+page.svelte",
+                "commit": "1ae3192"
+              }
+            ],
+            "why": "The dashboard has no upload page or drop zone any more."
+          },
+          {
+            "removed": ["- [ ] Confirm the upload progress bar"],
+            "added": [],
+            "evidence": [
+              {
+                "repo": "notes-co/dashboard",
+                "commit": "2d05e36"
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/upload/+page.svelte",
+                "commit": "1ae3192"
+              }
+            ],
+            "why": "The upload progress bar belonged to the removed upload page."
+          },
+          {
+            "removed": [
+              "- [ ] **Demo mode**: open /demo in a logged-out window; read-only demo loads and the Notes Pass page is blocked"
+            ],
+            "added": [
+              "- [ ] **Demo mode**: open /demo in a logged-out window; confirm it redirects to the login page (demo projects are off)"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/api/SessionController.java",
+                "line": 40
+              },
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/api/SessionController.java",
+                "line": 41
+              },
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/resources/application.yml",
+                "line": 132
+              },
+              {
+                "repo": "notes-co/app-gitops",
+                "commit": "361d26b1"
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/demo/+page.ts",
+                "line": 8
+              }
+            ],
+            "why": "Demo projects are off by default with no override, so the demo JWT list is empty and /demo redirects to /app/login."
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/quick-start.mdx",
+        "decision": "patch",
+        "reason": "Sign-up no longer creates a sample project with sample data: sample projects are off by default and no environment turns them on, so the first project is empty and named after the organization.",
+        "patch": "--- a/src/content/docs/howtos/quick-start.mdx\n+++ b/src/content/docs/howtos/quick-start.mdx\n@@ -24,7 +24,7 @@\n 1. **Start your free trial** at [notes-co.example/get-started](https://www.notes-co.example/get-started) or **contact our team** at [notes-co.example](https://www.notes-co.example) to establish your account\n 2. Navigate to the dashboard at [https://dashboard.notes-co.example](https://dashboard.notes-co.example)\n 3. Log in with your provided credentials\n-4. A sample project with sample data will be pre-configured for you\n+4. An empty project named after your organization will be created for you\n \n ## Step 2: Get Your Notes Pass\n \n",
+        "changes": [
+          {
+            "removed": [
+              "4. A sample project with sample data will be pre-configured for you"
+            ],
+            "added": [
+              "4. An empty project named after your organization will be created for you"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/service/SignUpService.java",
+                "line": 200
+              }
+            ],
+            "why": "With sample projects off (the default, not overridden in app-gitops), sign-up names the project after the company and loads no sample data."
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/notes-cli.md",
+        "decision": "no_change",
+        "reason": "The edition-to-image table and the environment variables match the notes wrapper."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/dashboard.md",
+        "decision": "patch",
+        "reason": "backend no longer serves any /api/global path; the dashboard calls /api/v1 and reads its config from /api/v1/config.",
+        "patch": "--- a/src/content/docs/software-architecture/dashboard.md\n+++ b/src/content/docs/software-architecture/dashboard.md\n@@ -67,13 +67,13 @@\n \n This UI connects to:\n \n-- **Backend** — the single public API, at `/api/global/v1/**`. Backend in turn proxies to each\n+- **Backend** — the single public API, at `/api/v1/**`. Backend in turn proxies to each\n   project's [Engine](/docs/software-architecture/engine/) and cumin instances; the dashboard\n   never calls those directly.\n - **[Catalog](/docs/software-architecture/servicef/)** — package and ADG lookups, called directly\n   from the browser at the origin given by `/config`\n - **Stytch** — B2B authentication; the public token comes from backend's\n-  `/api/global/v1/app/config`\n+  `/api/v1/config`\n \n ## 🎨 Design System\n \n",
+        "changes": [
+          {
+            "removed": [
+              "- **Backend** — the single public API, at `/api/global/v1/**`. Backend in turn proxies to each"
+            ],
+            "added": [
+              "- **Backend** — the single public API, at `/api/v1/**`. Backend in turn proxies to each"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "commit": "3a7fd20"
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/lib/client.svelte.ts",
+                "line": 257
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/lib/client.svelte.ts",
+                "line": 658
+              },
+              {
+                "repo": "notes-co/backend",
+                "commit": "ceed18a"
+              }
+            ],
+            "why": "No request mapping in backend contains api/global; the dashboard's calls go to /api/v1."
+          },
+          {
+            "removed": ["  `/api/global/v1/app/config`"],
+            "added": ["  `/api/v1/config`"],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/api/AppConfigController.java",
+                "line": 29
+              },
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/api/AppConfigController.java",
+                "line": 32
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/lib/client.svelte.ts",
+                "line": 687
+              }
+            ],
+            "why": "The public app config, with the Stytch public token, is GET /api/v1/config."
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/dashboard-setup.mdx",
+        "decision": "patch",
+        "reason": "The menu has no Project > Notes Pass entry any more; the Notes Pass generator is on Survey setup, reached from the top bar's More menu.",
+        "patch": "--- a/src/content/docs/howtos/dashboard-setup.mdx\n+++ b/src/content/docs/howtos/dashboard-setup.mdx\n@@ -51,8 +51,8 @@\n \n To generate your Notes Pass:\n \n-1. In the left navigation, find the **Project** section\n-2. Click **Notes Pass**\n+1. Open the **More** menu in the top bar and, under **Project**, click **Survey setup**\n+2. Open **Generate a Notes Pass**\n \n <Screenshot\n   src={img_4_menu_notes_pass.src}\n",
+        "changes": [
+          {
+            "removed": [
+              "1. In the left navigation, find the **Project** section"
+            ],
+            "added": [
+              "1. Open the **More** menu in the top bar and, under **Project**, click **Survey setup**"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/lib/shell/ShellMenu.svelte",
+                "line": 70
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/lib/shell/ShellMenu.svelte",
+                "line": 97
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/lib/shell/ShellMenu.svelte",
+                "line": 106
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/+layout.svelte",
+                "line": 283
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "commit": "564877b"
+              }
+            ],
+            "why": "The menu is a More button in the top bar; its Project group lists Surveys, Reports and Survey setup."
+          },
+          {
+            "removed": ["2. Click **Notes Pass**"],
+            "added": ["2. Open **Generate a Notes Pass**"],
+            "evidence": [
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/setup/+page.svelte",
+                "line": 98
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/setup/+page.svelte",
+                "line": 108
+              }
+            ],
+            "why": "Survey setup holds the Notes Pass generator under the heading Generate a Notes Pass."
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-facts.mdx",
+        "decision": "patch",
+        "reason": "There is no per-project portfolio flag any more: every project lands on its portfolio and cumin creates one for every project.",
+        "patch": "--- a/src/content/docs/product/product-facts.mdx\n+++ b/src/content/docs/product/product-facts.mdx\n@@ -75,7 +75,7 @@\n - The web demo is a technology demo, not the product. It is being hardened right now: website references to it were disabled August 11 until it moves onto monitored infrastructure, and its progress display can stall silently even when an analysis succeeded. Each feature has its own built-in usage limit; it is not a \"5 free scans\" model, so do not quote a number.\n - Enterprise and federal editions are not yet self-serve: the software works, but there is no published way for a customer to download it; today each customer is granted access individually.\n - The hosted platform is not yet SOC-2 or FedRAMP certified; the on-premises and air-gapped editions are how federal requirements are met today.\n-- Portfolios as a concept are in development, not early access: scoring, data health, and the portfolio pages appear only on projects where they have been enabled for iteration, and none of it has an announced date. Everything lives within a project; there is no cross-project rollup, by design.\n+- Portfolios as a concept are in development, not early access: scoring, data health, and the portfolio pages appear on every project, and none of it has an announced date. Everything lives within a project; there is no cross-project rollup, by design.\n - Pricing and packaging are not finalized; do not quote numbers.\n - Registry-scanning coverage by registry type (Artifactory, Nexus, others) varies; engineering can confirm any specific type.\n - The demo/sample projects change; the [Demo Guide](/docs/product/demo-guide/) target list is the source of truth for which to use (currently: sample-apps).\n",
+        "changes": [
+          {
+            "removed": [
+              "- Portfolios as a concept are in development, not early access: scoring, data health, and the portfolio pages appear only on projects where they have been enabled for iteration, and none of it has an announced date. Everything lives within a project; there is no cross-project rollup, by design."
+            ],
+            "added": [
+              "- Portfolios as a concept are in development, not early access: scoring, data health, and the portfolio pages appear on every project, and none of it has an announced date. Everything lives within a project; there is no cross-project rollup, by design."
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/repo/FeatureFlag.java",
+                "line": 14
+              },
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/repo/FeatureFlag.java",
+                "line": 15
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/+page.ts",
+                "line": 5
+              },
+              {
+                "repo": "notes-co/engine",
+                "path": "cumin/src/portfolio/mod.rs",
+                "line": 3241
+              },
+              {
+                "repo": "notes-co/backend",
+                "commit": "42837a1"
+              }
+            ],
+            "why": "The portfolio flags were retired; the only flags left are reports.composition and dependency-health.disabled, and the project page redirects to the portfolio."
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/inventory-surveys.mdx",
+        "decision": "no_change",
+        "reason": "Every checkable fact matches the CLI: thread default and minimum, 5000 records, 64 MB chunks, the survey/survey-<random-id> layout and the quoted messages."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_zsh.md",
+        "decision": "patch",
+        "reason": "The dashboard's upload page was removed, and /demo now sends a logged-out visitor to the login page because demo projects are off.",
+        "patch": "--- a/src/content/docs/runbooks/testing/test_cli_and_dash_zsh.md\n+++ b/src/content/docs/runbooks/testing/test_cli_and_dash_zsh.md\n@@ -507,8 +507,6 @@\n \n Back in the browser:\n \n-- [ ] Go to **Upload** → choose a JAR\n-- [ ] Confirm the upload progress bar\n - [ ] Confirm the new survey updates its status live, without a page reload\n \n Invite a user:\n@@ -565,6 +563,6 @@\n Account:\n \n - [ ] **Preferences**: change name and timezone; timestamps follow the timezone\n-- [ ] **Demo mode**: open /demo in a logged-out window; read-only demo loads and the Notes Pass page is blocked\n+- [ ] **Demo mode**: open /demo in a logged-out window; confirm it redirects to the login page (demo projects are off)\n - [ ] Log out\n ```\n",
+        "changes": [
+          {
+            "removed": ["- [ ] Go to **Upload** → choose a JAR"],
+            "added": [],
+            "evidence": [
+              {
+                "repo": "notes-co/dashboard",
+                "commit": "2d05e36"
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/upload/+page.svelte",
+                "commit": "1ae3192"
+              }
+            ],
+            "why": "The dashboard has no upload page or drop zone any more."
+          },
+          {
+            "removed": ["- [ ] Confirm the upload progress bar"],
+            "added": [],
+            "evidence": [
+              {
+                "repo": "notes-co/dashboard",
+                "commit": "2d05e36"
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/app/[project_uuid=uuid]/upload/+page.svelte",
+                "commit": "1ae3192"
+              }
+            ],
+            "why": "The upload progress bar belonged to the removed upload page."
+          },
+          {
+            "removed": [
+              "- [ ] **Demo mode**: open /demo in a logged-out window; read-only demo loads and the Notes Pass page is blocked"
+            ],
+            "added": [
+              "- [ ] **Demo mode**: open /demo in a logged-out window; confirm it redirects to the login page (demo projects are off)"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/api/SessionController.java",
+                "line": 40
+              },
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/java/io/notesco/backend/api/SessionController.java",
+                "line": 41
+              },
+              {
+                "repo": "notes-co/backend",
+                "path": "src/main/resources/application.yml",
+                "line": 132
+              },
+              {
+                "repo": "notes-co/app-gitops",
+                "commit": "361d26b1"
+              },
+              {
+                "repo": "notes-co/dashboard",
+                "path": "src/routes/demo/+page.ts",
+                "line": 8
+              }
+            ],
+            "why": "Demo projects are off by default with no override, so the demo JWT list is empty and /demo redirects to /app/login."
+          }
+        ]
+      }
+    ]
+  }
+}

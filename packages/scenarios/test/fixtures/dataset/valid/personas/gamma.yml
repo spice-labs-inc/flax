@@ -1,0 +1,41 @@
+id: gamma
+name: Gamma
+type: buyer
+summary: A buyer fixture persona.
+who: Approves the purchase.
+titles:
+  - Procurement Officer
+goals:
+  - A price they can defend
+needs:
+  - Published prices
+consumes: The website and pricing page.
+prize:
+  test: The pricing page lists every edition with its price.
+journey:
+  name: Approve the purchase
+  steps:
+    - Reads the pricing page
+friction:
+  - Hidden prices
+antiGoals:
+  - A trial that is not on the price list
+surfaces:
+  - website
+neverTouches: []
+editions:
+  - itpro
+fixtureRole: none
+tensions:
+  - with: alpha
+    conflict: Gamma wants a fixed price; Alpha wants to try first.
+    rule: The evaluation path is on the price list.
+evidence:
+  - claim: Approves purchases.
+    source: Fixture source
+    date: 2026-10-07
+    assumption: false
+sources:
+  - title: Fixture source
+    date: 2026-10-07
+    where: test fixtures

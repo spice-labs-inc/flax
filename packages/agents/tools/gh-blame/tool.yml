@@ -1,0 +1,49 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-blame
+
+description: Shows which commit last changed each line of one text file of one notes-co repository at one commit (its full 40-character sha), for at most 200 lines from start_line. Returns each line's number, text and commit sha, and for each of those commits its date, the first line of its message and the number of its pull request when there is one (the merged one when there are several). The lines field says which lines came back and how many the file has.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo, sha, path]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    sha:
+      type: string
+      description: The commit's full 40-character sha.
+      maxLength: 40
+      pattern: "^[0-9a-f]{40}$"
+    path:
+      type: string
+      description: The file's path from the repository root, for example src/main.rs.
+      maxLength: 400
+      pattern: "^[A-Za-z0-9._-][A-Za-z0-9._/=+()\\[\\]-]*$"
+    start_line:
+      type: integer
+      description: The first line, counting from 1; 1 when not given.
+      minimum: 1
+      maximum: 1000000
+    line_count:
+      type: integer
+      description: How many lines from start_line, 100 when not given.
+      minimum: 1
+      maximum: 200
+
+# Served by the tools server with the run's read-only token: one fixed
+# GraphQL query (the file's text and its blame at the commit, with each
+# commit's associated pull requests).
+upstream:
+  server: github
+  operations: [commit_blame]
+
+# untrusted: file lines and commit messages, at a commit that can be a
+# fork's.
+source: untrusted
+
+result_max_bytes: 131072

@@ -1,0 +1,56 @@
+{
+  "name": "@flax/explorer",
+  "version": "0.0.1",
+  "description": "The living map of what a scenario library proves: a page built from a workspace's scenarios and results, and a service that follows runs live",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spice-labs-inc/flax",
+    "directory": "packages/explorer"
+  },
+  "type": "module",
+  "bin": {
+    "flax-explorer": "./dist-service/server/cli.js"
+  },
+  "flax": "dist-service/server/cli.js",
+  "files": [
+    "dist-service",
+    "src",
+    "static",
+    "svelte.config.js",
+    "vite.config.ts",
+    "tsconfig.json",
+    "deploy"
+  ],
+  "scripts": {
+    "dev": "vite dev",
+    "build": "tsc -p tsconfig.service.json && svelte-kit sync",
+    "build:page": "svelte-kit sync && vite build",
+    "prepare": "svelte-kit sync || echo \"\"",
+    "check": "svelte-kit sync && EXPLORER_WORKSPACE=test/fixtures/workspace svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && tsc -p tsconfig.service.json --noEmit",
+    "test": "vitest run",
+    "format": "prettier --write --plugin prettier-plugin-svelte \"src/**/*.svelte\""
+  },
+  "dependencies": {
+    "@cucumber/gherkin": "42.0.1",
+    "@cucumber/messages": "34.2.1",
+    "@flax/contract": "workspace:*",
+    "@flax/core": "workspace:*",
+    "@flax/scenarios": "workspace:*",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "svelte": "^5.57.2",
+    "vite": "^8.3.3",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "playwright": "^1.63.0",
+    "prettier": "^3.9.9",
+    "prettier-plugin-svelte": "^3.4.0",
+    "svelte-check": "^4.7.6",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
+  }
+}

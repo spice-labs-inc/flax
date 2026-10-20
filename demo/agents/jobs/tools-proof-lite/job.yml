@@ -1,0 +1,19 @@
+# Job definition. Proves the tools path with the builtin echo tool only; runs with --stub offline.
+name: tools-proof-lite
+owner: octocat
+purpose: Echoes a phrase through the tools server and reports what came back, to prove the tools path.
+trigger:
+  manual: true
+model: anthropic/claude-sonnet-4-5
+thinking: high
+shell: false
+limits:
+  turns: 10
+  tokens_per_run: 100000
+  usd_per_month: 5
+  tool_calls: 5
+  tool_seconds: 30
+tools: [echo]
+output:
+  kind: file
+mode: shadow

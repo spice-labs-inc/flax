@@ -1,0 +1,90 @@
+{
+  "description": "One fix whose only evidence is a commit and a search from the input.",
+  "expect": "accept",
+  "reasons": [],
+  "answer": {
+    "pages": [
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-state.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/runtime-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_linux.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/quick-start.mdx",
+        "decision": "patch",
+        "reason": "Sign-up no longer creates a sample project with sample data: sample projects are off by default and no environment turns them on, so the first project is empty and named after the organization.",
+        "patch": "--- a/src/content/docs/howtos/quick-start.mdx\n+++ b/src/content/docs/howtos/quick-start.mdx\n@@ -24,7 +24,7 @@\n 1. **Start your free trial** at [notes-co.example/get-started](https://www.notes-co.example/get-started) or **contact our team** at [notes-co.example](https://www.notes-co.example) to establish your account\n 2. Navigate to the dashboard at [https://dashboard.notes-co.example](https://dashboard.notes-co.example)\n 3. Log in with your provided credentials\n-4. A sample project with sample data will be pre-configured for you\n+4. An empty project named after your organization will be created for you\n \n ## Step 2: Get Your Notes Pass\n \n",
+        "changes": [
+          {
+            "removed": [
+              "4. A sample project with sample data will be pre-configured for you"
+            ],
+            "added": [
+              "4. An empty project named after your organization will be created for you"
+            ],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "commit": "ce0f0681a67098e6a079de217f93db2539710fd8"
+              },
+              {
+                "repo": "notes-co/app-gitops",
+                "commit": "361d26b1"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/notes-cli.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/dashboard.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/dashboard-setup.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-facts.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/inventory-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_zsh.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      }
+    ]
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "coverageMapBuiltAt": "2026-10-15T23:59:21.322Z",
+  "stations": [
+    {
+      "key": "signIn",
+      "name": "Sign in",
+      "stage": "Discover",
+      "kind": "surface",
+      "match": [
+        "web:route:/sign-in"
+      ],
+      "items": [
+        "web:route:/sign-in"
+      ],
+      "personas": [
+        "writer"
+      ]
+    },
+    {
+      "key": "openList",
+      "name": "Open the notes list",
+      "stage": "Write",
+      "kind": "surface",
+      "match": [
+        "web:route:/notes",
+        "web:testid:new-note"
+      ],
+      "items": [
+        "web:route:/notes",
+        "web:testid:new-note"
+      ],
+      "personas": [
+        "writer"
+      ]
+    },
+    {
+      "key": "writeNote",
+      "name": "Write and save a note",
+      "stage": "Write",
+      "kind": "surface",
+      "match": [
+        "web:route:/notes/*",
+        "web:testid:save-note"
+      ],
+      "items": [
+        "web:route:/notes/[id]",
+        "web:testid:save-note"
+      ],
+      "personas": [
+        "writer"
+      ]
+    },
+    {
+      "key": "listViaApi",
+      "name": "List notes through the API",
+      "stage": "Review",
+      "kind": "surface",
+      "match": [
+        "api:* /api/notes"
+      ],
+      "items": [
+        "api:GET /api/notes",
+        "api:POST /api/notes"
+      ],
+      "personas": [
+        "reviewer"
+      ]
+    },
+    {
+      "key": "passkey",
+      "name": "Sign in with a passkey",
+      "stage": "Discover",
+      "kind": "planned",
+      "match": [],
+      "items": [],
+      "personas": []
+    }
+  ],
+  "journeys": [
+    {
+      "persona": "reviewer",
+      "stations": [
+        "listViaApi"
+      ]
+    },
+    {
+      "persona": "writer",
+      "stations": [
+        "signIn",
+        "openList",
+        "writeNote"
+      ]
+    }
+  ],
+  "broken": [],
+  "deadMatchers": [],
+  "orphans": [
+    "web:route:/",
+    "web:route:/settings",
+    "web:route:/admin",
+    "api:GET /api/notes/{id}",
+    "api:GET /api/version"
+  ]
+}

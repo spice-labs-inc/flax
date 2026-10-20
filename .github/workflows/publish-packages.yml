@@ -1,0 +1,63 @@
+name: Publish packages
+
+# On a tag vX.Y.Z: build every package and publish each as a prebuilt
+# package on its own tag <package>-vX.Y.Z of this repository
+# (scripts/publish-packages.sh), then create a GitHub release of the tag
+# whose notes list the dependency lines consumers paste. Nothing goes to a
+# registry.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-packages-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check the tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          echo "$TAG" | LC_ALL=C grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' \
+            || { echo "refusing tag $TAG: a release tag is vMAJOR.MINOR.PATCH (for example v0.1.0)" >&2; exit 1; }
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - name: Publish the package tags
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          scripts/publish-packages.sh "${TAG#v}" --push origin | tee publish.log
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          {
+            echo "Prebuilt packages for $TAG, each on its own tag of this repository. Depend on them with:"
+            echo
+            echo '```json'
+            sed -n '/^Depend on these with:/,$p' publish.log | tail -n +2 | sed 's/^  //'
+            echo '```'
+            echo
+            echo "Built from commit ${GITHUB_SHA}."
+          } > release-notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file release-notes.md

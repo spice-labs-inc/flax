@@ -1,0 +1,2 @@
+persona: writer
+stations: [signIn, openList, writeNote]

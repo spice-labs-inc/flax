@@ -1,0 +1,9 @@
+{
+ "notes-api": "wiring/notes-api.stub000000000000",
+ "notes-cli": "wiring/notes-cli.stub000000000000",
+ "notes-core": "wiring/notes-core.stub000000000000",
+ "notes-gitops": "wiring/notes-gitops.stub000000000000",
+ "notes-installer": "wiring/notes-installer.stub000000000000",
+ "notes-web": "wiring/notes-web.stub000000000000",
+ "notes-worker": "wiring/notes-worker.stub000000000000"
+}

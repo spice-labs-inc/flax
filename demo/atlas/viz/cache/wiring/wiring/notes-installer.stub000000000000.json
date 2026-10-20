@@ -1,0 +1,1 @@
+{"edges":[{"from":"notes-installer","to":"GitHub Releases","layer":"network","label":"downloads release assets","detail":"The script fetches the matching notes-cli binary.","anchor":"install.sh","unverified":false}],"infra":[{"id":"GitHub Releases","kind":"external","label":"GitHub Releases","role":"Where notes-cli binaries are published."}]}

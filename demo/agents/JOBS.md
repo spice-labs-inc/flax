@@ -1,0 +1,9 @@
+<!-- Generated from jobs/*/job.yml by flax agents generate. Do not edit. -->
+
+# Jobs
+
+| Name                                              | Owner    | Purpose                                                                                                                                                 | Trigger                                        | Model                         | Thinking | USD/month | Output                         | Mode   |
+| ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------- | -------- | --------- | ------------------------------ | ------ |
+| [hello](jobs/hello/job.yml)                       | @octocat | Summarizes a short piece of text, to prove the job kit end to end.                                                                                      | manual                                         | `anthropic/claude-sonnet-4-5` | high     | 5         | file                           | shadow |
+| [scenario-checks](jobs/scenario-checks/job.yml)   | @octocat | Runs the scenario library's checks against one environment, keeps the results as a workflow artifact, and says which checks started or stopped failing. | live `20 0-21/3 * * *`, test `20 1-22/3 * * *` | `none`                        | none     | 0         | results, alerts #alerts-checks | shadow |
+| [tools-proof-lite](jobs/tools-proof-lite/job.yml) | @octocat | Echoes a phrase through the tools server and reports what came back, to prove the tools path.                                                           | manual                                         | `anthropic/claude-sonnet-4-5` | high     | 5         | file                           | shadow |

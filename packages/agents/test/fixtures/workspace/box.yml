@@ -1,0 +1,12 @@
+# The box every job runs in. Schema: schema/box.schema.json.
+
+# Written by the "Publish box image" run 36787816885 for lbx release v0.2.0:
+# the slim agent image built from images/agent/Dockerfile with the
+# release's entrypoint. That run's smoke test ran `pi --version` through
+# `lbx --run` on the agents pool.
+
+pinned: true
+box_release: "v0.2.0"
+box_commit: "79032f3dac23f82dea99c65346cc22a2dde99f23"
+lbx_sha256: "c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70"
+image: ghcr.io/notes-co/flax-agent@sha256:59bb71dd9dc9768eb1fd4b8eb4e5bfc04f7f871ce79d4173ac5bd679316d5c8c

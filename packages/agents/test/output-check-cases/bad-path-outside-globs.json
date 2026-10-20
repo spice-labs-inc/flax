@@ -1,0 +1,90 @@
+{
+  "description": "A file outside the allowed paths (src/content/docs/**).",
+  "expect": "reject",
+  "reasons": [
+    "src/content/api/index.mdx is outside the paths this job may change"
+  ],
+  "answer": {
+    "pages": [
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-state.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/runtime-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_linux.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/quick-start.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/notes-cli.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/dashboard.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/dashboard-setup.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-facts.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/inventory-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_zsh.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/api/index.mdx",
+        "decision": "patch",
+        "reason": "Rate limits changed.",
+        "patch": "--- a/src/content/api/index.mdx\n+++ b/src/content/api/index.mdx\n@@ -31,1 +31,1 @@\n-- 1,000 requests per hour per API key\n+- 600 requests per minute per credential\n",
+        "changes": [
+          {
+            "removed": ["- 1,000 requests per hour per API key"],
+            "added": ["- 600 requests per minute per credential"],
+            "evidence": [
+              {
+                "repo": "notes-co/app-gitops",
+                "commit": "c9195e9d"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

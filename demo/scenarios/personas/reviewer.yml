@@ -1,0 +1,31 @@
+id: reviewer
+name: Ren the reviewer
+type: secondary
+summary: Reads shared notes through the API and comments on them.
+who: A teammate who reads notes other people share.
+titles: [Editor]
+goals: [Read a shared note without an account]
+needs: [An API that lists shared notes]
+consumes: The notes API.
+prize:
+  test: A shared note is readable by its link within a second.
+journey:
+  name: Review shared notes
+  steps: [Get a token, List notes, Read one]
+friction: [Tokens expire without warning]
+antiGoals: [Editing someone else's note]
+surfaces: [api]
+neverTouches: [web]
+editions: []
+fixtureRole: reviewer token
+tensions: []
+evidence:
+  - claim: Reviewers prefer the API to the web app.
+    source: support tickets
+    date: 2026-09-20
+    assumption: true
+sources:
+  - title: Support tickets Q3
+    date: 2026-09-20
+    where: research/tickets.md
+team: platform

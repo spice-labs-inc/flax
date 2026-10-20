@@ -1,0 +1,23 @@
+{
+  "name": "flax-demo",
+  "private": true,
+  "type": "module",
+  "description": "notes-co's workspace: the content every flax package runs against",
+  "scripts": {
+    "scenarios": "flax scenarios",
+    "explorer": "flax explorer",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cucumber/cucumber": "^13.3.0",
+    "@flax/atlas": "workspace:*",
+    "@flax/cli": "workspace:*",
+    "@flax/explorer": "workspace:*",
+    "@flax/scenarios": "workspace:*",
+    "@flax/agents": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "@types/node": "^24.0.0"
+  }
+}

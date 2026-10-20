@@ -1,0 +1,208 @@
+{
+  "rows": {
+    "prod:apps:backend": [
+      {
+        "_timestamp": 1792000931250000,
+        "k8s_pod_name": "backend-7c9f8d6b5d-xk2pq",
+        "k8s_namespace_name": "backend",
+        "level": "ERROR",
+        "logger_name": "io.notesco.backend.service.ProjectService",
+        "thread_name": "http-nio-8080-exec-7",
+        "message": "Project creation failed for org :id",
+        "stack_trace": "java.lang.IllegalStateException: No region configured for org :id\n\tat io.notesco.backend.service.RegionService.regionFor(RegionService.java:31)\n\tat io.notesco.backend.service.ProjectService.regionOf(ProjectService.java:29)\n\tat io.notesco.backend.service.ProjectService.create(ProjectService.java:21)\n\tat io.notesco.backend.web.ProjectController.lambda$create$0(ProjectController.java:19)\n\tat org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)\n\tat java.base/java.lang.Thread.run(Unknown Source)",
+        "container_image_tag": "sha-a6cc56fccece3148c82fea98154882f109c80c9d"
+      },
+      {
+        "_timestamp": 1792000931246000,
+        "k8s_pod_name": "backend-7c9f8d6b5d-xk2pq",
+        "k8s_namespace_name": "backend",
+        "level": "INFO",
+        "logger_name": "io.notesco.backend.service.ProjectService",
+        "thread_name": "http-nio-8080-exec-7",
+        "message": "Creating project for org :id",
+        "container_image_tag": "sha-a6cc56fccece3148c82fea98154882f109c80c9d"
+      },
+      {
+        "_timestamp": 1792000931240000,
+        "k8s_pod_name": "backend-7c9f8d6b5d-xk2pq",
+        "k8s_namespace_name": "backend",
+        "level": "INFO",
+        "logger_name": "io.notesco.backend.web.RequestLog",
+        "thread_name": "http-nio-8080-exec-7",
+        "message": "POST /api/v1/orgs/:id/projects",
+        "container_image_tag": "sha-a6cc56fccece3148c82fea98154882f109c80c9d"
+      },
+      {
+        "_timestamp": 1791981603000000,
+        "k8s_pod_name": "backend-7c9f8d6b5d-xk2pq",
+        "k8s_namespace_name": "backend",
+        "level": "ERROR",
+        "logger_name": "io.notesco.backend.service.ProjectService",
+        "thread_name": "http-nio-8080-exec-7",
+        "message": "Project creation failed for org :id",
+        "stack_trace": "java.lang.IllegalStateException: No region configured for org :id\n\tat io.notesco.backend.service.RegionService.regionFor(RegionService.java:31)\n\tat io.notesco.backend.service.ProjectService.regionOf(ProjectService.java:29)\n\tat io.notesco.backend.service.ProjectService.create(ProjectService.java:21)\n\tat io.notesco.backend.web.ProjectController.lambda$create$0(ProjectController.java:19)\n\tat org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)\n\tat java.base/java.lang.Thread.run(Unknown Source)",
+        "container_image_tag": "sha-a6cc56fccece3148c82fea98154882f109c80c9d"
+      },
+      {
+        "_timestamp": 1791981602996000,
+        "k8s_pod_name": "backend-7c9f8d6b5d-xk2pq",
+        "k8s_namespace_name": "backend",
+        "level": "INFO",
+        "logger_name": "io.notesco.backend.service.ProjectService",
+        "thread_name": "http-nio-8080-exec-7",
+        "message": "Creating project for org :id",
+        "container_image_tag": "sha-a6cc56fccece3148c82fea98154882f109c80c9d"
+      },
+      {
+        "_timestamp": 1791882944000000,
+        "k8s_pod_name": "backend-7c9f8d6b5d-xk2pq",
+        "k8s_namespace_name": "backend",
+        "level": "ERROR",
+        "logger_name": "io.notesco.backend.service.ProjectService",
+        "thread_name": "http-nio-8080-exec-7",
+        "message": "Project creation failed for org :id",
+        "stack_trace": "java.lang.IllegalStateException: No region configured for org :id\n\tat io.notesco.backend.service.RegionService.regionFor(RegionService.java:31)\n\tat io.notesco.backend.service.ProjectService.regionOf(ProjectService.java:29)\n\tat io.notesco.backend.service.ProjectService.create(ProjectService.java:21)\n\tat io.notesco.backend.web.ProjectController.lambda$create$0(ProjectController.java:19)\n\tat org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)\n\tat java.base/java.lang.Thread.run(Unknown Source)",
+        "container_image_tag": "sha-a6cc56fccece3148c82fea98154882f109c80c9d"
+      },
+      {
+        "_timestamp": 1791882943996000,
+        "k8s_pod_name": "backend-7c9f8d6b5d-xk2pq",
+        "k8s_namespace_name": "backend",
+        "level": "INFO",
+        "logger_name": "io.notesco.backend.service.ProjectService",
+        "thread_name": "http-nio-8080-exec-7",
+        "message": "Creating project for org :id",
+        "container_image_tag": "sha-a6cc56fccece3148c82fea98154882f109c80c9d"
+      }
+    ]
+  },
+  "repos": {
+    "backend": {
+      "commits": [
+        "a6cc56fccece3148c82fea98154882f109c80c9d",
+        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      ],
+      "head": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "files": {
+        "src/main/java/io/notesco/backend/service/RegionService.java": [
+          "package io.notesco.backend.service;",
+          "",
+          "import java.util.Map;",
+          "import java.util.Optional;",
+          "",
+          "import org.springframework.stereotype.Service;",
+          "",
+          "/** Which storage region a project of an org lives in. */",
+          "@Service",
+          "public class RegionService {",
+          "  private final Map<String, String> regions;",
+          "",
+          "  public RegionService(Map<String, String> regions) {",
+          "    this.regions = regions;",
+          "  }",
+          "",
+          "  /** The org's region, or empty when it has none. */",
+          "  public Optional<String> find(String orgId) {",
+          "    return Optional.ofNullable(regions.get(orgId));",
+          "  }",
+          "",
+          "  /**",
+          "   * The org's region. An org created before regions existed has none; callers",
+          "   * that create projects call this.",
+          "   */",
+          "  public String regionFor(String orgId) {",
+          "    String region = regions.get(orgId);",
+          "    if (region != null) {",
+          "      return region;",
+          "    }",
+          "    throw new IllegalStateException(\"No region configured for org \" + orgId);",
+          "  }",
+          "}"
+        ],
+        "src/main/java/io/notesco/backend/service/ProjectService.java": [
+          "package io.notesco.backend.service;",
+          "",
+          "import org.slf4j.Logger;",
+          "import org.slf4j.LoggerFactory;",
+          "import org.springframework.stereotype.Service;",
+          "",
+          "@Service",
+          "public class ProjectService {",
+          "  private static final Logger log = LoggerFactory.getLogger(ProjectService.class);",
+          "  private final RegionService regions;",
+          "  private final ProjectStore store;",
+          "",
+          "  public ProjectService(RegionService regions, ProjectStore store) {",
+          "    this.regions = regions;",
+          "    this.store = store;",
+          "  }",
+          "",
+          "  public Project create(String orgId, String name) {",
+          "    log.info(\"Creating project for org {}\", orgId);",
+          "    try {",
+          "      return store.insert(orgId, name, regionOf(orgId));",
+          "    } catch (RuntimeException e) {",
+          "      log.error(\"Project creation failed for org {}\", orgId, e);",
+          "      throw e;",
+          "    }",
+          "  }",
+          "",
+          "  private String regionOf(String orgId) {",
+          "    return regions.regionFor(orgId);",
+          "  }",
+          "}"
+        ],
+        "src/main/java/io/notesco/backend/web/ProjectController.java": [
+          "package io.notesco.backend.web;",
+          "",
+          "import io.notesco.backend.service.Project;",
+          "import io.notesco.backend.service.ProjectService;",
+          "import org.springframework.web.bind.annotation.PostMapping;",
+          "import org.springframework.web.bind.annotation.RestController;",
+          "",
+          "@RestController",
+          "public class ProjectController {",
+          "  private final ProjectService projects;",
+          "",
+          "  public ProjectController(ProjectService projects) {",
+          "    this.projects = projects;",
+          "  }",
+          "",
+          "  @PostMapping(\"/api/v1/orgs/{org}/projects\")",
+          "  public Project create(String org, String name) {",
+          "    return Async.run(() -> {",
+          "      return projects.create(org, name);",
+          "    });",
+          "  }",
+          "}"
+        ]
+      },
+      "more": [
+        "pom.xml",
+        "src/test/java/io/notesco/backend/service/ProjectServiceTest.java",
+        "src/main/resources/db/migration/V1__init.sql"
+      ]
+    }
+  },
+  "history": {
+    "apps/prod/backend/backend-patch.yml": [
+      {
+        "sha": "3bf930dd00000000000000000000000000000000",
+        "date": "2026-10-14T22:45:02Z",
+        "headline": "release: backend v1.5.15 @ ffffffffffffffffffffffffffffffffffffffff"
+      },
+      {
+        "sha": "b5c03cbf00000000000000000000000000000000",
+        "date": "2026-10-12T00:08:15Z",
+        "headline": "release: backend v1.5.14 @ a6cc56fccece3148c82fea98154882f109c80c9d"
+      },
+      {
+        "sha": "90b7016b00000000000000000000000000000000",
+        "date": "2026-10-08T20:33:05Z",
+        "headline": "release: backend v1.5.11 @ 3cebe5b832f4f2e7e594f7a8cd8fd404f77f126e"
+      }
+    ]
+  },
+  "releases": {},
+  "pods": "NAMESPACE   NAME                      READY   STATUS    RESTARTS   AGE\nbackend      backend-7c9f8d6b5d-xk2pq   1/1     Running   0          2d\n"
+}

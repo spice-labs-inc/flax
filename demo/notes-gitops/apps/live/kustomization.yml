@@ -1,0 +1,4 @@
+resources:
+  - notes-api
+  - notes-worker
+  - notes-web

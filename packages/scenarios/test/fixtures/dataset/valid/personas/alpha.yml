@@ -1,0 +1,47 @@
+# Fixture persona.
+
+id: alpha
+name: Alpha
+type: primary
+summary: A primary fixture persona.
+who: Runs surveys for a fixture org.
+titles:
+  - Fixture Engineer
+goals:
+  - A complete inventory
+needs:
+  - Clear errors
+consumes: CLI output and exports.
+prize:
+  quote: It found what we missed.
+  test: One survey of a fixture app names the embedded library.
+journey:
+  name: First survey
+  steps:
+    - Installs the CLI
+    - Runs a survey
+friction:
+  - Slow onboarding
+antiGoals:
+  - Needing source code
+surfaces:
+  - Product CLI
+neverTouches:
+  - board exports
+editions:
+  - cli
+  - hosted
+fixtureRole: org Admin
+tensions:
+  - with: gamma
+    conflict: Alpha wants raw detail; Gamma wants one number.
+    rule: Every number drills down to its evidence.
+evidence:
+  - claim: Runs surveys.
+    source: Fixture source
+    date: 2026-10-07
+    assumption: true
+sources:
+  - title: Fixture source
+    date: 2026-10-07
+    where: test fixtures

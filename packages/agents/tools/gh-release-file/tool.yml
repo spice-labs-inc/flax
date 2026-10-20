@@ -1,0 +1,38 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-release-file
+
+description: Returns one text file of one notes-co repository as it is at a release tag (vX.Y.Z), after a first line with the file's blob sha, for example the dependency versions a release was built with. A directory path returns its entries instead. Files over the size cap are cut.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo, tag, path]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example notes-cli.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    tag:
+      type: string
+      description: The release tag, vX.Y.Z, for example v1.8.5.
+      maxLength: 40
+      pattern: "^v[0-9]{1,6}\\.[0-9]{1,6}\\.[0-9]{1,6}$"
+    path:
+      type: string
+      description: The path from the repository root, for example pom.xml.
+      maxLength: 400
+      pattern: "^[A-Za-z0-9._-][A-Za-z0-9._/-]*$"
+
+# A vX.Y.Z tag only, a plain relative path, no sha.
+upstream:
+  server: github
+  operations: [get_file_contents]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536

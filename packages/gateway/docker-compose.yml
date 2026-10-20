@@ -1,0 +1,302 @@
+# llm-gateway: the model gateway the flax agents runner calls instead of the
+# model provider. LiteLLM holds the real provider keys, issues short-lived
+# per-run virtual keys, enforces per-run and monthly dollar budgets, and
+# records spend.
+#
+#   runner --TLS ${GATEWAY_BIND_ADDR:?}:8443--> caddy --internal--> litellm --internal--> egress --> ${PROVIDER_API_HOST:?}, api.anthropic.com
+#
+# - caddy is the only published service: ${GATEWAY_BIND_ADDR:?}:8443, the
+#   host's address on the bridge the runners sit on, so only runners and the
+#   host itself reach it (TLS with the certificate bin/make-ca.sh writes into
+#   ./certs for ${GATEWAY_SERVER_NAME:?}, plus a source check as a second
+#   layer), and 127.0.0.1:4000 (admin site: full LiteLLM API and UI, over
+#   ssh -L).
+# - litellm and db sit on an internal network with no route out. The egress
+#   relay is litellm's only way to the internet and allows ${PROVIDER_API_HOST:?}
+#   and api.anthropic.com only (GHSA-3cv6-jpf6-8222: a proxy caller could
+#   redirect provider calls, and their credentials, to a host of its choosing).
+# - The model list (./models/model_list.yaml) and the catalog
+#   (./models/models-info.json) are written by bin/bootstrap.sh from the
+#   workspace's models.yml before the first start.
+#
+# Every compose variable below (the ones ending in :?) must be set in .env next
+# to this file (see README.md); compose refuses to start otherwise. Third-party
+# images are pinned by digest.
+name: llm-gateway
+x-health-cmd: curl -sf http://127.0.0.1:4000/health/readiness | grep -q '"db":"connected"'
+
+services:
+  caddy:
+    image: caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    user: "${RUNTIME_UID:?}:${RUNTIME_GID:?}"
+    restart: unless-stopped
+    mem_limit: 256m
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      litellm:
+        condition: service_started
+    ports:
+      # The address may exist only once the runner bridge is up; set
+      # net.ipv4.ip_nonlocal_bind=1 on the host so this still starts at boot.
+      - "${GATEWAY_BIND_ADDR:?}:8443:8443"
+      - "127.0.0.1:4000:4000"
+    networks: [front, internal]
+    volumes:
+      - ./caddy-data:/data
+      - ./caddy-config:/config
+      # ca.pem, server.pem, server-key.pem from bin/make-ca.sh; the nightly
+      # backup job archives this directory.
+      - ./certs:/certs:ro
+      - ./models/models-info.json:/srv/catalog/models-info.json:ro
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  litellm:
+    image: ghcr.io/berriai/litellm-non_root:v1.103.0@sha256:fda2894415d89350ca6a16195c935726382354d2194ebb1ce43e6bd5480b06ce
+    # Runs as the image's own uid (65534).
+    restart: unless-stopped
+    mem_limit: 2g
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      db:
+        condition: service_healthy
+      egress:
+        condition: service_started
+    networks: [internal]
+    environment:
+      DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD:?}@db:5432/litellm
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?}
+      PROVIDER_API_KEY: ${PROVIDER_API_KEY:?}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?}
+      HTTPS_PROXY: http://egress:3128
+      NO_PROXY: localhost,127.0.0.1,db,caddy,egress
+      AIOHTTP_TRUST_ENV: "True"
+      LITELLM_LOCAL_MODEL_COST_MAP: "True"
+    # One worker: without Redis, rate-limit and parallel-request counters are
+    # per process.
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "1"]
+    volumes:
+      - ./models/model_list.yaml:/app/model_list.yaml:ro
+    configs:
+      - source: litellm_config
+        target: /app/config.yaml
+    healthcheck:
+      # The image has no curl or wget; bash's /dev/tcp is enough.
+      test:
+        - CMD
+        - bash
+        - -c
+        - exec 3<>/dev/tcp/127.0.0.1/4000 && printf 'GET /health/liveliness HTTP/1.0\r\n\r\n' >&3 && head -n 1 <&3 | grep -q ' 200 '
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  db:
+    image: postgres:17.11-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    user: "${RUNTIME_UID:?}:${RUNTIME_GID:?}"
+    restart: unless-stopped
+    mem_limit: 512m
+    networks: [internal]
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  egress:
+    # The llm-in-a-box relay, pinned by digest: hostname allowlist, refuses
+    # names resolving to private addresses, requires TLS SNI to equal the
+    # CONNECT host. Logs every ALLOW/DENY to stdout.
+    image: ${EGRESS_RELAY_IMAGE:?}
+    restart: unless-stopped
+    mem_limit: 64m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [internal, egress]
+    environment:
+      LLMBOX_POLICY: /etc/relay/policy.json
+      LLMBOX_DENY_LOG: /dev/stdout
+    configs:
+      - source: egress_policy
+        target: /etc/relay/policy.json
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "3128"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Nightly (systemd/llm-gateway-backup.timer): a Postgres dump and an archive
+  # of ./certs (the CA and server key), 14 of each kept in ./backups.
+  backup:
+    image: postgres:17.11-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    profiles: [jobs]
+    user: "${RUNTIME_UID:?}:${RUNTIME_GID:?}"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - ./backups:/backups
+      - ./certs:/certs:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        umask 077
+        d="$$(date -u +%Y%m%dT%H%M%SZ)"
+        pg_dump -h db -U litellm -d litellm -Fc -f "/backups/litellm-$$d.dump.tmp"
+        mv "/backups/litellm-$$d.dump.tmp" "/backups/litellm-$$d.dump"
+        tar -C /certs -czf "/backups/certs-$$d.tar.gz.tmp" .
+        mv "/backups/certs-$$d.tar.gz.tmp" "/backups/certs-$$d.tar.gz"
+        ls -1t /backups/litellm-*.dump | tail -n +15 | xargs -r rm -f
+        ls -1t /backups/certs-*.tar.gz | tail -n +15 | xargs -r rm -f
+        echo "backup $$d written"
+
+networks:
+  # Docker-internal subnet for the published side; change it only if it
+  # collides with something on the host (the Caddyfile names its gateway).
+  front:
+    ipam:
+      config:
+        - subnet: 172.31.201.0/24
+          gateway: 172.31.201.1
+  internal:
+    internal: true
+  egress: {}
+
+configs:
+  egress_policy:
+    content: |
+      {"mode": "locked", "allow": ["${PROVIDER_API_HOST:?}", "api.anthropic.com"], "block": []}
+
+  caddyfile:
+    content: |
+      {
+      	admin off
+      	auto_https disable_redirects
+      	# Clients that connect by address send no SNI; serve them the name's
+      	# certificate (the runner checks ${GATEWAY_SERVER_NAME:?}).
+      	default_sni ${GATEWAY_SERVER_NAME:?}
+      }
+
+      # The runner sends SNI ${GATEWAY_SERVER_NAME:?} but Host ${GATEWAY_BIND_ADDR:?}:8443.
+      https://${GATEWAY_SERVER_NAME:?}:8443, https://${GATEWAY_BIND_ADDR:?}:8443 {
+      	tls /certs/server.pem /certs/server-key.pem
+      	log {
+      		output stdout
+      		# Caddy redacts Authorization by default but not X-Api-Key, and
+      		# the Anthropic SDK sends the virtual key in both.
+      		format filter {
+      			request>headers>X-Api-Key delete
+      			request>headers>Authorization delete
+      		}
+      	}
+      	request_body {
+      		max_size 32MB
+      	}
+
+      	# Runners arrive from the front bridge gateway (masqueraded), the
+      	# host itself from that or the bind address.
+      	@outside not remote_ip 172.31.201.1 ${GATEWAY_BIND_ADDR:?}
+      	@catalog {
+      		method GET
+      		path /v1/models/info
+      	}
+      	@api {
+      		method POST
+      		path /v1/messages /key/generate /key/update
+      	}
+      	@read {
+      		method GET
+      		path /health/liveliness /key/info /key/list /team/info
+      	}
+
+      	# route keeps this order (Caddy would otherwise sort abort after handle)
+      	route {
+      		abort @outside
+      		handle @catalog {
+      			root * /srv/catalog
+      			rewrite * /models-info.json
+      			file_server
+      		}
+      		handle @api {
+      			reverse_proxy litellm:4000 {
+      				flush_interval -1
+      			}
+      		}
+      		handle @read {
+      			reverse_proxy litellm:4000
+      		}
+      		respond 404
+      	}
+      }
+
+      http://:4000 {
+      	@outside not remote_ip 172.31.201.1
+      	route {
+      		abort @outside
+      		reverse_proxy litellm:4000 {
+      			flush_interval -1
+      		}
+      	}
+      }
+
+      http://:8081 {
+      	bind 127.0.0.1
+      	respond "ok" 200
+      }
+
+  # The model list lives in ./models/model_list.yaml (written by
+  # bin/bootstrap.sh from the workspace's models.yml: prices per token, the
+  # provider host and key per model). Custom model names have no price in
+  # LiteLLM's bundled map, so without those prices every call would record
+  # $0 of spend.
+  litellm_config:
+    content: |
+      include:
+        - model_list.yaml
+
+      litellm_settings:
+        json_logs: true
+        turn_off_message_logging: true
+        redact_messages_in_exceptions: true
+        num_retries: 0
+        request_timeout: 600
+        # Proxy-wide cap: the monthly budget per calendar month (UTC), all
+        # providers together, on top of the same cap on the team that
+        # bin/bootstrap.sh creates.
+        max_budget: ${MONTHLY_BUDGET_USD:?}
+        budget_duration: 1mo
+        # Ceiling for any key /key/generate issues, whoever asks. The duration
+        # ceiling is the issuer key's 90-day lifetime; the runner gives each
+        # run key its own lifetime of at most gateway.yml key_max_minutes.
+        upperbound_key_generate_params:
+          max_budget: ${KEY_MAX_USD:?}
+          duration: 90d
+          max_parallel_requests: 4
+          rpm_limit: 120
+
+      general_settings:
+        master_key: os.environ/LITELLM_MASTER_KEY
+        database_url: os.environ/DATABASE_URL
+        store_model_in_db: false
+        store_prompts_in_spend_logs: false

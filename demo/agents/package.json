@@ -1,0 +1,13 @@
+{
+  "name": "notes-co-agents-demo",
+  "private": true,
+  "description": "The agents half of the notes-co demo workspace: jobs, tools and the files flax agents reads beside the shared flax.yml",
+  "type": "module",
+  "scripts": {
+    "check": "flax-agents check --workspace .",
+    "generate": "flax-agents generate --workspace . --dist",
+    "run-job": "flax-agents run-job --workspace ."
+  },
+  "dependencies": { "@flax/agents": "workspace:*" },
+  "devDependencies": { "typescript": "^7.0.2" }
+}

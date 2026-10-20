@@ -1,0 +1,22 @@
+{
+  "pods": {
+    "answer": "6",
+    "tool": "k8s-pods",
+    "quote": "{{namespace}}   coredns-6b9d7c8f5d-q2x7m   1/1   Running   0   4d2h"
+  },
+  "workflow_run": {
+    "answer": "success (Check)",
+    "tool": "gh-workflow-runs",
+    "quote": "\"conclusion\":\"success\""
+  },
+  "log_streams": {
+    "answer": "142",
+    "tool": "logs-streams",
+    "quote": "\"total\":142"
+  },
+  "alert": {
+    "answer": "No message in #{{alertChannel}} in the last 24 hours.",
+    "tool": "slack-history",
+    "quote": "\"messages\":[]"
+  }
+}

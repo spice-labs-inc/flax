@@ -1,0 +1,24 @@
+# A pull request job that keeps an architecture atlas (one Markdown doc per
+# repository, each stamped with the commit it describes) current: collect.ts
+# finds the docs whose repository moved past that commit, and the model
+# proposes the smallest evidence-backed edits for up to 3 of them a run.
+description: Finds atlas repo docs whose repository moved past the commit they describe and proposes minimal, evidence-backed updates for a person to review.
+fields:
+  model:
+    description: The model id the job writes with, as models.yml lists it.
+    example: anthropic/claude-sonnet-4-5
+  reviewModel:
+    description: The model id the second check runs on, of another family than model so it does not share the writer's blind spots.
+    example: openai/gpt-5
+  atlasRepo:
+    description: The name, under the workspace's GitHub owner, of the repository holding the atlas (its repos/ docs, INDEX.md, _TEMPLATE.md).
+    example: atlas
+  reviewTeam:
+    description: The slug of the organization team asked to review every pull request the job opens.
+    example: engineering
+  linkHosts:
+    description: The organization's own web hosts a page may link to, as link-hosts.yml allows them, comma separated.
+    example: notes-co.example, docs.notes-co.example
+notes:
+  - The private job filtered noise drift for two named repositories (a gitops repository's version pin files and compose image pins, a data repository's regenerated files). That is now NOISE_RULES in collect.ts, empty by default; add a rule per repository whose drift of only matching files should get a stamp and no model.
+  - The private job's monthly budget and schedule comments described one workspace's spend and the slot of another job; the template keeps a plain schedule (14:00 UTC every other day) and a small budget for a person to size.

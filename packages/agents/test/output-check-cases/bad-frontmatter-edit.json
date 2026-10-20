@@ -1,0 +1,82 @@
+{
+  "description": "A change to a frontmatter value.",
+  "expect": "reject",
+  "reasons": ["changes the frontmatter (title)"],
+  "answer": {
+    "pages": [
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-state.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/runtime-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_linux.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/quick-start.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/notes-cli.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/software-architecture/dashboard.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/dashboard-setup.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/product/product-facts.mdx",
+        "decision": "patch",
+        "reason": "Title case.",
+        "patch": "--- a/src/content/docs/product/product-facts.mdx\n+++ b/src/content/docs/product/product-facts.mdx\n@@ -1,5 +1,5 @@\n ---\n-title: \"Product Facts\"\n+title: \"Product facts\"\n category: \"Product\"\n order: 302\n ---\n",
+        "changes": [
+          {
+            "removed": ["title: \"Product Facts\""],
+            "added": ["title: \"Product facts\""],
+            "evidence": [
+              {
+                "repo": "notes-co/backend",
+                "commit": "42837a1"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "repo": "notes-co/public-docs",
+        "path": "src/content/docs/howtos/inventory-surveys.mdx",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      },
+      {
+        "repo": "notes-co/internal-docs",
+        "path": "src/content/docs/runbooks/testing/test_cli_and_dash_zsh.md",
+        "decision": "no_change",
+        "reason": "No source shows a fact on this page is wrong."
+      }
+    ]
+  }
+}

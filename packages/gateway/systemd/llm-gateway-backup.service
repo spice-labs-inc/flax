@@ -1,0 +1,11 @@
+[Unit]
+Description=llm-gateway nightly backup (Postgres dump and the certs directory)
+# Point this at your own alert unit, or drop it.
+# OnFailure=cron-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/llm-gateway
+# The compose file interpolates RUNTIME_UID/RUNTIME_GID; systemd does not export
+# them, so the unit sets them to the user it runs as.
+ExecStart=/bin/sh -c 'export RUNTIME_UID=$$(id -u) RUNTIME_GID=$$(id -g); exec /usr/bin/docker compose --profile jobs run --rm backup'

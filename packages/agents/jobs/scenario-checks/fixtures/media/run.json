@@ -1,0 +1,48 @@
+{
+  "env": "test",
+  "runId": "test-2026-10-08T20-40-50-449Z",
+  "startedAt": "2026-10-08T20:40:50.449Z",
+  "finishedAt": "2026-10-08T20:42:50.378Z",
+  "versions": {
+    "api": {
+      "release": "3cebe5b832f4f2e7e594f7a8cd8fd404f77f126e",
+      "commit": "3cebe5b832f4f2e7e594f7a8cd8fd404f77f126e",
+      "built_at": "2026-10-08T19:19:40.301Z"
+    }
+  },
+  "scenarios": [
+    {
+      "id": "features/sharing/notebooks.feature:9",
+      "name": "A member sees every shared notebook",
+      "feature": "Sharing notebooks",
+      "tags": ["@area:sharing", "@fixture", "@env:test"],
+      "status": "passed",
+      "durationMs": 65188,
+      "touches": [
+        {
+          "item": "api:notebooks:GET /api/v1/notebooks"
+        }
+      ]
+    },
+    {
+      "id": "features/sharing/notebooks.feature:16",
+      "name": "An editor creates and deletes a shared notebook",
+      "feature": "Sharing notebooks",
+      "tags": ["@area:sharing", "@fixture", "@env:test"],
+      "status": "failed",
+      "durationMs": 53574,
+      "touches": [
+        {
+          "item": "api:notebooks:POST /api/v1/notebooks"
+        },
+        {
+          "item": "api:notebooks:DELETE /api/v1/notebooks/{id}"
+        }
+      ],
+      "failure": {
+        "step": "I ask it to create a notebook in my workspace",
+        "message": "AssertionError [ERR_ASSERTION]: the create call answers without an error: {\"status\":404,\"truncated\":false,\"body\":{\"error\":\"sharing not enabled\",\"status\":404,\"code\":\"not_found\"}}\n    + expected - actual\n\n    -false\n    +true\n\n    at createNotebook (/runner/_work/agents/agents/media-sources/scenarios/src/steps/sharing.ts:448:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async ScenarioWorld.<anonymous> (/runner/_work/agents/agents/media-sources/scenarios/src/steps/sharing.ts:993:20)"
+      }
+    }
+  ]
+}

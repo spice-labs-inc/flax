@@ -1,0 +1,369 @@
+{
+  "about": "The action-notes-survey page of run 37963865908's answer (its patch left out), and GitHub's answers for the commits and pull requests it credits, cut to the fields the attribution check reads.",
+  "page": {
+    "repo": "notes-co/atlas",
+    "path": "repos/action-notes-survey.md",
+    "decision": "patch",
+    "reason": "The action now surveys an OCI/Docker image when its new `image` input is set, and `subject` is optional for that mode; the doc only described local-file surveys.",
+    "changes": [
+      {
+        "removed": [
+          "Two-step composite action: install the CLI via `curl -sSLf https://install.notes-co.example | bash`, then run `~/.local/bin/notes survey inventory \"<subject>\" \"<input>\" --log-level=...` with `NOTES_PASS`/`NOTES_IMAGE`/`NOTES_IMAGE_TAG` exported. This is both the customer-facing \"scan your repo in GitHub Actions\" action and the org's dogfooding hook — 22 internal repos run it (dominant pin `@v5`, 63 uses across local org clones, 2026-07-18). Formerly named `action-notes-cli-scan` (GitHub redirects the old name here)."
+        ],
+        "added": [
+          "Two-step composite action: install the CLI via `curl -sSLf https://install.notes-co.example | bash`, then run `~/.local/bin/notes survey inventory \"<subject>\" \"<input>\" --log-level=...` with `NOTES_PASS`/`NOTES_IMAGE`/`NOTES_IMAGE_TAG` exported. With the `image` input set it surveys that OCI/Docker image instead (`notes survey inventory [subject] docker://<image>`), the subject defaulting to the image name without its tag. This is both the customer-facing \"scan your repo in GitHub Actions\" action and the org's dogfooding hook — 22 internal repos run it (dominant pin `@v5`, 63 uses across local org clones, 2026-07-18). Formerly named `action-notes-cli-scan` (GitHub redirects the old name here)."
+        ],
+        "evidence": [
+          {
+            "repo": "notes-co/action-notes-survey",
+            "commit": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+            "path": "action.yml"
+          },
+          {
+            "repo": "notes-co/action-notes-survey",
+            "commit": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+            "path": "README.md"
+          }
+        ],
+        "why": "action.yml adds the image input and the docker:// run branch, documented in README.md."
+      },
+      {
+        "removed": [
+          "- `action.yml` — the whole action (2 bash steps, `using: composite`)."
+        ],
+        "added": [
+          "- `action.yml` — the whole action (2 bash steps, `using: composite`). Image mode: with `image` set the run step builds `notes survey inventory [subject] docker://<image>` and skips the local-file branch; a bare image reference is prefixed `docker://`, an `oci://`/`docker://` one is passed through."
+        ],
+        "evidence": [
+          {
+            "repo": "notes-co/action-notes-survey",
+            "commit": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+            "path": "action.yml"
+          }
+        ],
+        "why": "action.yml implements the image-mode branch."
+      },
+      {
+        "removed": [
+          "| subject | yes | — | dashboard label for the surveyed system |",
+          "| input | no | `.` | path to survey |"
+        ],
+        "added": [
+          "| subject | no | — | dashboard label; required for local files, for an image defaults to the image name without its tag |",
+          "| input | no | `.` | path to survey (ignored when `image` is set) |",
+          "| image | no | — | OCI/Docker image reference to survey instead of local files (prefixed `docker://` unless already `docker://`/`oci://`) |"
+        ],
+        "evidence": [
+          {
+            "repo": "notes-co/action-notes-survey",
+            "commit": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+            "path": "action.yml"
+          }
+        ],
+        "why": "action.yml makes subject optional with a default of the image name. action.yml marks input ignored when image is set. action.yml adds the image input."
+      },
+      {
+        "removed": [
+          "- `notes survey inventory` arg order is `<subject> <input>` — changed with CLI v2 args (commit 066f6c1 \"update to match new cli args\")."
+        ],
+        "added": [
+          "- `notes survey inventory` arg order is `<subject> <input>`, or `[subject] docker://<image>` in image mode — changed with CLI v2 args (commit 066f6c1 \"update to match new cli args\"); `subject` is optional for an image and required for local files (action.yml)."
+        ],
+        "evidence": [
+          {
+            "repo": "notes-co/action-notes-survey",
+            "commit": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+            "path": "action.yml"
+          }
+        ],
+        "why": "action.yml runs notes survey inventory [subject] docker://<image> in image mode."
+      },
+      {
+        "removed": [],
+        "added": [
+          "- 2026-10-06: PR #30 (merge 89cdcdd) image input runs notes survey inventory with docker://.",
+          "- 2026-09-15: PR #29 (merge f536938) image-mode survey via notes survey image."
+        ],
+        "evidence": [
+          {
+            "repo": "notes-co/action-notes-survey",
+            "commit": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7"
+          },
+          {
+            "repo": "notes-co/action-notes-survey",
+            "commit": "f5369383b27f7a8fb168d634aadef0afd4e0aec8"
+          }
+        ],
+        "why": "the two pull requests merged since the analyzed commit, cited by their merge commits."
+      }
+    ]
+  },
+  "github": {
+    "/repos/notes-co/action-notes-survey/commits/066f6c1": {
+      "sha": "066f6c19b077513deb9eded4f0a090414f8b62f2",
+      "commit": {
+        "message": "update to match new cli args",
+        "committer": {
+          "date": "2026-03-31T02:33:36Z"
+        }
+      },
+      "parents": [
+        {
+          "sha": "62d7aa542b77961df719c7616ae73ff40690e345"
+        }
+      ],
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 15,
+          "deletions": 13,
+          "patch": "@@ -17,36 +17,38 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v3\n   with:\n-    input: target/release/            # Optional; defaults to '.'\n-    notes_pass: ${{ secrets.NOTES_PASS }} # Required\n-    tag: 'my-survey-tag'                  # Required\n-\n+    subject: my-app                           # Required — label shown on the dashboard\n+    input: target/release/                    # Optional; defaults to '.'\n+    notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n \n ---\n \n ### Optional: pin or override the CLI image\n+\n ```yaml\n - name: Build ADG (pinned CLI image)\n   uses: notes-co/action-notes-survey@v3\n   with:\n+    subject: wasabi\n     input: ${{ github.workspace }}/target\n     notes_pass: ${{ secrets.NOTES_PASS }}\n-    tag: wasabi\n     cli_image: notesco/notes-cli\n-    cli_image_tag: 1.2.3\n+    cli_image_tag: 2.0.0\n ```\n \n ---\n \n ### Inputs\n-| Name         | Required | Default                           | Description                                     |\n-| ------------ | -------- | --------------------------------- | ----------------------------------------------- |\n-| `input`      | No       | `.`                               | Path to local files to survey (mounted read-only) |\n-| `notes_pass` | Yes      | *(none)*                          | Notes Pass (JWT) from your Notes Co project   |\n-| `tag`        | Yes      | *(none)*                          | Tag to associate with the survey         |\n-| `cli_image`  | No       | `notesco/notes-cli`        | Docker image to run the CLI                     |\n-| `cli_image_tag` | No    | `latest`                          | Tag of the Docker image to run the CLI          |\n+\n+| Name | Required | Default | Description |\n+|------|----------|---------|-------------|\n+| `subject` | Yes | *(none)* | Label identifying the system being surveyed (shown on the dashboard) |\n+| `input` | No | `.` | Path to local files to survey |\n+| `notes_pass` | Yes | *(none)* | Notes Pass (JWT) from your Notes Co project |\n+| `cli_image` | No | `notesco/notes-cli` | Docker image to run the CLI |\n+| `cli_image_tag` | No | `latest` | Tag of the Docker image to run the CLI |\n+| `log_level` | No | `info` | Log level: `debug` \\| `info` \\| `warn` \\| `error` |\n \n ---\n "
+        },
+        {
+          "filename": "action.yml",
+          "status": "modified",
+          "additions": 8,
+          "deletions": 14,
+          "patch": "@@ -2,20 +2,16 @@ name: \"Notes Co Survey\"\n description: \"Runs The Notes Co Survey to survey files and upload results.\"\n \n inputs:\n-  file_path:\n-    description: \"Path to local files to survey (deprecated, use 'input' instead)\"\n-    required: false\n-    default: \".\"\n+  subject:\n+    description: \"Label identifying the system being surveyed (shown on the dashboard)\"\n+    required: true\n   input:\n     description: \"Path to local files to survey\"\n     required: false\n     default: \".\"\n   notes_pass:\n     description: \"Notes Pass token\"\n     required: true\n-  tag:\n-    description: \"Tag to associate with the survey\"\n-    required: true\n   cli_image:\n     description: \"Docker image for the CLI\"\n     required: false\n@@ -24,6 +20,10 @@ inputs:\n     description: \"Docker image tag for the CLI\"\n     required: false\n     default: \"latest\"\n+  log_level:\n+    description: \"Log level: debug|info|warn|error\"\n+    required: false\n+    default: \"info\"\n \n runs:\n   using: \"composite\"\n@@ -39,10 +39,4 @@ runs:\n         export NOTES_IMAGE=\"${{ inputs.cli_image }}\"\n         export NOTES_IMAGE_TAG=\"${{ inputs.cli_image_tag }}\"\n \n-        # Prefer 'input'; if empty, fall back to deprecated 'file_path'\n-        INPUT_PATH=\"${{ inputs.input }}\"\n-        if [ -z \"$INPUT_PATH\" ]; then\n-          INPUT_PATH=\"${{ inputs.file_path }}\"\n-        fi\n-        \n-        ~/.local/bin/notes --input=\"$INPUT_PATH\" --tag=\"${{ inputs.tag }}\" --log-level=all\n+        ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\""
+        }
+      ]
+    },
+    "/repos/notes-co/action-notes-survey/commits/066f6c19b077513deb9eded4f0a090414f8b62f2/pulls": [
+      {
+        "number": 25,
+        "title": "update to match new cli args",
+        "merged_at": "2026-03-31T17:19:07Z",
+        "merge_commit_sha": "ff5ec8ab294f65b6d10d2dc5ff71b4814de91360",
+        "base": {
+          "ref": "main",
+          "repo": {
+            "default_branch": "main"
+          }
+        }
+      }
+    ],
+    "/repos/notes-co/action-notes-survey/pulls/30": {
+      "number": 30,
+      "title": "image input runs notes survey inventory with docker://",
+      "merged_at": "2026-10-07T00:47:05Z",
+      "merge_commit_sha": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+      "base": {
+        "ref": "main",
+        "repo": {
+          "default_branch": "main"
+        }
+      }
+    },
+    "/repos/notes-co/action-notes-survey/commits/89cdcdd": {
+      "sha": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+      "commit": {
+        "message": "Merge pull request #30 from notes-co/octocat/image-input-docs",
+        "committer": {
+          "date": "2026-10-07T00:47:05Z"
+        }
+      },
+      "parents": [
+        {
+          "sha": "f5369383b27f7a8fb168d634aadef0afd4e0aec8"
+        },
+        {
+          "sha": "b455512cff7ab9745d6d5cf65eb70b3c454e6e29"
+        }
+      ],
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 9,
+          "deletions": 7,
+          "patch": "@@ -2,7 +2,7 @@\n \n A composite GitHub Action that runs the Notes Co Survey CLI to create an Artifact Dependency Graph (ADG) from a directory of built files (e.g., Rust binaries, OCI layout (unpacked) Docker images, JAR files), then uploads the resulting ADG to the Notes Co servers.\n \n-It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The CLI's `notes survey image` command pulls the image and surveys the pulled OCI layout.\n+It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The action runs `notes survey inventory` with a `docker://` image, which pulls the image and surveys its contents.\n \n ---\n \n@@ -22,19 +22,21 @@ Artifact files:\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n   with:\n-    subject: my-app                           # Required — label shown on the dashboard\n+    subject: my-app                           # Required for local files: label shown on the dashboard\n     input: target/release/                    # Optional; defaults to '.'\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n \n-When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image into an OCI layout with the `oras` baked into the CLI's container image, and surveys the layer blobs.\n+When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). It runs `notes survey inventory [subject] docker://<image>`; an `image` that already starts with `docker://` or `oci://` is passed as is. The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image with the `oras` baked into the CLI's container image, and surveys its contents.\n+\n+Without `subject`, the survey is labeled with the image name without its tag or digest (`ghcr.io/org/app:v1` → `ghcr.io/org/app`, `nginx:1.27` → `nginx`), so every version of the image lands on one subject.\n \n \n ```yaml\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n   with:\n-    subject: imagename                        # Optional: defaults to image\n+    subject: imagename                        # Optional: defaults to the image name without its tag\n     image: mycompany/imagename:tag            # Required\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n@@ -55,7 +57,7 @@ When `image` is set, the action surveys that image instead of local files (the `\n \n ---\n \n-For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the action mounts that docker config read-only into the CLI container, so any registry the runner is already logged into just works. With no docker config on the runner, the pull is anonymous.\n+For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the CLI mounts that docker config read-only into its container, so any registry the runner is already logged into just works. A login kept in a credential helper is read for that one registry. With no docker config on the runner, the pull is anonymous.\n \n ```yaml\n - name: Log in to GHCR\n@@ -79,7 +81,7 @@ For a private registry, log into it in a prior step (e.g. `docker/login-action`,\n \n | Name | Required | Default | Description |\n |------|----------|---------|-------------|\n-| `subject` | Yes | *(none)* | Label identifying the system being surveyed (shown on the dashboard) |\n+| `subject` | For local files | *(none)* | Label identifying the system being surveyed (shown on the dashboard). For an image it defaults to the image name without its tag or digest |\n | `input` | No | `.` | Path to local files to survey (ignored when `image` is set) |\n | `image` | No | *(none)* | OCI/Docker registry image to survey instead of local files, e.g. `ghcr.io/org/app:v1` (bare names like `nginx` are expanded by the CLI). Private registries work via the runner's docker login (e.g. `docker/login-action`) |\n | `notes_pass` | Yes | *(none)* | Notes Pass (JWT) from your Notes Co project |\n@@ -93,4 +95,4 @@ For a private registry, log into it in a prior step (e.g. `docker/login-action`,\n \n - Docker must be available in the GitHub Actions runner.\n - `notesco/notes-cli` image must be publicly accessible.\n-- Image mode requires notes-cli **v1.7.0+** (the `oras` binary and `notes survey image` command are baked into the CLI image since then).\n+- Image mode requires a Survey CLI release with `docker://` inputs for `notes survey inventory`. Older CLI images only have `notes survey image`."
+        },
+        {
+          "filename": "action.yml",
+          "status": "modified",
+          "additions": 15,
+          "deletions": 5,
+          "patch": "@@ -3,14 +3,15 @@ description: \"Runs The Notes Co Survey to survey files and upload results.\"\n \n inputs:\n   subject:\n-    description: \"Label identifying the system being surveyed (shown on the dashboard)\"\n-    required: true\n+    description: \"Label identifying the system being surveyed (shown on the dashboard). Required for local files; for an image it defaults to the image name without its tag\"\n+    required: false\n+    default: \"\"\n   input:\n     description: \"Path to local files to survey (ignored when `image` is set)\"\n     required: false\n     default: \".\"\n   image:\n-    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires notes-cli v1.7.0+ (see README).\"\n+    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires a Survey CLI release with docker:// inputs (see README).\"\n     required: false\n     default: \"\"\n   notes_pass:\n@@ -44,9 +45,18 @@ runs:\n         export NOTES_IMAGE=\"${{ inputs.cli_image }}\"\n         export NOTES_IMAGE_TAG=\"${{ inputs.cli_image_tag }}\"\n         IMG=\"${{ inputs.image }}\"\n+        SUBJECT=\"${{ inputs.subject }}\"\n \n         if [ -n \"$IMG\" ]; then\n-          ~/.local/bin/notes survey image \"$IMG\" --subject \"${{ inputs.subject }}\" --log-level=\"${{ inputs.log_level }}\"\n+          case \"$IMG\" in\n+            docker://*|oci://*) ;;\n+            *) IMG=\"docker://$IMG\" ;;\n+          esac\n+          ~/.local/bin/notes survey inventory ${SUBJECT:+\"$SUBJECT\"} \"$IMG\" --log-level=\"${{ inputs.log_level }}\"\n         else\n-          ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+          if [ -z \"$SUBJECT\" ]; then\n+            echo \"::error::subject is required when surveying local files\"\n+            exit 1\n+          fi\n+          ~/.local/bin/notes survey inventory \"$SUBJECT\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n         fi"
+        }
+      ]
+    },
+    "/repos/notes-co/action-notes-survey/commits/89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7": {
+      "sha": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+      "commit": {
+        "message": "Merge pull request #30 from notes-co/octocat/image-input-docs",
+        "committer": {
+          "date": "2026-10-07T00:47:05Z"
+        }
+      },
+      "parents": [
+        {
+          "sha": "f5369383b27f7a8fb168d634aadef0afd4e0aec8"
+        },
+        {
+          "sha": "b455512cff7ab9745d6d5cf65eb70b3c454e6e29"
+        }
+      ],
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 9,
+          "deletions": 7,
+          "patch": "@@ -2,7 +2,7 @@\n \n A composite GitHub Action that runs the Notes Co Survey CLI to create an Artifact Dependency Graph (ADG) from a directory of built files (e.g., Rust binaries, OCI layout (unpacked) Docker images, JAR files), then uploads the resulting ADG to the Notes Co servers.\n \n-It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The CLI's `notes survey image` command pulls the image and surveys the pulled OCI layout.\n+It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The action runs `notes survey inventory` with a `docker://` image, which pulls the image and surveys its contents.\n \n ---\n \n@@ -22,19 +22,21 @@ Artifact files:\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n   with:\n-    subject: my-app                           # Required — label shown on the dashboard\n+    subject: my-app                           # Required for local files: label shown on the dashboard\n     input: target/release/                    # Optional; defaults to '.'\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n \n-When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image into an OCI layout with the `oras` baked into the CLI's container image, and surveys the layer blobs.\n+When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). It runs `notes survey inventory [subject] docker://<image>`; an `image` that already starts with `docker://` or `oci://` is passed as is. The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image with the `oras` baked into the CLI's container image, and surveys its contents.\n+\n+Without `subject`, the survey is labeled with the image name without its tag or digest (`ghcr.io/org/app:v1` → `ghcr.io/org/app`, `nginx:1.27` → `nginx`), so every version of the image lands on one subject.\n \n \n ```yaml\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n   with:\n-    subject: imagename                        # Optional: defaults to image\n+    subject: imagename                        # Optional: defaults to the image name without its tag\n     image: mycompany/imagename:tag            # Required\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n@@ -55,7 +57,7 @@ When `image` is set, the action surveys that image instead of local files (the `\n \n ---\n \n-For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the action mounts that docker config read-only into the CLI container, so any registry the runner is already logged into just works. With no docker config on the runner, the pull is anonymous.\n+For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the CLI mounts that docker config read-only into its container, so any registry the runner is already logged into just works. A login kept in a credential helper is read for that one registry. With no docker config on the runner, the pull is anonymous.\n \n ```yaml\n - name: Log in to GHCR\n@@ -79,7 +81,7 @@ For a private registry, log into it in a prior step (e.g. `docker/login-action`,\n \n | Name | Required | Default | Description |\n |------|----------|---------|-------------|\n-| `subject` | Yes | *(none)* | Label identifying the system being surveyed (shown on the dashboard) |\n+| `subject` | For local files | *(none)* | Label identifying the system being surveyed (shown on the dashboard). For an image it defaults to the image name without its tag or digest |\n | `input` | No | `.` | Path to local files to survey (ignored when `image` is set) |\n | `image` | No | *(none)* | OCI/Docker registry image to survey instead of local files, e.g. `ghcr.io/org/app:v1` (bare names like `nginx` are expanded by the CLI). Private registries work via the runner's docker login (e.g. `docker/login-action`) |\n | `notes_pass` | Yes | *(none)* | Notes Pass (JWT) from your Notes Co project |\n@@ -93,4 +95,4 @@ For a private registry, log into it in a prior step (e.g. `docker/login-action`,\n \n - Docker must be available in the GitHub Actions runner.\n - `notesco/notes-cli` image must be publicly accessible.\n-- Image mode requires notes-cli **v1.7.0+** (the `oras` binary and `notes survey image` command are baked into the CLI image since then).\n+- Image mode requires a Survey CLI release with `docker://` inputs for `notes survey inventory`. Older CLI images only have `notes survey image`."
+        },
+        {
+          "filename": "action.yml",
+          "status": "modified",
+          "additions": 15,
+          "deletions": 5,
+          "patch": "@@ -3,14 +3,15 @@ description: \"Runs The Notes Co Survey to survey files and upload results.\"\n \n inputs:\n   subject:\n-    description: \"Label identifying the system being surveyed (shown on the dashboard)\"\n-    required: true\n+    description: \"Label identifying the system being surveyed (shown on the dashboard). Required for local files; for an image it defaults to the image name without its tag\"\n+    required: false\n+    default: \"\"\n   input:\n     description: \"Path to local files to survey (ignored when `image` is set)\"\n     required: false\n     default: \".\"\n   image:\n-    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires notes-cli v1.7.0+ (see README).\"\n+    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires a Survey CLI release with docker:// inputs (see README).\"\n     required: false\n     default: \"\"\n   notes_pass:\n@@ -44,9 +45,18 @@ runs:\n         export NOTES_IMAGE=\"${{ inputs.cli_image }}\"\n         export NOTES_IMAGE_TAG=\"${{ inputs.cli_image_tag }}\"\n         IMG=\"${{ inputs.image }}\"\n+        SUBJECT=\"${{ inputs.subject }}\"\n \n         if [ -n \"$IMG\" ]; then\n-          ~/.local/bin/notes survey image \"$IMG\" --subject \"${{ inputs.subject }}\" --log-level=\"${{ inputs.log_level }}\"\n+          case \"$IMG\" in\n+            docker://*|oci://*) ;;\n+            *) IMG=\"docker://$IMG\" ;;\n+          esac\n+          ~/.local/bin/notes survey inventory ${SUBJECT:+\"$SUBJECT\"} \"$IMG\" --log-level=\"${{ inputs.log_level }}\"\n         else\n-          ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+          if [ -z \"$SUBJECT\" ]; then\n+            echo \"::error::subject is required when surveying local files\"\n+            exit 1\n+          fi\n+          ~/.local/bin/notes survey inventory \"$SUBJECT\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n         fi"
+        }
+      ]
+    },
+    "/repos/notes-co/action-notes-survey/commits/89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7/pulls": [
+      {
+        "number": 30,
+        "title": "image input runs notes survey inventory with docker://",
+        "merged_at": "2026-10-07T00:47:05Z",
+        "merge_commit_sha": "89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7",
+        "base": {
+          "ref": "main",
+          "repo": {
+            "default_branch": "main"
+          }
+        }
+      }
+    ],
+    "/repos/notes-co/action-notes-survey/compare/f5369383b27f7a8fb168d634aadef0afd4e0aec8...89cdcdd9286f5132ccbc5a0ac86d35d6e6f4f5a7": {
+      "status": "ahead",
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 9,
+          "deletions": 7,
+          "patch": "@@ -2,7 +2,7 @@\n \n A composite GitHub Action that runs the Notes Co Survey CLI to create an Artifact Dependency Graph (ADG) from a directory of built files (e.g., Rust binaries, OCI layout (unpacked) Docker images, JAR files), then uploads the resulting ADG to the Notes Co servers.\n \n-It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The CLI's `notes survey image` command pulls the image and surveys the pulled OCI layout.\n+It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The action runs `notes survey inventory` with a `docker://` image, which pulls the image and surveys its contents.\n \n ---\n \n@@ -22,19 +22,21 @@ Artifact files:\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n   with:\n-    subject: my-app                           # Required — label shown on the dashboard\n+    subject: my-app                           # Required for local files: label shown on the dashboard\n     input: target/release/                    # Optional; defaults to '.'\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n \n-When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image into an OCI layout with the `oras` baked into the CLI's container image, and surveys the layer blobs.\n+When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). It runs `notes survey inventory [subject] docker://<image>`; an `image` that already starts with `docker://` or `oci://` is passed as is. The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image with the `oras` baked into the CLI's container image, and surveys its contents.\n+\n+Without `subject`, the survey is labeled with the image name without its tag or digest (`ghcr.io/org/app:v1` → `ghcr.io/org/app`, `nginx:1.27` → `nginx`), so every version of the image lands on one subject.\n \n \n ```yaml\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n   with:\n-    subject: imagename                        # Optional: defaults to image\n+    subject: imagename                        # Optional: defaults to the image name without its tag\n     image: mycompany/imagename:tag            # Required\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n@@ -55,7 +57,7 @@ When `image` is set, the action surveys that image instead of local files (the `\n \n ---\n \n-For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the action mounts that docker config read-only into the CLI container, so any registry the runner is already logged into just works. With no docker config on the runner, the pull is anonymous.\n+For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the CLI mounts that docker config read-only into its container, so any registry the runner is already logged into just works. A login kept in a credential helper is read for that one registry. With no docker config on the runner, the pull is anonymous.\n \n ```yaml\n - name: Log in to GHCR\n@@ -79,7 +81,7 @@ For a private registry, log into it in a prior step (e.g. `docker/login-action`,\n \n | Name | Required | Default | Description |\n |------|----------|---------|-------------|\n-| `subject` | Yes | *(none)* | Label identifying the system being surveyed (shown on the dashboard) |\n+| `subject` | For local files | *(none)* | Label identifying the system being surveyed (shown on the dashboard). For an image it defaults to the image name without its tag or digest |\n | `input` | No | `.` | Path to local files to survey (ignored when `image` is set) |\n | `image` | No | *(none)* | OCI/Docker registry image to survey instead of local files, e.g. `ghcr.io/org/app:v1` (bare names like `nginx` are expanded by the CLI). Private registries work via the runner's docker login (e.g. `docker/login-action`) |\n | `notes_pass` | Yes | *(none)* | Notes Pass (JWT) from your Notes Co project |\n@@ -93,4 +95,4 @@ For a private registry, log into it in a prior step (e.g. `docker/login-action`,\n \n - Docker must be available in the GitHub Actions runner.\n - `notesco/notes-cli` image must be publicly accessible.\n-- Image mode requires notes-cli **v1.7.0+** (the `oras` binary and `notes survey image` command are baked into the CLI image since then).\n+- Image mode requires a Survey CLI release with `docker://` inputs for `notes survey inventory`. Older CLI images only have `notes survey image`."
+        },
+        {
+          "filename": "action.yml",
+          "status": "modified",
+          "additions": 15,
+          "deletions": 5,
+          "patch": "@@ -3,14 +3,15 @@ description: \"Runs The Notes Co Survey to survey files and upload results.\"\n \n inputs:\n   subject:\n-    description: \"Label identifying the system being surveyed (shown on the dashboard)\"\n-    required: true\n+    description: \"Label identifying the system being surveyed (shown on the dashboard). Required for local files; for an image it defaults to the image name without its tag\"\n+    required: false\n+    default: \"\"\n   input:\n     description: \"Path to local files to survey (ignored when `image` is set)\"\n     required: false\n     default: \".\"\n   image:\n-    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires notes-cli v1.7.0+ (see README).\"\n+    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires a Survey CLI release with docker:// inputs (see README).\"\n     required: false\n     default: \"\"\n   notes_pass:\n@@ -44,9 +45,18 @@ runs:\n         export NOTES_IMAGE=\"${{ inputs.cli_image }}\"\n         export NOTES_IMAGE_TAG=\"${{ inputs.cli_image_tag }}\"\n         IMG=\"${{ inputs.image }}\"\n+        SUBJECT=\"${{ inputs.subject }}\"\n \n         if [ -n \"$IMG\" ]; then\n-          ~/.local/bin/notes survey image \"$IMG\" --subject \"${{ inputs.subject }}\" --log-level=\"${{ inputs.log_level }}\"\n+          case \"$IMG\" in\n+            docker://*|oci://*) ;;\n+            *) IMG=\"docker://$IMG\" ;;\n+          esac\n+          ~/.local/bin/notes survey inventory ${SUBJECT:+\"$SUBJECT\"} \"$IMG\" --log-level=\"${{ inputs.log_level }}\"\n         else\n-          ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+          if [ -z \"$SUBJECT\" ]; then\n+            echo \"::error::subject is required when surveying local files\"\n+            exit 1\n+          fi\n+          ~/.local/bin/notes survey inventory \"$SUBJECT\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n         fi"
+        }
+      ]
+    },
+    "/repos/notes-co/action-notes-survey/pulls/29": {
+      "number": 29,
+      "title": "feat: add image-mode survey via notes survey image",
+      "merged_at": "2026-09-15T14:54:32Z",
+      "merge_commit_sha": "f5369383b27f7a8fb168d634aadef0afd4e0aec8",
+      "base": {
+        "ref": "main",
+        "repo": {
+          "default_branch": "main"
+        }
+      }
+    },
+    "/repos/notes-co/action-notes-survey/commits/f536938": {
+      "sha": "f5369383b27f7a8fb168d634aadef0afd4e0aec8",
+      "commit": {
+        "message": "Merge pull request #29 from notes-co/as/scan-images",
+        "committer": {
+          "date": "2026-09-15T14:54:32Z"
+        }
+      },
+      "parents": [
+        {
+          "sha": "1201766df1693916efba889a6bf7c9d0f59a41b7"
+        },
+        {
+          "sha": "49fadcb078267f33756cc056b72af7ffd9c3d17e"
+        }
+      ],
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 41,
+          "deletions": 3,
+          "patch": "@@ -2,17 +2,22 @@\n \n A composite GitHub Action that runs the Notes Co Survey CLI to create an Artifact Dependency Graph (ADG) from a directory of built files (e.g., Rust binaries, OCI layout (unpacked) Docker images, JAR files), then uploads the resulting ADG to the Notes Co servers.\n \n+It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The CLI's `notes survey image` command pulls the image and surveys the pulled OCI layout.\n+\n ---\n \n ### Features\n \n - Surveys a directory with the `notesco/notes-cli` container and produces an ADG\n - Uploads the generated ADG to your Notes Co project using a Notes Pass (JWT)\n+- Image mode: fetches an image from a public or private OCI/Docker registry using ORAS and surveys it\n \n ---\n \n ### Usage\n \n+Artifact files:\n+\n ```yaml\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n@@ -22,6 +27,18 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n \n+When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image into an OCI layout with the `oras` baked into the CLI's container image, and surveys the layer blobs.\n+\n+\n+```yaml\n+- name: Build ADG\n+  uses: notes-co/action-notes-survey@v5\n+  with:\n+    subject: imagename                        # Optional: defaults to image\n+    image: mycompany/imagename:tag            # Required\n+    notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n+```\n+\n ---\n \n ### Optional: pin or override the CLI image\n@@ -33,8 +50,27 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n     subject: wasabi\n     input: ${{ github.workspace }}/target\n     notes_pass: ${{ secrets.NOTES_PASS }}\n-    cli_image: notesco/notes-cli\n-    cli_image_tag: 2.0.0\n+    cli_image: notesco/notes-cli:2.0.0   # tag embedded — the wrapper uses NOTES_IMAGE verbatim\n+```\n+\n+---\n+\n+For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the action mounts that docker config read-only into the CLI container, so any registry the runner is already logged into just works. With no docker config on the runner, the pull is anonymous.\n+\n+```yaml\n+- name: Log in to GHCR\n+  uses: docker/login-action@v3\n+  with:\n+    registry: ghcr.io\n+    username: ${{ github.actor }}\n+    password: ${{ secrets.GITHUB_TOKEN }}\n+\n+- name: Build ADG from a private registry image\n+  uses: notes-co/action-notes-survey@v5\n+  with:\n+    subject: my-app\n+    image: ghcr.io/org/my-app:v1.2.3\n+    notes_pass: ${{ secrets.NOTES_PASS }}\n ```\n \n ---\n@@ -44,7 +80,8 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n | Name | Required | Default | Description |\n |------|----------|---------|-------------|\n | `subject` | Yes | *(none)* | Label identifying the system being surveyed (shown on the dashboard) |\n-| `input` | No | `.` | Path to local files to survey |\n+| `input` | No | `.` | Path to local files to survey (ignored when `image` is set) |\n+| `image` | No | *(none)* | OCI/Docker registry image to survey instead of local files, e.g. `ghcr.io/org/app:v1` (bare names like `nginx` are expanded by the CLI). Private registries work via the runner's docker login (e.g. `docker/login-action`) |\n | `notes_pass` | Yes | *(none)* | Notes Pass (JWT) from your Notes Co project |\n | `cli_image` | No | `notesco/notes-cli` | Docker image to run the CLI |\n | `cli_image_tag` | No | `latest` | Tag of the Docker image to run the CLI |\n@@ -56,3 +93,4 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n \n - Docker must be available in the GitHub Actions runner.\n - `notesco/notes-cli` image must be publicly accessible.\n+- Image mode requires notes-cli **v1.7.0+** (the `oras` binary and `notes survey image` command are baked into the CLI image since then)."
+        },
+        {
+          "filename": "action.yml",
+          "status": "modified",
+          "additions": 12,
+          "deletions": 2,
+          "patch": "@@ -6,9 +6,13 @@ inputs:\n     description: \"Label identifying the system being surveyed (shown on the dashboard)\"\n     required: true\n   input:\n-    description: \"Path to local files to survey\"\n+    description: \"Path to local files to survey (ignored when `image` is set)\"\n     required: false\n     default: \".\"\n+  image:\n+    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires notes-cli v1.7.0+ (see README).\"\n+    required: false\n+    default: \"\"\n   notes_pass:\n     description: \"Notes Pass token\"\n     required: true\n@@ -35,8 +39,14 @@ runs:\n     - name: Run Notes Co Survey\n       shell: bash\n       run: |\n+        set -e\n         export NOTES_PASS=\"${{ inputs.notes_pass }}\"\n         export NOTES_IMAGE=\"${{ inputs.cli_image }}\"\n         export NOTES_IMAGE_TAG=\"${{ inputs.cli_image_tag }}\"\n+        IMG=\"${{ inputs.image }}\"\n \n-        ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+        if [ -n \"$IMG\" ]; then\n+          ~/.local/bin/notes survey image \"$IMG\" --subject \"${{ inputs.subject }}\" --log-level=\"${{ inputs.log_level }}\"\n+        else\n+          ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+        fi"
+        }
+      ]
+    },
+    "/repos/notes-co/action-notes-survey/commits/f5369383b27f7a8fb168d634aadef0afd4e0aec8": {
+      "sha": "f5369383b27f7a8fb168d634aadef0afd4e0aec8",
+      "commit": {
+        "message": "Merge pull request #29 from notes-co/as/scan-images",
+        "committer": {
+          "date": "2026-09-15T14:54:32Z"
+        }
+      },
+      "parents": [
+        {
+          "sha": "1201766df1693916efba889a6bf7c9d0f59a41b7"
+        },
+        {
+          "sha": "49fadcb078267f33756cc056b72af7ffd9c3d17e"
+        }
+      ],
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 41,
+          "deletions": 3,
+          "patch": "@@ -2,17 +2,22 @@\n \n A composite GitHub Action that runs the Notes Co Survey CLI to create an Artifact Dependency Graph (ADG) from a directory of built files (e.g., Rust binaries, OCI layout (unpacked) Docker images, JAR files), then uploads the resulting ADG to the Notes Co servers.\n \n+It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The CLI's `notes survey image` command pulls the image and surveys the pulled OCI layout.\n+\n ---\n \n ### Features\n \n - Surveys a directory with the `notesco/notes-cli` container and produces an ADG\n - Uploads the generated ADG to your Notes Co project using a Notes Pass (JWT)\n+- Image mode: fetches an image from a public or private OCI/Docker registry using ORAS and surveys it\n \n ---\n \n ### Usage\n \n+Artifact files:\n+\n ```yaml\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n@@ -22,6 +27,18 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n \n+When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image into an OCI layout with the `oras` baked into the CLI's container image, and surveys the layer blobs.\n+\n+\n+```yaml\n+- name: Build ADG\n+  uses: notes-co/action-notes-survey@v5\n+  with:\n+    subject: imagename                        # Optional: defaults to image\n+    image: mycompany/imagename:tag            # Required\n+    notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n+```\n+\n ---\n \n ### Optional: pin or override the CLI image\n@@ -33,8 +50,27 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n     subject: wasabi\n     input: ${{ github.workspace }}/target\n     notes_pass: ${{ secrets.NOTES_PASS }}\n-    cli_image: notesco/notes-cli\n-    cli_image_tag: 2.0.0\n+    cli_image: notesco/notes-cli:2.0.0   # tag embedded — the wrapper uses NOTES_IMAGE verbatim\n+```\n+\n+---\n+\n+For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the action mounts that docker config read-only into the CLI container, so any registry the runner is already logged into just works. With no docker config on the runner, the pull is anonymous.\n+\n+```yaml\n+- name: Log in to GHCR\n+  uses: docker/login-action@v3\n+  with:\n+    registry: ghcr.io\n+    username: ${{ github.actor }}\n+    password: ${{ secrets.GITHUB_TOKEN }}\n+\n+- name: Build ADG from a private registry image\n+  uses: notes-co/action-notes-survey@v5\n+  with:\n+    subject: my-app\n+    image: ghcr.io/org/my-app:v1.2.3\n+    notes_pass: ${{ secrets.NOTES_PASS }}\n ```\n \n ---\n@@ -44,7 +80,8 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n | Name | Required | Default | Description |\n |------|----------|---------|-------------|\n | `subject` | Yes | *(none)* | Label identifying the system being surveyed (shown on the dashboard) |\n-| `input` | No | `.` | Path to local files to survey |\n+| `input` | No | `.` | Path to local files to survey (ignored when `image` is set) |\n+| `image` | No | *(none)* | OCI/Docker registry image to survey instead of local files, e.g. `ghcr.io/org/app:v1` (bare names like `nginx` are expanded by the CLI). Private registries work via the runner's docker login (e.g. `docker/login-action`) |\n | `notes_pass` | Yes | *(none)* | Notes Pass (JWT) from your Notes Co project |\n | `cli_image` | No | `notesco/notes-cli` | Docker image to run the CLI |\n | `cli_image_tag` | No | `latest` | Tag of the Docker image to run the CLI |\n@@ -56,3 +93,4 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n \n - Docker must be available in the GitHub Actions runner.\n - `notesco/notes-cli` image must be publicly accessible.\n+- Image mode requires notes-cli **v1.7.0+** (the `oras` binary and `notes survey image` command are baked into the CLI image since then)."
+        },
+        {
+          "filename": "action.yml",
+          "status": "modified",
+          "additions": 12,
+          "deletions": 2,
+          "patch": "@@ -6,9 +6,13 @@ inputs:\n     description: \"Label identifying the system being surveyed (shown on the dashboard)\"\n     required: true\n   input:\n-    description: \"Path to local files to survey\"\n+    description: \"Path to local files to survey (ignored when `image` is set)\"\n     required: false\n     default: \".\"\n+  image:\n+    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires notes-cli v1.7.0+ (see README).\"\n+    required: false\n+    default: \"\"\n   notes_pass:\n     description: \"Notes Pass token\"\n     required: true\n@@ -35,8 +39,14 @@ runs:\n     - name: Run Notes Co Survey\n       shell: bash\n       run: |\n+        set -e\n         export NOTES_PASS=\"${{ inputs.notes_pass }}\"\n         export NOTES_IMAGE=\"${{ inputs.cli_image }}\"\n         export NOTES_IMAGE_TAG=\"${{ inputs.cli_image_tag }}\"\n+        IMG=\"${{ inputs.image }}\"\n \n-        ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+        if [ -n \"$IMG\" ]; then\n+          ~/.local/bin/notes survey image \"$IMG\" --subject \"${{ inputs.subject }}\" --log-level=\"${{ inputs.log_level }}\"\n+        else\n+          ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+        fi"
+        }
+      ]
+    },
+    "/repos/notes-co/action-notes-survey/commits/f5369383b27f7a8fb168d634aadef0afd4e0aec8/pulls": [
+      {
+        "number": 29,
+        "title": "feat: add image-mode survey via notes survey image",
+        "merged_at": "2026-09-15T14:54:32Z",
+        "merge_commit_sha": "f5369383b27f7a8fb168d634aadef0afd4e0aec8",
+        "base": {
+          "ref": "main",
+          "repo": {
+            "default_branch": "main"
+          }
+        }
+      }
+    ],
+    "/repos/notes-co/action-notes-survey/compare/1201766df1693916efba889a6bf7c9d0f59a41b7...f5369383b27f7a8fb168d634aadef0afd4e0aec8": {
+      "status": "ahead",
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 41,
+          "deletions": 3,
+          "patch": "@@ -2,17 +2,22 @@\n \n A composite GitHub Action that runs the Notes Co Survey CLI to create an Artifact Dependency Graph (ADG) from a directory of built files (e.g., Rust binaries, OCI layout (unpacked) Docker images, JAR files), then uploads the resulting ADG to the Notes Co servers.\n \n+It also supports **image mode**: survey an image from an OCI/Docker registry directly, no local files required. The CLI's `notes survey image` command pulls the image and surveys the pulled OCI layout.\n+\n ---\n \n ### Features\n \n - Surveys a directory with the `notesco/notes-cli` container and produces an ADG\n - Uploads the generated ADG to your Notes Co project using a Notes Pass (JWT)\n+- Image mode: fetches an image from a public or private OCI/Docker registry using ORAS and surveys it\n \n ---\n \n ### Usage\n \n+Artifact files:\n+\n ```yaml\n - name: Build ADG\n   uses: notes-co/action-notes-survey@v5\n@@ -22,6 +27,18 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n     notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n ```\n \n+When `image` is set, the action surveys that image instead of local files (the `input` directory is ignored). The CLI expands bare references to their fully-qualified form (`nginx` → `docker.io/library/nginx:latest`, `user/app:tag` → `docker.io/user/app:tag`), pulls the image into an OCI layout with the `oras` baked into the CLI's container image, and surveys the layer blobs.\n+\n+\n+```yaml\n+- name: Build ADG\n+  uses: notes-co/action-notes-survey@v5\n+  with:\n+    subject: imagename                        # Optional: defaults to image\n+    image: mycompany/imagename:tag            # Required\n+    notes_pass: ${{ secrets.NOTES_PASS }}     # Required\n+```\n+\n ---\n \n ### Optional: pin or override the CLI image\n@@ -33,8 +50,27 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n     subject: wasabi\n     input: ${{ github.workspace }}/target\n     notes_pass: ${{ secrets.NOTES_PASS }}\n-    cli_image: notesco/notes-cli\n-    cli_image_tag: 2.0.0\n+    cli_image: notesco/notes-cli:2.0.0   # tag embedded — the wrapper uses NOTES_IMAGE verbatim\n+```\n+\n+---\n+\n+For a private registry, log into it in a prior step (e.g. `docker/login-action`, which writes the runner's `~/.docker/config.json`); the action mounts that docker config read-only into the CLI container, so any registry the runner is already logged into just works. With no docker config on the runner, the pull is anonymous.\n+\n+```yaml\n+- name: Log in to GHCR\n+  uses: docker/login-action@v3\n+  with:\n+    registry: ghcr.io\n+    username: ${{ github.actor }}\n+    password: ${{ secrets.GITHUB_TOKEN }}\n+\n+- name: Build ADG from a private registry image\n+  uses: notes-co/action-notes-survey@v5\n+  with:\n+    subject: my-app\n+    image: ghcr.io/org/my-app:v1.2.3\n+    notes_pass: ${{ secrets.NOTES_PASS }}\n ```\n \n ---\n@@ -44,7 +80,8 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n | Name | Required | Default | Description |\n |------|----------|---------|-------------|\n | `subject` | Yes | *(none)* | Label identifying the system being surveyed (shown on the dashboard) |\n-| `input` | No | `.` | Path to local files to survey |\n+| `input` | No | `.` | Path to local files to survey (ignored when `image` is set) |\n+| `image` | No | *(none)* | OCI/Docker registry image to survey instead of local files, e.g. `ghcr.io/org/app:v1` (bare names like `nginx` are expanded by the CLI). Private registries work via the runner's docker login (e.g. `docker/login-action`) |\n | `notes_pass` | Yes | *(none)* | Notes Pass (JWT) from your Notes Co project |\n | `cli_image` | No | `notesco/notes-cli` | Docker image to run the CLI |\n | `cli_image_tag` | No | `latest` | Tag of the Docker image to run the CLI |\n@@ -56,3 +93,4 @@ A composite GitHub Action that runs the Notes Co Survey CLI to create an Art\n \n - Docker must be available in the GitHub Actions runner.\n - `notesco/notes-cli` image must be publicly accessible.\n+- Image mode requires notes-cli **v1.7.0+** (the `oras` binary and `notes survey image` command are baked into the CLI image since then)."
+        },
+        {
+          "filename": "action.yml",
+          "status": "modified",
+          "additions": 12,
+          "deletions": 2,
+          "patch": "@@ -6,9 +6,13 @@ inputs:\n     description: \"Label identifying the system being surveyed (shown on the dashboard)\"\n     required: true\n   input:\n-    description: \"Path to local files to survey\"\n+    description: \"Path to local files to survey (ignored when `image` is set)\"\n     required: false\n     default: \".\"\n+  image:\n+    description: \"OCI/Docker registry image reference to survey (instead of local files), e.g. `ghcr.io/org/app:v1`. Requires notes-cli v1.7.0+ (see README).\"\n+    required: false\n+    default: \"\"\n   notes_pass:\n     description: \"Notes Pass token\"\n     required: true\n@@ -35,8 +39,14 @@ runs:\n     - name: Run Notes Co Survey\n       shell: bash\n       run: |\n+        set -e\n         export NOTES_PASS=\"${{ inputs.notes_pass }}\"\n         export NOTES_IMAGE=\"${{ inputs.cli_image }}\"\n         export NOTES_IMAGE_TAG=\"${{ inputs.cli_image_tag }}\"\n+        IMG=\"${{ inputs.image }}\"\n \n-        ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+        if [ -n \"$IMG\" ]; then\n+          ~/.local/bin/notes survey image \"$IMG\" --subject \"${{ inputs.subject }}\" --log-level=\"${{ inputs.log_level }}\"\n+        else\n+          ~/.local/bin/notes survey inventory \"${{ inputs.subject }}\" \"${{ inputs.input }}\" --log-level=\"${{ inputs.log_level }}\"\n+        fi"
+        }
+      ]
+    }
+  }
+}
