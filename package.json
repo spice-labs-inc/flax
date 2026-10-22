@@ -1,0 +1,38 @@
+{
+  "name": "@flax/explorer",
+  "version": "0.1.4",
+  "description": "The living map of what a scenario library proves: a page built from a workspace's scenarios and results, and a service that follows runs live",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spice-labs-inc/flax",
+    "directory": "packages/explorer"
+  },
+  "type": "module",
+  "bin": {
+    "flax-explorer": "./dist-service/server/cli.js"
+  },
+  "flax": "dist-service/server/cli.js",
+  "files": [
+    "dist-service",
+    "src",
+    "static",
+    "svelte.config.js",
+    "vite.config.ts",
+    "tsconfig.json",
+    "deploy"
+  ],
+  "dependencies": {
+    "@cucumber/gherkin": "42.0.1",
+    "@cucumber/messages": "34.2.1",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "svelte": "^5.57.2",
+    "vite": "^8.3.3",
+    "yaml": "^2.9.1",
+    "@flax/contract": "git+https://github.com/spice-labs-inc/flax.git#contract-v0.1.4",
+    "@flax/core": "git+https://github.com/spice-labs-inc/flax.git#core-v0.1.4",
+    "@flax/scenarios": "git+https://github.com/spice-labs-inc/flax.git#scenarios-v0.1.4"
+  }
+}
