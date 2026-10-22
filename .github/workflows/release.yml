@@ -1,0 +1,77 @@
+name: Release
+
+# When a GitHub release vX.Y.Z is published (gh release create vX.Y.Z
+# --generate-notes): build every package and publish each as a prebuilt
+# package on its own tag <package>-vX.Y.Z of this repository
+# (scripts/publish-packages.sh), then append the dependency lines consumers
+# paste to the release notes. Nothing goes to a registry.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Validate tag
+        id: validate
+        env:
+          # tag_name is "vX.Y.Z" (no refs/tags/ prefix) for the release event.
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "${TAG_NAME}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag does not match semantic version pattern v*.*.* (got: ${TAG_NAME})" >&2
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+
+      - name: Publish the package tags
+        env:
+          VERSION: ${{ steps.validate.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          scripts/publish-packages.sh "$VERSION" --push origin | tee publish.log
+
+      - name: Add the dependency lines to the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          {
+            gh release view "$TAG_NAME" --json body --jq .body
+            echo
+            echo "Prebuilt packages for $TAG_NAME, each on its own tag of this repository. Depend on them with:"
+            echo
+            echo '```json'
+            sed -n '/^Depend on these with:/,$p' publish.log | tail -n +2 | sed 's/^  //'
+            echo '```'
+            echo
+            echo "Built from commit ${GITHUB_SHA}."
+          } > release-notes.md
+          gh release edit "$TAG_NAME" --notes-file release-notes.md

@@ -114,7 +114,7 @@ Copy `demo/` to a repository of your own, replace notes-co with your organizatio
 
 ## 9. Depending on flax from your own workspace
 
-Every release of this repository (a tag `vX.Y.Z`) publishes each package, built, on a tag of its own: `core-vX.Y.Z`, `contract-vX.Y.Z`, `agents-vX.Y.Z`, `atlas-vX.Y.Z`, `scenarios-vX.Y.Z`, `explorer-vX.Y.Z` and `cli-vX.Y.Z`. The release notes list the lines to paste. A workspace depends on them as git dependencies, so no registry is involved:
+Every GitHub release of this repository (`gh release create vX.Y.Z --generate-notes`) publishes each package, built, on a tag of its own: `core-vX.Y.Z`, `contract-vX.Y.Z`, `agents-vX.Y.Z`, `atlas-vX.Y.Z`, `scenarios-vX.Y.Z`, `explorer-vX.Y.Z` and `cli-vX.Y.Z`. The release notes list the lines to paste. A workspace depends on them as git dependencies, so no registry is involved:
 
 ```json
 "dependencies": {
@@ -129,7 +129,7 @@ The packages depend on each other the same way, so a pnpm workspace that install
 git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
 ```
 
-The agents package writes that step into the workflows it generates when `flax.yml` names the secret (`agents.packagesTokenSecret`). The publishing itself is `scripts/publish-packages.sh`, run by the Publish packages workflow on each release tag.
+The agents package writes that step into the workflows it generates when `flax.yml` names the secret (`agents.packagesTokenSecret`). The publishing itself is `scripts/publish-packages.sh`, run by the Release workflow when a release is published.
 
 ## Planned, as of the lane logs
 
