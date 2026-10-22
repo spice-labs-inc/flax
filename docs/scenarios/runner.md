@@ -13,6 +13,7 @@ Requests to your services carry an identity header and a user agent the workspac
 What runs where is one declarative policy per environment in the workspace, not a scattering of conditions:
 
 - `excludeTags`: tags a scheduled run never runs in this environment (an internal admin surface's tag on the reference environment, for instance). The runner skips them, the explorer explains them in the same words, and `tagLabels` gives each tag a phrase.
+- `allowTags`: the exception: a scenario carrying any of these tags runs in this environment even if it also carries an excluded tag, and the explorer gives it no reason for being left out. With `excludeTags: ["@admin"]` and `allowTags: ["@admin:live"]` on `live`, the one admin scenario tagged `@admin @admin:live` runs there; `@admin:live` is an ordinary tag with no meaning of its own.
 - `fixtures`: `always` (runs create fixtures here and the page assumes so), `when-asked` (only a run started with `--fixtures`, so the page assumes it only after seeing one) or `never` (the runner refuses `--fixtures`).
 
 Beside the policy, tags on scenarios say what each one needs:

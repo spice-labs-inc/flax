@@ -8,6 +8,7 @@ import {
 import type {
   CadenceConfig,
   EnvConfig,
+  GlossaryEntry,
   KindNaming,
   ScenariosConfig,
   SurfaceConfig,
@@ -50,6 +51,7 @@ export function fromWorkspace(ws: Workspace): ScenariosConfig {
       label: env.label ?? env.id,
       hosts: rec(e["hosts"]),
       excludeTags: list(e["excludeTags"]),
+      allowTags: list(e["allowTags"]),
       fixtures:
         e["fixtures"] === "never" || e["fixtures"] === false
           ? "never"
@@ -190,6 +192,24 @@ export function fromWorkspace(ws: Workspace): ScenariosConfig {
       title: str(explorer["title"], `${ws.org} scenarios`),
       description: str(explorer["description"], ""),
     },
+    glossary: (Array.isArray(explorer["glossary"])
+      ? explorer["glossary"]
+      : []
+    ).flatMap((g): GlossaryEntry[] =>
+      isRecord(g) &&
+      typeof g["term"] === "string" &&
+      typeof g["text"] === "string"
+        ? [
+            {
+              term: g["term"],
+              text: g["text"],
+              ...(typeof g["section"] === "string"
+                ? { section: g["section"] }
+                : {}),
+            },
+          ]
+        : [],
+    ),
     tagLabels: rec(r["tagLabels"]),
     recorder: recorderConfig(recorder, name),
     cadences: cadencesConfig(

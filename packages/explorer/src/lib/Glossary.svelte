@@ -3,6 +3,11 @@
   import { hrefOf } from "$lib/nav.ts";
   import Mark from "$lib/Mark.svelte";
   import {
+    glossaryRuns,
+    glossarySections,
+    PROJECT_SECTION,
+  } from "$lib/glossary.ts";
+  import {
     CONFIG,
     ELSEWHERE,
     ENVS,
@@ -28,7 +33,24 @@
   const editionsProse = editionTitles.length
     ? `: ${editionTitles.length === 1 ? editionTitles[0] : `${editionTitles.slice(0, -1).join(", ")} and ${editionTitles[editionTitles.length - 1]}`}`
     : "";
+  const HEADINGS = ["Product", "People", "Marks"];
+  const own = glossarySections(CONFIG.glossary, HEADINGS);
 </script>
+
+{#snippet entries(section: string)}
+  {#each own[section] ?? [] as entry (entry.term)}
+    <dt>{entry.term}</dt>
+    <dd>
+      {#each glossaryRuns(entry.text) as run, i (i)}
+        {#if "href" in run}
+          <a href={run.href}>{run.text}</a>
+        {:else}
+          {run.text}
+        {/if}
+      {/each}
+    </dd>
+  {/each}
+{/snippet}
 
 <main class="page">
   <p class="statement">Glossary</p>
@@ -98,6 +120,7 @@
         A licensed variant of the product{editionsProse}. The same command
         appears once per edition that offers it, named by its edition.
       </dd>
+      {@render entries("Product")}
     </dl>
   </section>
 
@@ -131,6 +154,7 @@
         Items no journey names yet. They are real and may be verified, but
         nobody's path runs through them.
       </dd>
+      {@render entries("People")}
     </dl>
   </section>
 
@@ -155,8 +179,18 @@
       <dd>Feature not built yet</dd>
       <dt><Mark kind="elsewhere" size={14} /></dt>
       <dd>{ELSEWHERE}, rather than here</dd>
+      {@render entries("Marks")}
     </dl>
   </section>
+
+  {#if own[PROJECT_SECTION]?.length}
+    <section>
+      <h2>{PROJECT_SECTION}</h2>
+      <dl>
+        {@render entries(PROJECT_SECTION)}
+      </dl>
+    </section>
+  {/if}
 </main>
 
 <style>

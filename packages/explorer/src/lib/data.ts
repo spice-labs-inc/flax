@@ -43,14 +43,15 @@ export function surfaceConfigOf(name: string): SurfaceConfig | undefined {
 export function byEnv<T>(f: (env: Env, ei: number) => T): Record<Env, T> {
   return Object.fromEntries(ENVS.map((e, i) => [e, f(e, i)])) as Record<Env, T>;
 }
-/** Whether a scenario with these tags is left out of an env by the config.s tag policy. */
+/** Whether a scenario with these tags is left out of an env by the config.s tag policy: an excluded tag and no allowed one. */
 export function excludedOn(
   tags: readonly string[],
   env: Env,
 ): string | undefined {
-  return CONFIG.envs
-    .find((e) => e.name === env)
-    ?.excludeTags.find((t) => tags.includes(t));
+  const policy = CONFIG.envs.find((e) => e.name === env);
+  if (!policy || policy.allowTags.some((t) => tags.includes(t)))
+    return undefined;
+  return policy.excludeTags.find((t) => tags.includes(t));
 }
 
 /** The states a mark or a hex face can show: shape and color carry the state. */

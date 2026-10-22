@@ -10,11 +10,16 @@ environments:
   - test
 scenarios:
   envs:
-    live: { hosts: { api: https://api.example }, excludeTags: ["@admin"], fixtures: never }
+    live: { hosts: { api: https://api.example }, excludeTags: ["@admin"], allowTags: ["@admin:live"], fixtures: never }
   surfaces:
     - { name: web, role: ui, linkHost: web }
 explorer:
   title: Notes Scenarios
+  glossary:
+    - { term: Notebook, text: A customer's collection of notes, section: Product }
+    - { term: Pin, text: A note kept at the top of its notebook. }
+    - { term: Nowhere, text: Skipped, section: Not a heading }
+    - { text: No term }
 `;
 
   it("takes the environments from the shared list, in order, with the per-env detail from its own section", () => {
@@ -25,6 +30,21 @@ explorer:
     ]);
     expect(c.envs[0]?.hosts).toEqual({ api: "https://api.example" });
     expect(c.envs[0]?.excludeTags).toEqual(["@admin"]);
+    expect(c.envs[0]?.allowTags).toEqual(["@admin:live"]);
+    expect(c.envs[1]?.allowTags).toEqual([]);
+  });
+
+  it("reads the project's glossary entries from the explorer section, in order, each with a term and a text", () => {
+    const c = parseConfig(text, "/ws");
+    expect(c.glossary).toEqual([
+      {
+        term: "Notebook",
+        text: "A customer's collection of notes",
+        section: "Product",
+      },
+      { term: "Pin", text: "A note kept at the top of its notebook." },
+      { term: "Nowhere", text: "Skipped", section: "Not a heading" },
+    ]);
   });
 
   it("fills the defaults from the shared keys and the explorer section", () => {

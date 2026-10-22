@@ -113,6 +113,8 @@ scenarios:
         api: https://api.notes.example
         web: https://notes.example
       excludeTags: ["@admin"]
+      # An @admin scenario tagged @admin:live runs on live all the same.
+      allowTags: ["@admin:live"]
       fixtures: never
     test:
       hosts:
@@ -180,6 +182,10 @@ scenarios:
 explorer:
   title: Notes Scenarios
   description: What the Notes product verifies for its users on live and test, feature by feature.
+  # The product's own glossary entries; `section` joins a built-in heading (Product, People, Marks), the rest go under This project.
+  glossary:
+    - { term: Notebook, text: "A customer's collection of notes, shared with the people they invite.", section: Product }
+    - { term: Pin, text: "A note kept at the top of its notebook; see [Features](/features)." }
   # Uncomment to read scheduled runs' results from GitHub workflow artifacts (needs EXPLORER_GH_APP_ID and EXPLORER_GH_APP_KEY):
   # results:
   #   repo: notes-co/notes-scenarios

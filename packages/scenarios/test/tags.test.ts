@@ -75,6 +75,55 @@ describe("the tag expression", () => {
   });
 });
 
+describe("a tag the env allows past its excludeTags", () => {
+  const always = () => true;
+  const withAllow = parseConfig(`
+org: notes-co
+environments: [live, test]
+scenarios:
+  envs:
+    live: { excludeTags: ["@admin", "@slow"], allowTags: ["@admin:live"], fixtures: never }
+  surfaces:
+    - { name: web }
+`);
+
+  it("lets the excluded tags through in the tag expression when the scenario carries it", () => {
+    expect(
+      tagExpression("live", undefined, false, false, undefined, withAllow),
+    ).toBe(
+      "not @planned and not @local and ((not @env:live and not @env:test) or @env:live) and ((not @admin and not @slow) or @admin:live) and not @fixture and not @dispatch",
+    );
+    expect(
+      tagExpression("test", undefined, false, false, undefined, withAllow),
+    ).toBe(
+      "not @planned and not @local and ((not @env:live and not @env:test) or @env:test) and not @fixture and not @dispatch",
+    );
+  });
+
+  it("gives no reason for leaving the scenario out, so it applies to the env", () => {
+    expect(leftOutBy(["@admin"], "live", false, withAllow)).toEqual({
+      kind: "excluded",
+      tag: "@admin",
+    });
+    expect(
+      leftOutBy(["@admin", "@admin:live"], "live", false, withAllow),
+    ).toBeUndefined();
+    expect(
+      leftOutBy(
+        ["@admin", "@admin:live", "@fixture"],
+        "live",
+        false,
+        withAllow,
+      ),
+    ).toEqual({ kind: "fixture" });
+    expect(envsForTags(["@admin"], always, withAllow)).toEqual(["test"]);
+    expect(envsForTags(["@admin", "@admin:live"], always, withAllow)).toEqual([
+      "live",
+      "test",
+    ]);
+  });
+});
+
 describe("a cadence scenario left out of ordinary runs", () => {
   const always = () => true;
 

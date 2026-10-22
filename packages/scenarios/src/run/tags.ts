@@ -1,11 +1,16 @@
-import type { CadenceConfig, ScenariosConfig } from "@flax/contract/config";
+import type {
+  CadenceConfig,
+  EnvConfig,
+  ScenariosConfig,
+} from "@flax/contract/config";
 import { config, envConfig, envNames } from "../config.ts";
 import type { Env } from "../lib/types.ts";
 
 /**
- * Never planned scenarios, never local ones, never the tags the env's policy excludes, fixture and
- * workflow-dispatch scenarios only when asked, and a scenario tagged with environments runs only there.
- * A run for a cadence takes only the scenarios with its tag; any other run leaves out every cadence's.
+ * Never planned scenarios, never local ones, never the tags the env's policy excludes (unless the scenario
+ * carries one of the env's allowTags), fixture and workflow-dispatch scenarios only when asked, and a
+ * scenario tagged with environments runs only there. A run for a cadence takes only the scenarios with its
+ * tag; any other run leaves out every cadence's.
  */
 export function tagExpression(
   env: Env,
@@ -23,13 +28,24 @@ export function tagExpression(
     "not @planned",
     "not @local",
     `((${envTags}) or @env:${env})`,
-    ...envConfig(env, c).excludeTags.map((t) => `not ${t}`),
+    ...policyClause(envConfig(env, c)),
     ...(only ? [only.tag] : c.cadences.map((k) => `not ${k.tag}`)),
     ...(fixtures ? [] : ["not @fixture"]),
     ...(dispatch ? [] : ["not @dispatch"]),
     ...(extra ? [`(${extra})`] : []),
   ].join(" and ");
 }
+
+/** The env's excluded tags as clauses; with allowTags, one clause that an allowed tag satisfies instead. */
+function policyClause({ excludeTags, allowTags }: EnvConfig): string[] {
+  const out = excludeTags.map((t) => `not ${t}`);
+  if (out.length === 0 || allowTags.length === 0) return out;
+  return [`((${out.join(" and ")}) or ${allowTags.join(" or ")})`];
+}
+
+/** Whether the env's allowTags let a scenario with these tags past its excludeTags. */
+const allowedOn = (tags: string[], e: EnvConfig): boolean =>
+  e.allowTags.some((t) => tags.includes(t));
 
 /** The configured cadence by name, or an error that lists the names flax.yml gives. */
 export function cadenceNamed(
@@ -67,8 +83,8 @@ export function cadenceProblem(
 
 /**
  * Why a scheduled run leaves a scenario with these tags out of an env: pinned to other envs (by its own tags or
- * by the envs its cadence runs in), a tag the env excludes, a fixture where fixtures never run, or a cadence
- * whose own runs take it there.
+ * by the envs its cadence runs in), a tag the env excludes and no tag it allows, a fixture where fixtures never
+ * run, or a cadence whose own runs take it there.
  */
 export type LeftOut =
   | { kind: "pinned"; envs: Env[] }
@@ -85,9 +101,12 @@ export function leftOutBy(
   const pinned = envNames(c).filter((e) => tags.includes(`@env:${e}`));
   if (pinned.length && !pinned.includes(env))
     return { kind: "pinned", envs: pinned };
-  const excluded = envConfig(env, c).excludeTags.find((t) => tags.includes(t));
+  const policy = envConfig(env, c);
+  const excluded = allowedOn(tags, policy)
+    ? undefined
+    : policy.excludeTags.find((t) => tags.includes(t));
   if (excluded) return { kind: "excluded", tag: excluded };
-  const fixtures = envConfig(env, c).fixtures;
+  const fixtures = policy.fixtures;
   if (
     tags.includes("@fixture") &&
     (fixtures === "never" || (fixtures === "when-asked" && !envRunsFixtures))

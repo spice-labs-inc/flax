@@ -14,6 +14,7 @@ scenarios:
     prod:
       hosts: { api: https://api.example, dashboard: https://app.example }
       excludeTags: ["@admin"]
+      allowTags: ["@admin:prod"]
       fixtures: when-asked
     staging:
       hosts: { api: https://api.staging.example, dashboard: https://app.staging.example, admin: https://admin.staging.example }

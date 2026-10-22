@@ -9,6 +9,8 @@ export interface EnvConfig {
   hosts: Record<string, string>;
   /** Tags a scheduled run never runs in this env (the runner's tag policy and the page's reasons). */
   excludeTags: string[];
+  /** Tags that run here all the same: a scenario carrying one runs even if it also carries an excluded tag. */
+  allowTags: string[];
   /** Fixture scenarios here: `always` (runs create them and the page assumes so), `when-asked` (only a run started with --fixtures, so the page assumes it only after seeing one), `never` (the runner refuses --fixtures). */
   fixtures: "always" | "when-asked" | "never";
 }
@@ -122,12 +124,22 @@ export interface ScenariosConfig {
   timezone: string;
   /** K17 */
   branding: { title: string; description: string };
+  /** The project's own glossary entries, from the explorer section, in flax.yml order. */
+  glossary: GlossaryEntry[];
   /** K22 */
   tagLabels: Record<string, string>;
   /** K24 */
   recorder: RecorderConfig;
   /** Slower schedules, in flax.yml order; ordinary runs leave their scenarios out. */
   cadences: CadenceConfig[];
+}
+
+/** One glossary entry of the project's own; `section` names a built-in heading to join, else it lands under "This project". */
+export interface GlossaryEntry {
+  term: string;
+  /** Plain text; a link is written `[label](url)`. */
+  text: string;
+  section?: string;
 }
 
 /** Defaults for browser recordings (`flax scenarios run --record`); a scenario's video sidecar overrides pace and viewport. */
