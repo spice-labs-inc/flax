@@ -21,6 +21,7 @@ const files = (shots: unknown): Record<DataFileName, unknown> => ({
   "scenarios.json": { runs: [], scenarios: [], features: [] },
   "shots.json": shots,
   "board.json": { items: [], bugs: [] },
+  "usage.json": null,
 });
 
 describe("failure screenshots as files", () => {

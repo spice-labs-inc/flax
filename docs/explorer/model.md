@@ -65,9 +65,8 @@ Query parameters keep the rest: `?env=<id>` (every environment when absent), `?a
 
 ## The usage view
 
-When a real-usage file is given (see [data.md](data.md)), the map heats each API hex by how many real requests it had in the reference environment, keeps the verification in the hex's center, and lists the items customers use that fail somewhere, the ones customers use that are not verified in every environment yet, and the ones verified everywhere that nobody used. Without the file the view is hidden; the map never shows a missing file as zero use. The view ships as a plug-in point in the first version: the data file contract is published so an organization with its own usage aggregates can light it up.
+With `explorer.usage` on and a relay posting aggregates (see [usage.md](usage.md)), a hex used in the last few minutes is ringed in the color of who used it: outside use bright, the organization's own people muted, its own runs a faint trace. An item's panel and a feature's page say who used it and when, and the Now door lists what is used but not verified in that environment, apart from what the organization's own runs only reach. Without use the lines are absent; the map never shows missing use as zero.
 
 ## To confirm against the package
 
 - The sector layout for more than four environments, and the legend's wording.
-- Whether the usage view's page code ships in the first version or only its data file contract.

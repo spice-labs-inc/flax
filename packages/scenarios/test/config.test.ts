@@ -47,6 +47,35 @@ explorer:
     ]);
   });
 
+  it("keeps the usage view off unless the explorer section turns it on, with the reference environment and plain labels by default", () => {
+    expect(parseConfig(text, "/ws").usage).toBeNull();
+    const on = (usage: string) =>
+      parseConfig(`${text}  usage: ${usage}\n`, "/ws").usage;
+    expect(on("true")).toEqual({
+      env: "live",
+      labels: {
+        outside: "from outside",
+        internal: "our team",
+        runs: "our runs",
+      },
+      org: { one: "organization", many: "organizations" },
+      requestSurfaces: [],
+    });
+    expect(
+      on(
+        "{ env: test, labels: { internal: staff }, org: { one: team }, requestSurfaces: [cli], history: usage.json }",
+      ),
+    ).toEqual({
+      env: "test",
+      labels: { outside: "from outside", internal: "staff", runs: "our runs" },
+      org: { one: "team", many: "teams" },
+      requestSurfaces: ["cli"],
+      history: "usage.json",
+    });
+    expect(() => on("{ env: prod }")).toThrow(/explorer.usage.env names prod/);
+    expect(() => on("[live]")).toThrow(/true or a mapping/);
+  });
+
   it("fills the defaults from the shared keys and the explorer section", () => {
     const c = parseConfig(text, "/ws");
     expect(c.org).toBe("notes-co");

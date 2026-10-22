@@ -5,6 +5,7 @@ import {
   type DataFileName,
   type Manifest,
 } from "$lib/model.ts";
+import { USAGE_FILE } from "@flax/contract";
 import type { LayoutLoad } from "./$types";
 
 export const ssr = false;
@@ -57,6 +58,8 @@ async function fetched(
   const bodies = await Promise.all(
     DATA_FILES.map(async (name) => {
       const r = await fetch(`/data/${manifest.version}/${name}`);
+      // A data version built before usage.json existed has none: no usage history, the same as null.
+      if (r.status === 404 && name === USAGE_FILE) return [name, null] as const;
       if (!r.ok) throw new Error(`${name} answered ${r.status}.`);
       return [name, (await r.json()) as unknown] as const;
     }),

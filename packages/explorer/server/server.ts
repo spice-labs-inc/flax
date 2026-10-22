@@ -5,12 +5,21 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { Envelope } from "@cucumber/messages";
-import { isRecord, type PlannedScenario, type RunResult } from "@flax/contract";
+import {
+  isRecord,
+  isUsageHistory,
+  isUsageWindow,
+  usageHistoryProblem,
+  usageWindowProblem,
+  type PlannedScenario,
+  type RunResult,
+} from "@flax/contract";
 import { bearerMatches } from "./auth.ts";
 import { serveStatic } from "./static.ts";
 import type { Hub } from "./hub.ts";
 import { isScenarioId, runIdEnv } from "./ids.ts";
 import type { Log } from "./log.ts";
+import type { UsageStore } from "./usage.ts";
 import {
   InvalidStart,
   parseFinish,
@@ -39,6 +48,15 @@ export interface ServerDeps {
   log: Log;
   /** Writes the finished run into the results and rebuilds the data; the response does not wait for it. */
   onFinish: (run: LiveRun, finished: Finished) => void;
+  /** The usage plug-in, when flax.yml turns it on; without a token every usage call is refused. */
+  usage?:
+    | {
+        token: string | undefined;
+        store: UsageStore;
+        /** A new history arrived for this env. */
+        onHistory?: (env: string) => void;
+      }
+    | undefined;
   now?: () => number;
 }
 
@@ -149,11 +167,54 @@ export function explorerServer(
     for (const e of events) deps.hub.send(e.event, e.data);
   };
 
+  async function ingestUsage(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+  ): Promise<void> {
+    const kind = /^\/ingest\/usage\/(live|history)$/.exec(url.pathname)?.[1];
+    if (!kind) throw new HttpError(404, "no such ingest call");
+    const usage = deps.usage;
+    if (!usage) {
+      req.resume();
+      throw new HttpError(404, "usage is off: flax.yml has no explorer.usage");
+    }
+    if (req.method !== "POST") throw new HttpError(405, "POST only");
+    if (
+      !usage.token ||
+      !bearerMatches(req.headers.authorization, usage.token)
+    ) {
+      req.resume();
+      throw new HttpError(401, "no valid usage token");
+    }
+    const body = json(await readBody(req));
+    const envs = usage.store.envs;
+    if (kind === "live") {
+      if (!isUsageWindow(body, envs))
+        throw new HttpError(
+          400,
+          usageWindowProblem(body, envs) ?? "not a usage window",
+        );
+      deps.hub.send("usage", usage.store.ingestWindow(body, now()));
+      return send(res, 204);
+    }
+    if (!isUsageHistory(body, envs))
+      throw new HttpError(
+        400,
+        usageHistoryProblem(body, envs) ?? "not a usage history",
+      );
+    usage.store.ingestHistory(body);
+    usage.onHistory?.(body.env);
+    return send(res, 204);
+  }
+
   async function ingest(
     req: IncomingMessage,
     res: ServerResponse,
     url: URL,
   ): Promise<void> {
+    if (url.pathname.startsWith("/ingest/usage/"))
+      return ingestUsage(req, res, url);
     const m = /^\/ingest\/runs\/([^/]+)\/(start|messages|finish)$/.exec(
       url.pathname,
     );

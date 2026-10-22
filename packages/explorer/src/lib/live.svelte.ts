@@ -1,5 +1,7 @@
 import { invalidate } from "$app/navigation";
+import { usageLiveOf, type UsageLive } from "@flax/contract";
 import { byEnv, ENV_ORDER, ENVS, type Env, type EnvChoice } from "./data.ts";
+import { USE_ENV } from "./usage.ts";
 
 /** One scenario of a run in progress, as the explorer service streams it. */
 export interface LiveScenario {
@@ -171,6 +173,8 @@ class Live {
   /** Per run id, its scenarios by id. */
   scenarios = $state<Record<string, Record<string, LiveScenario>>>({});
   running = $state.raw<RunningWorkflow[]>([]);
+  /** Use over the last 24 hours, as the service last streamed it. */
+  usage = $state.raw<UsageLive | null>(null);
   /** The page's clock for "3 minutes ago" and the map's pulses; it ticks every 15 seconds while the stream is open. */
   clock = $state(Date.now());
   #tick: ReturnType<typeof setInterval> | undefined;
@@ -297,6 +301,15 @@ class Live {
     });
     on("running", (d) => (this.running = runningWorkflows(d)));
     on("data", (d) => this.#data(d));
+    on("usage", (d) => this.#usage(d));
+  }
+
+  #usage(d: unknown): void {
+    const u = usageLiveOf(d);
+    if (u?.env === USE_ENV) {
+      this.usage = u;
+      this.clock = Date.now();
+    }
   }
 
   #snapshot(d: unknown): void {
@@ -323,6 +336,7 @@ class Live {
           );
     this.scenarios = scen;
     this.running = runningWorkflows(d["running"]);
+    this.#usage(d["usage"]);
     this.#data(d["data"]);
   }
 

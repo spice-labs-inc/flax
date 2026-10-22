@@ -20,20 +20,24 @@ Defined in the same file; written by `flax scenarios run` into `results/<env>/<r
 
 ## The explorer data files
 
-Defined in the same file as `DATA_FILES` and one interface per file; written by the explorer's data build into `data/<version>/`, read by the page. `Manifest` (`version`, `builtAt`, optional `commit`), `CoverageFile` (with `envs` naming the order of every status string), `JourneysFile`, `HistoryFile` (snapshots with one character per item per environment), `ScenariosFile` (runs, scenario records, features), `ShotsFile` (screenshot id to image) and `BoardFile` (planned work with its open state). The field-by-field shapes are in [explorer/data.md](explorer/data.md). The usage file is a published shape with no writer in the package: the plug-in point for an organization's own usage aggregates.
+Defined in the same file as `DATA_FILES` and one interface per file; written by the explorer's data build into `data/<version>/`, read by the page. `Manifest` (`version`, `builtAt`, optional `commit`), `CoverageFile` (with `envs` naming the order of every status string), `JourneysFile`, `HistoryFile` (snapshots with one character per item per environment), `ScenariosFile` (runs, scenario records, features), `ShotsFile` (screenshot id to image) and `BoardFile` (planned work with its open state). The field-by-field shapes are in [explorer/data.md](explorer/data.md). `usage.json` (`UsageFile`) is null unless the workspace has a usage view.
 
 ## Live events and ingest
 
 Defined in the same file; emitted by the explorer service on `GET /live/events` and consumed by the page; the ingest side is what `flax scenarios run` pushes.
 
-- `LiveEventName`: `snapshot`, `run-started`, `scenario-started`, `scenario-finished`, `step-finished`, `run-finished`, `run-incomplete`, `data`, `heartbeat`.
+- `LiveEventName`: `snapshot`, `run-started`, `scenario-started`, `scenario-finished`, `step-finished`, `run-finished`, `run-incomplete`, `data`, `usage`, `heartbeat`.
 - `RunSummary` (extends `RunMeta`): the run's environment, id, start, workers, scenarios commit, the code host's run and attempt, planned count; then `state` (`running`, `finished`, `incomplete`), `total`, `passed`, `failed`, `finishedCount`, `gap`, `lastMessageAt`, optional `finishedAt`.
 - `LiveScenario` and `LiveScenarioDetail`: a scenario's live status (`running`, `retrying` or a scenario status), attempt, steps done and total, the step codes so far, and for the open scenario its steps with text, status and time, a message and a screenshot.
 - Ingest: `POST /ingest/runs/<run id>/start`, `/messages`, `/finish`, bearer token, run ids in the runner's shape, batches numbered by sequence.
 
+## Usage
+
+Defined in [`packages/contract/src/usage.ts`](../packages/contract/src/usage.ts); posted by a workspace's own relay, kept and streamed by the explorer service, read by the page. `USE_CLASSES` (`outside`, `internal`, `runs`), `UsageWindow` (`POST /ingest/usage/live`), `UsageHistory` (`POST /ingest/usage/history`), `UsageLive` (the `usage` event), `UsageFile` (`usage.json`), `ORG_HASH` (an organization only as a salted hash), and the checks `usageWindowProblem`, `usageHistoryProblem`, `usageLiveOf` and `usageFileOf`. See [explorer/usage.md](explorer/usage.md).
+
 ## Workspace configuration shapes
 
-Defined in [`packages/contract/src/config.ts`](../packages/contract/src/config.ts): the shapes the scenarios package and the explorer read from the workspace's `scenarios` and `explorer` sections. `EnvConfig` (name, label, hosts by key, `excludeTags`, `allowTags`, `fixtures` as `always`, `when-asked` or `never`), `SurfaceConfig` (name, title, `role` as `ui`, `service`, `site` or `other`, the environments it exists in, `singleHome`, `linkHost`, `kinds` naming, `pageKind` and `elementKind`, `islands`), `IslandSplit`, `KindNaming`, `CadenceConfig` (name, tag, the environments a run on that cadence runs in), `DatasetVocabulary` (persona types, stages, station kinds, editions), `GlossaryEntry` (term, text, optional section) and the whole `ScenariosConfig`. The shared keys (`org`, `github`, `environments`) are the core package's `Workspace` in `packages/core/src/workspace.ts`.
+Defined in [`packages/contract/src/config.ts`](../packages/contract/src/config.ts): the shapes the scenarios package and the explorer read from the workspace's `scenarios` and `explorer` sections. `EnvConfig` (name, label, hosts by key, `excludeTags`, `allowTags`, `fixtures` as `always`, `when-asked` or `never`), `SurfaceConfig` (name, title, `role` as `ui`, `service`, `site` or `other`, the environments it exists in, `singleHome`, `linkHost`, `kinds` naming, `pageKind` and `elementKind`, `islands`), `IslandSplit`, `KindNaming`, `CadenceConfig` (name, tag, the environments a run on that cadence runs in), `DatasetVocabulary` (persona types, stages, station kinds, editions), `GlossaryEntry` (term, text, optional section), `UsageConfig` (the usage view's environment, labels, organization words, request surfaces and history file) and the whole `ScenariosConfig`. The shared keys (`org`, `github`, `environments`) are the core package's `Workspace` in `packages/core/src/workspace.ts`.
 
 ## Run artifacts
 

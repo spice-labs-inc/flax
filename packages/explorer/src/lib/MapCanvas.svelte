@@ -37,6 +37,8 @@
   import { verdictLines } from "./verdict.ts";
   import { shortCount } from "./counts.ts";
   import { sectorPoints } from "./glyph.ts";
+  import { PULSE_WORDS } from "./usage.ts";
+  import type { UseClass } from "@flax/contract";
 
   let {
     model,
@@ -49,6 +51,7 @@
     focus,
     flyKey,
     lens = "all",
+    used = new Map<number, UseClass>(),
     world = $bindable(null),
     surfaces,
     items,
@@ -78,6 +81,8 @@
     flyKey: number;
     /** "orphans" dims every item some persona journey uses, "planned" dims everything built. */
     lens?: "all" | "orphans" | "planned";
+    /** Items used in the last few minutes, by the first class that used them; their hexes pulse in its color. */
+    used?: Map<number, UseClass>;
     world?: World | null;
     /** The islands and items this level of the map draws: the product, or one holder's contents. */
     surfaces: SurfaceInfo[];
@@ -132,6 +137,7 @@
     issue: string;
     none: string;
     never: string;
+    use: Record<UseClass, string>;
   }
 
   const WAVE_MS = 900;
@@ -216,6 +222,11 @@
       issue: v("--issue"),
       none: v("--none"),
       never: v("--never"),
+      use: {
+        outside: v("--use-outside"),
+        internal: v("--use-internal"),
+        runs: v("--use-runs"),
+      },
     };
     glow = document.createElement("canvas");
     glow.width = glow.height = 64;
@@ -910,6 +921,31 @@
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
+    if (used.size > 0) {
+      // Use rings each hex outside its edge: outside use bright, our own people muted, our runs a faint trace.
+      const beat = reduceMotion() ? 1 : 0.5 + 0.5 * Math.sin(now / 700);
+      const rings: Record<UseClass, Path2D> = {
+        outside: new Path2D(),
+        internal: new Path2D(),
+        runs: new Path2D(),
+      };
+      for (const [idx, cls] of used) {
+        const c = w.cellOf.get(idx);
+        if (c) hexPath(rings[cls], c.wx, c.wy, HEX * (1.04 + beat * 0.14));
+      }
+      const look: Record<UseClass, { alpha: number; width: number }> = {
+        outside: { alpha: 0.7 + 0.3 * beat, width: 3 },
+        internal: { alpha: 0.6 + 0.3 * beat, width: 2.2 },
+        runs: { alpha: 0.3 + 0.2 * beat, width: 1.4 },
+      };
+      for (const cls of ["runs", "internal", "outside"] as const) {
+        ctx.globalAlpha = look[cls].alpha;
+        ctx.strokeStyle = colors.use[cls];
+        ctx.lineWidth = (look[cls].width + beat) / k;
+        ctx.stroke(rings[cls]);
+      }
+      ctx.globalAlpha = 1;
+    }
     if (pulse) {
       const t = (now - pulse.t0) / 2400;
       const c = pulse.cell;
@@ -1162,7 +1198,10 @@
 
   // Running scenarios' hexes breathe at a few frames a second, which a whole-map redraw can afford.
   $effect(() => {
-    if ((running.size === 0 && alert.size === 0) || reduceMotion()) {
+    if (
+      (running.size === 0 && alert.size === 0 && used.size === 0) ||
+      reduceMotion()
+    ) {
       untrack(() => draw());
       return;
     }
@@ -1231,6 +1270,7 @@
   $effect(() => {
     void env;
     void lens;
+    void used;
     void spot;
     void ties;
     draw();
@@ -1317,6 +1357,12 @@
           </p>
         {/if}
       {/if}
+      {#if used.has(tip.cell.item.idx)}
+        {@const cls = used.get(tip.cell.item.idx) ?? "outside"}
+        <p class="use">
+          <i class="ring {cls}"></i>{PULSE_WORDS[cls]}.
+        </p>
+      {/if}
     </div>
   {/if}
 </div>
@@ -1382,6 +1428,27 @@
   .tip .why b {
     display: inline;
     font-size: inherit;
+  }
+  .use {
+    margin: 6px 0 0;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: var(--ink-2);
+  }
+  .ring {
+    width: 10px;
+    height: 10px;
+    flex: none;
+    border-radius: 50%;
+    box-sizing: border-box;
+    border: 2px solid var(--use-outside);
+  }
+  .ring.internal {
+    border-color: var(--use-internal);
+  }
+  .ring.runs {
+    border-color: var(--use-runs);
   }
   .envs {
     display: flex;

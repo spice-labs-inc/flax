@@ -59,6 +59,7 @@ The explorer:
 - [explorer/model.md](explorer/model.md): what the map shows and how to read it.
 - [explorer/data.md](explorer/data.md): every data file and its contract.
 - [explorer/deploy.md](explorer/deploy.md): the page, the service, ingest and the compose example.
+- [explorer/usage.md](explorer/usage.md): the usage view, and the contract a workspace's own relay posts to it.
 
 ## Conventions in these pages
 

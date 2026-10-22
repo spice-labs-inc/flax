@@ -16,11 +16,13 @@ A scenario run with the explorer's URL and ingest token set pushes its progress:
 - `POST /ingest/runs/<run id>/messages` with batches of the runner's messages, each envelope numbered;
 - `POST /ingest/runs/<run id>/finish`.
 
+A workspace with the usage view on (`explorer.usage`) also takes its relay's aggregates on `POST /ingest/usage/live` and `POST /ingest/usage/history` with its own token; see [usage.md](usage.md).
+
 The service checks the bearer token in constant time, accepts only run ids in the runner's shape, deduplicates batches by sequence number, and appends to `live/<run id>.ndjson`. A run that goes quiet is marked `incomplete` after a grace period; a batch gap is flagged on the run summary. The push side never slows or fails a run (see [../scenarios/runner.md](../scenarios/runner.md)).
 
 ## The event stream
 
-`GET /live/events` is a server-sent events stream: a `snapshot` first, then `run-started`, `scenario-started`, `step-finished`, `scenario-finished`, `run-finished`, `run-incomplete`, `heartbeat`, and `data` when a new data version is built. `GET /live/state` is the same snapshot as JSON. `GET /healthz` answers for health checks. Behind a reverse proxy, the stream needs buffering off and a long idle timeout; the service sends a comment line first so the headers flush through proxies that wait for a body.
+`GET /live/events` is a server-sent events stream: a `snapshot` first, then `run-started`, `scenario-started`, `step-finished`, `scenario-finished`, `run-finished`, `run-incomplete`, `heartbeat`, `data` when a new data version is built, and `usage` when a relay sends a window. `GET /live/state` is the same snapshot as JSON. `GET /healthz` answers for health checks. Behind a reverse proxy, the stream needs buffering off and a long idle timeout; the service sends a comment line first so the headers flush through proxies that wait for a body.
 
 ## Fallback to the code host
 
@@ -30,11 +32,12 @@ With `explorer.results` set in `flax.yml` (`repo`, `workflow`, `job`: the worksp
 
 | variable | default | what |
 |---|---|---|
-| `EXPLORER_STATE_DIR` | `/srv` | the state directory: `data/`, `results/`, `live/` |
+| `EXPLORER_STATE_DIR` | `/srv` | the state directory: `data/`, `results/`, `live/`, and `usage/` with the usage view on |
 | `EXPLORER_PORT` | `8081` | the service's port |
 | `EXPLORER_INGEST_TOKEN` | none | the bearer token runs push with; ingest is refused without it |
 | `EXPLORER_WORKSPACE` | the current directory | the workspace whose configuration, dataset and features the data build reads |
 | `EXPLORER_GH_APP_ID`, `EXPLORER_GH_APP_KEY` | none | the code host app for the fallback, with `explorer.results` in `flax.yml` |
+| `EXPLORER_USAGE_TOKEN` (or `EXPLORER_USAGE_TOKEN_FILE`) | none | the bearer token a usage relay posts with, with `explorer.usage` in `flax.yml`; usage calls are refused without it |
 | `EXPLORER_COMMIT` | set by the image | shown in the manifest |
 
 On the runner's side, `EXPLORER_URL` and `EXPLORER_INGEST_TOKEN` turn the push on.

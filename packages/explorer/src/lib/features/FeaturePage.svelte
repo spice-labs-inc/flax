@@ -41,6 +41,7 @@
   let stands = $derived(
     envs.map((e) => ({ env: e, ...model.featureState(f, e, route.snap) })),
   );
+  let use = $derived(model.featureLine(f.items, live.usage, live.clock));
   let blocks = $derived(scenarioBlocks(f.scenarios));
   let around = $derived(neighbors(model.featureGroups, f));
   let bugs = $derived(model.featureBugs(f));
@@ -135,6 +136,9 @@
         {/each}
       {/if}
     </ul>
+    {#if use}
+      <p class="use">{use}</p>
+    {/if}
   </section>
 
   {#snippet glyph(s: FeatureScenario)}
@@ -369,6 +373,10 @@
   .stands b {
     font-weight: 600;
     margin-right: 2px;
+  }
+  .use {
+    margin: 10px 0 0;
+    max-width: 75ch;
   }
   .scenarios li {
     padding: 8px 0;

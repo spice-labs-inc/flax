@@ -12,7 +12,9 @@ import { Poller } from "./poller.ts";
 import { readManifest, Rebuilder, type Manifest } from "./rebuild.ts";
 import { LiveRuns } from "./runs.ts";
 import { explorerServer, snapshot } from "./server.ts";
+import { setting } from "./setting.ts";
 import { prune, writePushedRun } from "./store.ts";
+import { UsageStore } from "./usage.ts";
 
 const env = process.env;
 const root = env["EXPLORER_DATASET_DIR"] ?? process.cwd();
@@ -29,6 +31,26 @@ for (const d of [dataDir, resultsDir, liveDir])
   mkdirSync(d, { recursive: true });
 
 if (!token) log("warn", "ingest off: EXPLORER_INGEST_TOKEN is not set");
+
+const usageConfig = config().usage;
+const usageToken = setting(env, "EXPLORER_USAGE_TOKEN") || undefined;
+/** The usage plug-in is optional: off unless flax.yml has explorer.usage, refusing every call without its token, and off when its folder cannot be made. */
+function openUsage(): UsageStore | undefined {
+  if (!usageConfig) return undefined;
+  if (!usageToken)
+    log("warn", "usage calls refused: EXPLORER_USAGE_TOKEN is not set");
+  try {
+    return new UsageStore(
+      join(state, "usage"),
+      config().envs.map((e) => e.name),
+      Date.now(),
+    );
+  } catch (e) {
+    log("warn", `usage off: ${(e as Error).message}`);
+    return undefined;
+  }
+}
+const usage = openUsage();
 
 /** The board file is optional: without one the map shows no open issues. */
 function readBoard(): BoardFile {
@@ -64,6 +86,7 @@ function makePoller(): Poller | undefined {
 const poller = makePoller();
 
 function buildInWorker(outDir: string, now: string): Promise<void> {
+  const usageHistory = usageConfig && usage?.history(usageConfig.env);
   const input: WorkerInput = {
     outDir,
     build: {
@@ -72,6 +95,7 @@ function buildInWorker(outDir: string, now: string): Promise<void> {
       commit,
       now,
       board: poller?.board ?? readBoard(),
+      ...(usageHistory ? { usage: usageHistory } : {}),
     },
   };
   return new Promise((resolve, reject) => {
@@ -98,6 +122,8 @@ const live = (): Record<string, unknown> => ({
   data: manifest ?? null,
   polling: poller !== undefined,
   running: poller?.running ?? [],
+  usage:
+    usageConfig && usage ? usage.summary(usageConfig.env, Date.now()) : null,
 });
 const hub = new Hub(() => snapshot(runs, live()));
 const rebuilder = new Rebuilder({
@@ -118,6 +144,14 @@ const server = explorerServer({
   log,
   static: { data: dataDir, site: siteDir },
   snapshotExtra: live,
+  usage: usage && {
+    token: usageToken,
+    store: usage,
+    onHistory: (e) => {
+      if (e === usageConfig?.env)
+        void rebuilder.request(`a new usage history for ${e}`);
+    },
+  },
   onFinish: (run, finished) => {
     try {
       writePushedRun(

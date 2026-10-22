@@ -5,8 +5,10 @@
   import ErrorFold from "$lib/now/ErrorFold.svelte";
   import FailingPanel from "$lib/now/FailingPanel.svelte";
   import Flips from "$lib/now/Flips.svelte";
+  import InUse from "$lib/now/InUse.svelte";
   import Statement from "$lib/now/Statement.svelte";
   import Unreached from "$lib/now/Unreached.svelte";
+  import { USAGE_ON } from "$lib/usage.ts";
   import { gapWords } from "$lib/verdict.ts";
 
   let { model, route }: { model: Model; route: Route } = $props();
@@ -61,6 +63,9 @@
       </section>
     {/if}
   {/each}
+  {#if USAGE_ON}
+    <div class="use"><InUse {model} {route} /></div>
+  {/if}
 </div>
 
 <style>

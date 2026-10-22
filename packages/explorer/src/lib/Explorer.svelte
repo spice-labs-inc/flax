@@ -39,6 +39,8 @@
   } from "./nav.ts";
   import type { View } from "./location.ts";
   import { sectorPath } from "./glyph.ts";
+  import { PULSE_WORDS } from "./usage.ts";
+  import { USE_CLASSES } from "@flax/contract";
 
   let {
     model,
@@ -159,6 +161,11 @@
   const sideMax = () => Math.max(SIDE_MIN, Math.round(window.innerWidth * 0.6));
   let sideUser = $state<number | null>(readSide());
   let sideW = $derived(sideUser ?? 480);
+  /** Hexes used in the last few minutes, by the first class that used them. */
+  let pulses = $derived(model.pulses(live.usage, live.clock));
+  let pulseKinds = $derived(
+    USE_CLASSES.filter((c) => [...pulses.values()].includes(c)),
+  );
   /** The map's lens for the door on show: Planned dims everything built; the inventory keeps its own choice. */
   let mapLens = $derived<"all" | "orphans" | "planned">(
     view === "planned" ? "planned" : view === "map" ? lens : "all",
@@ -747,6 +754,7 @@
       {focus}
       {flyKey}
       lens={mapLens}
+      used={pulses}
       surfaces={levelSurfaces}
       items={levelItems}
       place={level?.place ?? null}
@@ -828,6 +836,9 @@
             ).join(", ")}, clockwise</span
           >
         {/if}
+        {#each pulseKinds as cls (cls)}
+          <span><i class="ring {cls}"></i>{PULSE_WORDS[cls]}</span>
+        {/each}
       </div>
       <div class="hint" hidden={snap !== LATEST}>
         <span><kbd>1</kbd>-<kbd>{ENVS.length + 1}</kbd> environment</span><span
@@ -1162,6 +1173,20 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+  }
+  .ring {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    border: 2px solid var(--use-outside);
+  }
+  .ring.internal {
+    border-color: var(--use-internal);
+  }
+  .ring.runs {
+    border-color: var(--use-runs);
   }
   .sw {
     width: 11px;

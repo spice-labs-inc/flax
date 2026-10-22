@@ -11,6 +11,7 @@ export type {
   RecorderConfig,
   ScenariosConfig,
   SurfaceConfig,
+  UsageConfig,
 } from "./config.ts";
 
 export type Env = string;
@@ -134,7 +135,7 @@ export interface PlannedScenario {
 
 // ---- the explorer data files ----
 
-/** The files the explorer page loads, by name. usage.json left out of the kit. */
+/** The files the explorer page loads, by name; usage.json is null when the workspace has no usage history. */
 export const DATA_FILES = [
   "coverage.json",
   "journeys.json",
@@ -142,6 +143,7 @@ export const DATA_FILES = [
   "scenarios.json",
   "shots.json",
   "board.json",
+  "usage.json",
 ] as const;
 export type DataFileName = (typeof DATA_FILES)[number];
 
@@ -464,6 +466,7 @@ export type LiveEventName =
   | "run-finished"
   | "run-incomplete"
   | "data"
+  | "usage"
   | "heartbeat";
 
 // ---- conventions ----
@@ -496,35 +499,5 @@ export function surfaceOfScenarioId(
   return surfaces.find((s) => id.startsWith(`${featuresDir}/${s}/`));
 }
 
-/**
- * usage.json: an optional file a workspace may publish beside the data files, with how much each item on
- * the map is used in one environment, as aggregates only (no identities: an organization is a count).
- * The explorer carries no usage view today; this is the plug-in point for one. A producer writes it from
- * whatever its product's telemetry is; a reader validates the shape below and ignores the file when absent.
- */
-export const USAGE_FILE = "usage.json";
-
-/** One class of use of an item (a producer picks its own class names, for example "interactive" and "api"). */
-export interface UsageClass {
-  /** Distinct organizations in the window, as a count. */
-  orgs: number;
-  /** Requests in the window. */
-  n: number;
-  /** Requests on the last day of the window. */
-  today: number;
-  /** The last day (YYYY-MM-DD) the item was used. */
-  lastDay: string;
-}
-
-export interface UsageFile {
-  env: Env;
-  generatedAt: string;
-  /** The window, as days (YYYY-MM-DD). */
-  firstDay: string;
-  lastDay: string;
-  /** By item id, then by use class. */
-  items: Record<string, Record<string, UsageClass>>;
-  /** Item keys the map has no item for; counted in `items` all the same. */
-  unmapped: string[];
-}
 export * from "./run-artifacts.js";
+export * from "./usage.ts";

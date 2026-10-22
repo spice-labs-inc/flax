@@ -93,6 +93,7 @@
     surfaceTitleOf,
     holderOf,
     holderChain,
+    lineOf,
   } = $derived(model);
 
   /** Documentation rows folded under the top-level thing each item belongs to: a command and six of its flags make one row. */
@@ -520,6 +521,7 @@
         ? items.find((x) => x.id === c.item.parent)
         : undefined}
       {@const proved = provedBy(c.item)}
+      {@const use = lineOf(c.item, live.usage, live.clock)}
       <section class="ledger">
         <h2>{c.item.label}</h2>
         <p class="sub">
@@ -569,6 +571,9 @@
           {/each}
         </div>
         <VerdictNotes {model} item={c.item} {env} {snap} {nav} />
+        {#if use}
+          <p class="use">{use}</p>
+        {/if}
         {#if fails.length}
           <FailureNotes
             notes={fails}
@@ -1161,6 +1166,12 @@
   }
   small {
     color: var(--ink-3);
+  }
+  .use {
+    font-size: 12.5px;
+    color: var(--ink);
+    margin: 10px 0 0;
+    overflow-wrap: anywhere;
   }
   .note {
     font-size: 12.5px;

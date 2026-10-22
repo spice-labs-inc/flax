@@ -1,0 +1,391 @@
+{
+  "env": "live",
+  "generatedAt": "2026-10-16T01:00:00.000Z",
+  "days": [
+    {
+      "day": "2026-10-10",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 40
+    },
+    {
+      "day": "2026-10-10",
+      "item": "web:route:/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 22
+    },
+    {
+      "day": "2026-10-10",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "8b2e6f0a1c93",
+      "n": 12
+    },
+    {
+      "day": "2026-10-10",
+      "item": "web:testid:new-note",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 6
+    },
+    {
+      "day": "2026-10-10",
+      "item": "web:route:/sign-in",
+      "cls": "outside",
+      "org": "c47d19e2a6b5",
+      "n": 3
+    },
+    {
+      "day": "2026-10-10",
+      "item": "web:route:/settings",
+      "cls": "internal",
+      "org": null,
+      "n": 2
+    },
+    {
+      "day": "2026-10-10",
+      "item": "web:route:/admin",
+      "cls": "internal",
+      "org": null,
+      "n": 4
+    },
+    {
+      "day": "2026-10-10",
+      "item": "api:GET /api/version",
+      "cls": "runs",
+      "org": null,
+      "n": 24
+    },
+    {
+      "day": "2026-10-10",
+      "item": "api:GET /api/notes/{id}",
+      "cls": "runs",
+      "org": null,
+      "n": 12
+    },
+    {
+      "day": "2026-10-11",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 43
+    },
+    {
+      "day": "2026-10-11",
+      "item": "web:route:/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 23
+    },
+    {
+      "day": "2026-10-11",
+      "item": "web:testid:new-note",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 7
+    },
+    {
+      "day": "2026-10-11",
+      "item": "web:route:/sign-in",
+      "cls": "outside",
+      "org": "c47d19e2a6b5",
+      "n": 3
+    },
+    {
+      "day": "2026-10-11",
+      "item": "web:route:/settings",
+      "cls": "internal",
+      "org": null,
+      "n": 2
+    },
+    {
+      "day": "2026-10-11",
+      "item": "web:route:/admin",
+      "cls": "internal",
+      "org": null,
+      "n": 5
+    },
+    {
+      "day": "2026-10-11",
+      "item": "api:GET /api/version",
+      "cls": "runs",
+      "org": null,
+      "n": 24
+    },
+    {
+      "day": "2026-10-11",
+      "item": "api:GET /api/notes/{id}",
+      "cls": "runs",
+      "org": null,
+      "n": 12
+    },
+    {
+      "day": "2026-10-12",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 46
+    },
+    {
+      "day": "2026-10-12",
+      "item": "web:route:/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 24
+    },
+    {
+      "day": "2026-10-12",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "8b2e6f0a1c93",
+      "n": 14
+    },
+    {
+      "day": "2026-10-12",
+      "item": "web:testid:new-note",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 8
+    },
+    {
+      "day": "2026-10-12",
+      "item": "web:route:/sign-in",
+      "cls": "outside",
+      "org": "c47d19e2a6b5",
+      "n": 3
+    },
+    {
+      "day": "2026-10-12",
+      "item": "web:route:/settings",
+      "cls": "internal",
+      "org": null,
+      "n": 2
+    },
+    {
+      "day": "2026-10-12",
+      "item": "web:route:/admin",
+      "cls": "internal",
+      "org": null,
+      "n": 6
+    },
+    {
+      "day": "2026-10-12",
+      "item": "api:GET /api/version",
+      "cls": "runs",
+      "org": null,
+      "n": 24
+    },
+    {
+      "day": "2026-10-12",
+      "item": "api:GET /api/notes/{id}",
+      "cls": "runs",
+      "org": null,
+      "n": 12
+    },
+    {
+      "day": "2026-10-13",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 49
+    },
+    {
+      "day": "2026-10-13",
+      "item": "web:route:/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 25
+    },
+    {
+      "day": "2026-10-13",
+      "item": "api:POST /api/notes",
+      "cls": "outside",
+      "org": "8b2e6f0a1c93",
+      "n": 8
+    },
+    {
+      "day": "2026-10-13",
+      "item": "web:testid:new-note",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 9
+    },
+    {
+      "day": "2026-10-13",
+      "item": "web:route:/sign-in",
+      "cls": "outside",
+      "org": "c47d19e2a6b5",
+      "n": 3
+    },
+    {
+      "day": "2026-10-13",
+      "item": "web:route:/settings",
+      "cls": "internal",
+      "org": null,
+      "n": 2
+    },
+    {
+      "day": "2026-10-13",
+      "item": "web:route:/admin",
+      "cls": "internal",
+      "org": null,
+      "n": 7
+    },
+    {
+      "day": "2026-10-13",
+      "item": "api:GET /api/version",
+      "cls": "runs",
+      "org": null,
+      "n": 24
+    },
+    {
+      "day": "2026-10-13",
+      "item": "api:GET /api/notes/{id}",
+      "cls": "runs",
+      "org": null,
+      "n": 12
+    },
+    {
+      "day": "2026-10-14",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 52
+    },
+    {
+      "day": "2026-10-14",
+      "item": "web:route:/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 26
+    },
+    {
+      "day": "2026-10-14",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "8b2e6f0a1c93",
+      "n": 16
+    },
+    {
+      "day": "2026-10-14",
+      "item": "api:POST /api/notes",
+      "cls": "outside",
+      "org": "8b2e6f0a1c93",
+      "n": 9
+    },
+    {
+      "day": "2026-10-14",
+      "item": "web:testid:new-note",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 10
+    },
+    {
+      "day": "2026-10-14",
+      "item": "web:route:/sign-in",
+      "cls": "outside",
+      "org": "c47d19e2a6b5",
+      "n": 3
+    },
+    {
+      "day": "2026-10-14",
+      "item": "web:route:/settings",
+      "cls": "internal",
+      "org": null,
+      "n": 2
+    },
+    {
+      "day": "2026-10-14",
+      "item": "web:route:/admin",
+      "cls": "internal",
+      "org": null,
+      "n": 8
+    },
+    {
+      "day": "2026-10-14",
+      "item": "api:GET /api/version",
+      "cls": "runs",
+      "org": null,
+      "n": 24
+    },
+    {
+      "day": "2026-10-14",
+      "item": "api:GET /api/notes/{id}",
+      "cls": "runs",
+      "org": null,
+      "n": 12
+    },
+    {
+      "day": "2026-10-15",
+      "item": "api:GET /api/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 55
+    },
+    {
+      "day": "2026-10-15",
+      "item": "web:route:/notes",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 27
+    },
+    {
+      "day": "2026-10-15",
+      "item": "api:POST /api/notes",
+      "cls": "outside",
+      "org": "8b2e6f0a1c93",
+      "n": 10
+    },
+    {
+      "day": "2026-10-15",
+      "item": "web:testid:new-note",
+      "cls": "outside",
+      "org": "3f9a1c2b7d4e",
+      "n": 11
+    },
+    {
+      "day": "2026-10-15",
+      "item": "web:route:/sign-in",
+      "cls": "outside",
+      "org": "c47d19e2a6b5",
+      "n": 3
+    },
+    {
+      "day": "2026-10-15",
+      "item": "web:route:/settings",
+      "cls": "internal",
+      "org": null,
+      "n": 2
+    },
+    {
+      "day": "2026-10-15",
+      "item": "web:route:/admin",
+      "cls": "internal",
+      "org": null,
+      "n": 9
+    },
+    {
+      "day": "2026-10-15",
+      "item": "api:GET /api/version",
+      "cls": "runs",
+      "org": null,
+      "n": 24
+    },
+    {
+      "day": "2026-10-15",
+      "item": "api:GET /api/notes/{id}",
+      "cls": "runs",
+      "org": null,
+      "n": 12
+    },
+    {
+      "day": "2026-10-15",
+      "item": "web:route:/notes/[id]",
+      "cls": "outside",
+      "org": "c47d19e2a6b5",
+      "n": 9
+    }
+  ]
+}

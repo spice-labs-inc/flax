@@ -186,6 +186,12 @@ explorer:
   glossary:
     - { term: Notebook, text: "A customer's collection of notes, shared with the people they invite.", section: Product }
     - { term: Pin, text: "A note kept at the top of its notebook; see [Features](/features)." }
+  # The usage view: how much each item is used on live, from a relay that posts aggregates to the service
+  # (EXPLORER_USAGE_TOKEN). Without a service, the data build reads the history file named here.
+  usage:
+    env: live
+    labels: { outside: "outside notes-co", internal: "the notes-co team", runs: "our scenario runs" }
+    history: explorer/usage-history.json
   # Uncomment to read scheduled runs' results from GitHub workflow artifacts (needs EXPLORER_GH_APP_ID and EXPLORER_GH_APP_KEY):
   # results:
   #   repo: notes-co/notes-scenarios

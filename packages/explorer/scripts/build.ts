@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   DATA_FILES,
@@ -10,6 +10,7 @@ import {
 import { resolveJourneys } from "@flax/scenarios/dataset/journeys";
 import { loadDatasetFiles } from "@flax/scenarios/dataset/load";
 import { validateDataset } from "@flax/scenarios/dataset/schema";
+import { config } from "@flax/scenarios/config";
 import { ENVS } from "@flax/scenarios/lib/types";
 import {
   coverageAfter,
@@ -21,6 +22,7 @@ import {
   readSurfaces,
 } from "./data.ts";
 import { scenariosFile, withinBudget } from "./scenarios.ts";
+import { usageFile } from "./usage.ts";
 
 export { DATA_FILES, type DataFileName };
 
@@ -33,6 +35,8 @@ export interface BuildInput {
   commit: string;
   now: string;
   board: BoardFile;
+  /** The usage history the service keeps (@flax/contract/usage); without it, the file flax.yml names under explorer.usage.history, if any. */
+  usage?: unknown;
   /** Downscales failure screenshots in headless Chromium; without it they stay full size. */
   shrink?: <T extends { mediaType: string; base64: string }>(
     shots: T[],
@@ -91,6 +95,12 @@ export async function buildData(
     `board.json: ${open(input.board.items)} of ${input.board.items.length} planned issues open, ${open(input.board.bugs)} of ${input.board.bugs.length} bugs open`,
   );
 
+  const usage = usageData(
+    input,
+    coverage.items.map((i) => i.id),
+    log,
+  );
+
   return {
     "coverage.json": coverageFile(coverage, files, documentation, runs),
     "journeys.json": journeysFile(dataset.personas, resolved, commit),
@@ -100,7 +110,33 @@ export async function buildData(
       kept.map((s) => [s.key, `data:${s.mediaType};base64,${s.base64}`]),
     ),
     "board.json": input.board,
+    "usage.json": usage,
   };
+}
+
+/** usage.json, or null when flax.yml has no usage view or no history has arrived yet. */
+function usageData(
+  input: BuildInput,
+  itemIds: string[],
+  log: (line: string) => void,
+): unknown {
+  const cfg = config().usage;
+  if (!cfg) return null;
+  let raw = input.usage;
+  if (raw === undefined && cfg.history) {
+    const path = join(input.root, cfg.history);
+    if (existsSync(path)) raw = JSON.parse(readFileSync(path, "utf8"));
+  }
+  if (raw === undefined) {
+    log("usage.json: no usage history yet, so pages show live use only");
+    return null;
+  }
+  const u = usageFile(raw, itemIds, ENVS, config().timezone);
+  const used = Object.keys(u.items).length - u.unmapped.length;
+  log(
+    `usage.json: ${u.env} use of ${used} items from ${u.firstDay} to ${u.lastDay}${u.unmapped.length ? `; ${u.unmapped.length} keys the map has no item for, counted under their own key: ${u.unmapped.join(", ")}` : ""}`,
+  );
+  return u;
 }
 
 /** The files into `dir`, each screenshot as its own image under shots/ so shots.json only names a path per key. */

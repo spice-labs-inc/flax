@@ -16,10 +16,11 @@ The page is built per workspace: the environments, surfaces and titles of `flax.
 
 ## The service
 
-`serve` reads the workspace (`EXPLORER_DATASET_DIR`), keeps its state under `explorer-state/` (`EXPLORER_STATE_DIR`: `data/<version>/` with a `manifest.json` naming the live version, `results/`, `live/`), builds the data on start and after every finished run, and answers:
+`serve` reads the workspace (`EXPLORER_DATASET_DIR`), keeps its state under `explorer-state/` (`EXPLORER_STATE_DIR`: `data/<version>/` with a `manifest.json` naming the live version, `results/`, `live/`, `usage/`), builds the data on start and after every finished run, and answers:
 
 - `GET /healthz`
 - `POST /ingest/runs/<run id>/start|messages|finish` with `Authorization: Bearer <EXPLORER_INGEST_TOKEN>`: what `flax scenarios run` pushes while it runs (`EXPLORER_URL`, `EXPLORER_INGEST_TOKEN` on the runner's side)
+- `POST /ingest/usage/live|history` with `Authorization: Bearer <EXPLORER_USAGE_TOKEN>`: a workspace relay's usage aggregates, when `explorer.usage` turns the usage view on (`docs/explorer/usage.md`)
 - `GET /live/state`, `GET /live/events` (server-sent events), `GET /live/runs/<run id>/scenarios/<id>`
 - `GET /data/*` and the page itself, when no proxy serves them
 
@@ -50,7 +51,7 @@ docker build -f deploy/Dockerfile --target service .
 
 ## The data files
 
-`@flax/contract` names them: `coverage.json`, `journeys.json`, `history.json`, `scenarios.json`, `shots.json` (failure screenshots, 2 MB budget) and `board.json` (open issues for planned work; an empty board is fine). `history.json` carries its environment order in `envs`; a file built for another order is permuted on read, so older data and other workspaces' files still show. `usage.json` is an optional extra a workspace may publish beside them (how much each item is used, aggregates only, shape in the contract); the page has no usage view yet, and that file is where one would plug in.
+`@flax/contract` names them: `coverage.json`, `journeys.json`, `history.json`, `scenarios.json`, `shots.json` (failure screenshots, 2 MB budget) and `board.json` (open issues for planned work; an empty board is fine). `history.json` carries its environment order in `envs`; a file built for another order is permuted on read, so older data and other workspaces' files still show. `usage.json` (how much each item is used, aggregates only) is null unless `explorer.usage` is on and a history has arrived.
 
 ## Development
 

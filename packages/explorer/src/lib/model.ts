@@ -1,4 +1,9 @@
-import { DATA_FILES, type DataFileName } from "@flax/contract";
+import {
+  DATA_FILES,
+  usageFileOf,
+  type DataFileName,
+  type UsageFile,
+} from "@flax/contract";
 import {
   coverageModel,
   type BoardFile,
@@ -13,6 +18,7 @@ import { personasModel } from "./personas.ts";
 import { planningModel } from "./planning.ts";
 import { proofModel } from "./proof.ts";
 import { scenariosModel, type ScenariosFile } from "./scenarios.ts";
+import { usageModel } from "./usage.ts";
 import { verdictModel } from "./verdict.ts";
 
 export { DATA_FILES, type DataFileName };
@@ -24,6 +30,7 @@ export interface DataFiles {
   scenarios: ScenariosFile;
   shots: Record<string, string>;
   board: BoardFile;
+  usage: UsageFile | null;
 }
 
 /** Which data version the files are: a service build's name, or the one baked into a single-file page. */
@@ -55,6 +62,7 @@ export function dataFiles(
   const scenarios = raw["scenarios.json"];
   const shots = raw["shots.json"];
   const board = raw["board.json"];
+  const usage = raw["usage.json"] ?? null;
   if (!hasArrays(coverage, ["surfaces", "items"]))
     throw new DataError("coverage.json is not a coverage file");
   if (!hasArrays(journeys, ["personas", "stations", "journeys", "orphans"]))
@@ -73,6 +81,9 @@ export function dataFiles(
   }
   if (!hasArrays(board, ["items", "bugs"]))
     throw new DataError("board.json is not a board file");
+  const usageFile = usage === null ? null : usageFileOf(usage);
+  if (usageFile === undefined)
+    throw new DataError("usage.json is neither a usage file nor null");
   return {
     coverage: coverage as unknown as CoverageData,
     journeys: journeys as unknown as DatasetFile,
@@ -80,6 +91,7 @@ export function dataFiles(
     scenarios: scenarios as unknown as ScenariosFile,
     shots: shotUrls,
     board: board as unknown as BoardFile,
+    usage: usageFile,
   };
 }
 
@@ -94,6 +106,7 @@ export function createModel(files: DataFiles) {
   const feats = featuresModel(cov, scen, pers, files.scenarios.features);
   const now = nowModel(cov, scen, feats, pers);
   const planning = planningModel(cov, scen, pers, defs, feats);
+  const usage = usageModel(cov.items, files.usage, verdicts.verdict);
   return {
     ...cov,
     ...defs,
@@ -104,6 +117,7 @@ export function createModel(files: DataFiles) {
     ...feats,
     ...now,
     ...planning,
+    ...usage,
   };
 }
 

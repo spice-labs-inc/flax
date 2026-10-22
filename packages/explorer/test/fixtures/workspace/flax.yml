@@ -57,3 +57,7 @@ scenarios:
 explorer:
   title: Acme Scenarios
   description: What the Acme product verifies for customers.
+  usage:
+    env: prod
+    labels: { outside: not marked as our own, internal: staff, runs: our runs }
+    requestSurfaces: [cli]

@@ -22,9 +22,9 @@
   --issue: #8f94a1;
   --none: #c7d1ca;
   --never: #e6ebe7;
-  --use-other: #b8860b;
-  --use-staff: #8a7d5c;
-  --use-ours: #9aa6ab;
+  --use-outside: #b8860b;
+  --use-internal: #8a7d5c;
+  --use-runs: #9aa6ab;
   --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --text: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --r-s: 6px;
@@ -52,9 +52,9 @@
     --issue: #7f8695;
     --none: #22343c;
     --never: #0d171c;
-    --use-other: #f2c14e;
-    --use-staff: #a69a78;
-    --use-ours: #5d7076;
+    --use-outside: #f2c14e;
+    --use-internal: #a69a78;
+    --use-runs: #5d7076;
     color-scheme: dark;
   }
 }
@@ -79,9 +79,9 @@
   --issue: #7f8695;
   --none: #22343c;
   --never: #0d171c;
-  --use-other: #f2c14e;
-  --use-staff: #a69a78;
-  --use-ours: #5d7076;
+  --use-outside: #f2c14e;
+  --use-internal: #a69a78;
+  --use-runs: #5d7076;
   color-scheme: dark;
 }
 

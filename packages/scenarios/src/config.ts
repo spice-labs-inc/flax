@@ -12,6 +12,7 @@ import type {
   KindNaming,
   ScenariosConfig,
   SurfaceConfig,
+  UsageConfig,
 } from "@flax/contract/config";
 import { isRecord } from "@flax/contract";
 import type { RecorderConfig } from "@flax/contract/config";
@@ -210,12 +211,47 @@ export function fromWorkspace(ws: Workspace): ScenariosConfig {
           ]
         : [],
     ),
+    usage: usageConfig(
+      explorer["usage"],
+      envs.map((e) => e.name),
+    ),
     tagLabels: rec(r["tagLabels"]),
     recorder: recorderConfig(recorder, name),
     cadences: cadencesConfig(
       r["cadences"],
       envs.map((e) => e.name),
     ),
+  };
+}
+
+/** The `explorer.usage` key: off when absent; `true` or a mapping turns the usage view on with these defaults. */
+function usageConfig(v: unknown, envNames: string[]): UsageConfig | null {
+  if (v === undefined || v === null || v === false) return null;
+  if (v !== true && !isRecord(v))
+    throw new Error(
+      "flax.yml: explorer.usage must be true or a mapping (env, labels, org, requestSurfaces, history)",
+    );
+  const o = isRecord(v) ? v : {};
+  const env = str(o["env"], envNames[0] ?? "");
+  if (!envNames.includes(env))
+    throw new Error(
+      `flax.yml: explorer.usage.env names ${env}, which environments does not list`,
+    );
+  const labels = rec(o["labels"]);
+  const org = rec(o["org"]);
+  return {
+    env,
+    labels: {
+      outside: labels["outside"] ?? "from outside",
+      internal: labels["internal"] ?? "our team",
+      runs: labels["runs"] ?? "our runs",
+    },
+    org: {
+      one: org["one"] ?? "organization",
+      many: org["many"] ?? `${org["one"] ?? "organization"}s`,
+    },
+    requestSurfaces: list(o["requestSurfaces"]),
+    ...(typeof o["history"] === "string" ? { history: o["history"] } : {}),
   };
 }
 

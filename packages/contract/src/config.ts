@@ -1,5 +1,7 @@
 /** What the scenarios runner and the explorer read from a workspace's flax.yml, after defaults. */
 
+import type { UseClass } from "./usage.ts";
+
 export interface EnvConfig {
   /** Short name, used in run ids, tags (@env:<name>), results/<name>/ and the data files. */
   name: string;
@@ -126,6 +128,8 @@ export interface ScenariosConfig {
   branding: { title: string; description: string };
   /** The project's own glossary entries, from the explorer section, in flax.yml order. */
   glossary: GlossaryEntry[];
+  /** The usage view, from `explorer.usage`; null when the workspace has none. */
+  usage: UsageConfig | null;
   /** K22 */
   tagLabels: Record<string, string>;
   /** K24 */
@@ -140,6 +144,20 @@ export interface GlossaryEntry {
   /** Plain text; a link is written `[label](url)`. */
   text: string;
   section?: string;
+}
+
+/** How the explorer shows real use (the contract is @flax/contract/usage). */
+export interface UsageConfig {
+  /** The environment the use comes from; the reference environment unless flax.yml names another. */
+  env: string;
+  /** What people see for each class of use: after a count of organizations for `outside`, as the subject of a sentence for the others. */
+  labels: Record<UseClass, string>;
+  /** What one counted organization is called, and several. */
+  org: { one: string; many: string };
+  /** Surfaces whose items count requests rather than uses, such as a command line tool that makes several calls per command. */
+  requestSurfaces: string[];
+  /** A usage history file (relative to the workspace) the data build reads when no service delivered one, such as a demo's. */
+  history?: string;
 }
 
 /** Defaults for browser recordings (`flax scenarios run --record`); a scenario's video sidecar overrides pace and viewport. */
