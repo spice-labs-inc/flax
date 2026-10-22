@@ -1,0 +1,49 @@
+{
+  "name": "@flax/scenarios",
+  "version": "0.1.7",
+  "description": "A Gherkin scenario library runner for every surface and environment of a product, with a coverage map and a persona dataset; your scenarios stay in your workspace",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spice-labs-inc/flax",
+    "directory": "packages/scenarios"
+  },
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    "./record/video-sidecar.schema.json": "./dist/record/video-sidecar.schema.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "bin": {
+    "flax-scenarios": "./dist/cli.js"
+  },
+  "flax": "dist/cli.js",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@cucumber/gherkin": "42.0.1",
+    "@cucumber/messages": "34.2.1",
+    "imapflow": "2.2.8",
+    "mailparser": "3.9.36",
+    "yaml": "^2.9.1",
+    "@flax/contract": "git+https://github.com/spice-labs-inc/flax.git#contract-v0.1.7",
+    "@flax/core": "git+https://github.com/spice-labs-inc/flax.git#core-v0.1.7"
+  },
+  "peerDependencies": {
+    "@cucumber/cucumber": "^13.3.0",
+    "playwright": "^1.63.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  }
+}
