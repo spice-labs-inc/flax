@@ -20,7 +20,7 @@ export interface Box {
 export interface TimelineAction {
   kind: "click" | "type" | "goto" | "point" | "highlight" | (string & {});
   atMs: number;
-  /** In video pixels: viewport CSS pixels times the timeline's scale. */
+  /** In viewport CSS pixels, as the recorder writes it; the video's pixels are these times the timeline's scale. */
   box?: Box | null;
 }
 

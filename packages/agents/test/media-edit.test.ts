@@ -4,6 +4,7 @@ import {
   outputTime,
   planEdit,
   posterStep,
+  youtubeChapters,
 } from "../src/media/edit.ts";
 import {
   boxInView,
@@ -30,7 +31,12 @@ import {
   standInText,
   standInValue,
 } from "../src/media/stand-ins.ts";
-import { frameWrites, PROMPT, terminalReplay } from "../src/media/terminal.ts";
+import {
+  frameWrites,
+  PROMPT,
+  speedUpReplay,
+  terminalReplay,
+} from "../src/media/terminal.ts";
 import { parseCast } from "../src/media/cast-file.ts";
 
 /** Steps of `seconds` each, back to back, all passed. */
@@ -238,6 +244,174 @@ describe("planEdit", () => {
     expect(fast.duration).toBe(3.5);
   });
 
+  it("speeds up the unnarrated rest of a long step to idle.seconds, and never the narration", () => {
+    const s = steps(["When", 2], ["Then", 30]);
+    const plan = planEdit(
+      { steps: s, hidden: new Set(), narration: [{ step: 1, seconds: 3 }] },
+      { tail: 0.5 },
+    );
+    expect(plan.pieces).toEqual([
+      {
+        kind: "clip",
+        srcStart: 0,
+        srcEnd: 3.5,
+        speed: 1,
+        start: 0,
+        frames: 105,
+      },
+      {
+        kind: "clip",
+        srcStart: 3.5,
+        srcEnd: 32,
+        speed: 7.125,
+        start: 3.5,
+        frames: 120,
+        idle: true,
+      },
+    ]);
+    expect(plan.idle).toEqual([{ start: 3.5, end: 7.5, speed: 7.125 }]);
+    expect(plan.steps.get(2)).toEqual({ start: 2, end: 7.5 });
+    expect(plan.duration).toBe(7.5);
+    expect(outputTime(plan, 32)).toBe(7.5);
+
+    const off = planEdit(
+      { steps: s, hidden: new Set(), narration: [{ step: 1, seconds: 3 }] },
+      { tail: 0.5, idle: false },
+    );
+    expect(off.duration).toBe(32);
+    expect(off.idle).toEqual([]);
+  });
+
+  it("leaves a step alone until its unnarrated part passes idle.after, and speeds up a whole unnarrated one", () => {
+    const short = planEdit({
+      steps: steps(["When", 9]),
+      hidden: new Set(),
+      narration: [],
+    });
+    expect(short.duration).toBe(9);
+    const long = planEdit(
+      { steps: steps(["When", 12]), hidden: new Set(), narration: [] },
+      { idle: { after: 6, seconds: 3 } },
+    );
+    expect(long.pieces).toEqual([
+      {
+        kind: "clip",
+        srcStart: 0,
+        srcEnd: 12,
+        speed: 4,
+        start: 0,
+        frames: 90,
+        idle: true,
+      },
+    ]);
+    expect(() =>
+      planEdit(
+        { steps: steps(["When", 1]), hidden: new Set(), narration: [] },
+        { idle: { after: 3, seconds: 4 } },
+      ),
+    ).toThrow(/less than idle.after/);
+  });
+
+  it("speeds up a long terminal scene after its narration", () => {
+    const s = steps(["When", 1], ["When", 40]);
+    const plan = planEdit(
+      {
+        steps: s,
+        hidden: new Set(),
+        narration: [{ step: 1, seconds: 2 }],
+        terminals: new Map([[2, 20]]),
+      },
+      { tail: 0 },
+    );
+    expect(plan.pieces[1]).toEqual({
+      kind: "terminal",
+      step: 2,
+      start: 1,
+      frames: 150,
+      idle: { at: 1, speed: 4.75 },
+    });
+    expect(plan.idle).toEqual([{ start: 2, end: 6, speed: 4.75 }]);
+    expect(plan.duration).toBe(6);
+  });
+
+  it("cuts a narrated scene's picture maxTail seconds after the block's last word", () => {
+    const s = steps(["When", 3], ["And", 4], ["When", 2], ["Then", 1]);
+    const plan = planEdit(
+      {
+        steps: s,
+        hidden: new Set(),
+        narration: [
+          { step: 1, seconds: 2 },
+          { step: 4, seconds: 0.5 },
+        ],
+        terminals: new Map([[3, 3]]),
+      },
+      { tail: 0.5, maxTail: 1.5 },
+    );
+    expect(plan.pieces).toEqual([
+      {
+        kind: "clip",
+        srcStart: 0,
+        srcEnd: 3.5,
+        speed: 1,
+        start: 0,
+        frames: 105,
+      },
+      {
+        kind: "clip",
+        srcStart: 9,
+        srcEnd: 10,
+        speed: 1,
+        start: 3.5,
+        frames: 30,
+      },
+    ]);
+    expect(plan.steps.get(2)).toEqual({ start: 3, end: 3.5 });
+    expect(plan.steps.get(3)).toEqual({ start: 3.5, end: 3.5 });
+    expect(plan.duration).toBe(4.5);
+    const short = planEdit(
+      { steps: s, hidden: new Set(), narration: [{ step: 1, seconds: 2 }] },
+      { tail: 0.5, maxTail: 0.2 },
+    );
+    expect(short.pieces.map((p) => [p.kind, p.frames])).toEqual([
+      ["clip", 66],
+      ["hold", 9],
+    ]);
+  });
+
+  it("trims a step's raw video at either end, and refuses a trim on a terminal scene", () => {
+    const s = steps(["When", 3], ["Then", 4]);
+    const plan = planEdit({
+      steps: s,
+      hidden: new Set(),
+      narration: [],
+      trims: new Map([
+        [1, { end: 1 }],
+        [2, { start: 0.5, end: 1.5 }],
+      ]),
+    });
+    expect(plan.pieces).toEqual([
+      { kind: "clip", srcStart: 0, srcEnd: 2, speed: 1, start: 0, frames: 60 },
+      {
+        kind: "clip",
+        srcStart: 3.5,
+        srcEnd: 5.5,
+        speed: 1,
+        start: 2,
+        frames: 60,
+      },
+    ]);
+    expect(() =>
+      planEdit({
+        steps: s,
+        hidden: new Set(),
+        narration: [],
+        terminals: new Map([[2, 1]]),
+        trims: new Map([[2, { start: 1 }]]),
+      }),
+    ).toThrow(/step 2 is a terminal scene/);
+  });
+
   it("maps raw video time to output time, undefined where cut", () => {
     const s = steps(["When", 1], ["Given", 5], ["Then", 1]);
     const plan = planEdit({ steps: s, hidden: new Set([2]), narration: [] });
@@ -320,6 +494,47 @@ describe("hidden steps, chapters and the poster", () => {
     ]);
   });
 
+  it("fit YouTube's rules: whole seconds, the first at 0, short ones folded, fewer than three dropped", () => {
+    const chapters = [
+      { start: 0, title: "Intro" },
+      { start: 2.4, title: "Open" },
+      { start: 14.9, title: "Check" },
+      { start: 40.2, title: "Next" },
+    ];
+    expect(youtubeChapters(chapters, 50)).toEqual([
+      { start: 0, title: "Intro" },
+      { start: 14, title: "Check" },
+      { start: 40, title: "Next" },
+    ]);
+    expect(youtubeChapters(chapters, 45)).toEqual([]);
+    expect(
+      youtubeChapters(
+        [
+          { start: 5, title: "A" },
+          { start: 20.5, title: "B" },
+          { start: 40, title: "C" },
+        ],
+        60,
+      ),
+    ).toEqual([
+      { start: 0, title: "A" },
+      { start: 20, title: "B" },
+      { start: 40, title: "C" },
+    ]);
+    expect(
+      youtubeChapters(
+        [
+          { start: 0, title: "A" },
+          { start: 12, title: "B" },
+          { start: 30, title: "C" },
+          { start: 50, title: "D" },
+        ],
+        80,
+        { minSeconds: 15 },
+      ).map((c) => c.title),
+    ).toEqual(["A", "C", "D"]);
+  });
+
   it("pick the sidecar's poster step, else the last highlighted visible step, else the last visible one", () => {
     const s = steps(["Given", 1], ["Then", 1], ["When", 1], ["Given", 1]);
     expect(posterStep(s, { poster: { at: 1 } }).index).toBe(1);
@@ -377,15 +592,34 @@ describe("production arithmetic", () => {
     });
   });
 
-  it("maps boxes in video pixels through the recording's scale", () => {
-    const source = sourceSize({
-      viewport: { width: 1440, height: 900 },
-      scale: 1.5,
-    });
-    expect(source).toEqual({ width: 2160, height: 1350 });
+  it("takes the recorder's boxes in viewport CSS pixels at any scale", () => {
+    const source = sourceSize({ viewport: { width: 1440, height: 900 } });
+    expect(source).toEqual({ width: 1440, height: 900 });
     expect(
-      toPicture({ x: 1080, y: 675, width: 216, height: 135 }, source, picture),
+      toPicture({ x: 720, y: 450, width: 144, height: 90 }, source, picture),
     ).toEqual({ x: 1280, y: 640, width: 204.8, height: 128 });
+
+    // A recording at device scale 1.25: its video is 1600 by 1000, its boxes CSS pixels.
+    const scaled: Pick<Timeline, "viewport" | "scale"> = {
+      viewport: { width: 1280, height: 800 },
+      scale: 1.25,
+    };
+    const s = steps(["Then", 2]);
+    s[0]!.actions = [
+      {
+        kind: "highlight",
+        atMs: 500,
+        box: { x: 800, y: 500, width: 200, height: 100 },
+      },
+    ];
+    const moves = zoomMoves(
+      s,
+      highlightedSteps(s, {}),
+      planEdit({ steps: s, hidden: new Set(), narration: [] }),
+      sourceSize(scaled),
+      picture,
+    );
+    expect(moves[0]!.box).toEqual({ x: 1536, y: 800, width: 320, height: 160 });
   });
 
   it("zooms to each highlight of a highlighted step until the step ends, and back out", () => {
@@ -513,6 +747,27 @@ describe("stand-ins", () => {
 });
 
 describe("terminal scenes", () => {
+  it("speed up a replay from a point on, its writes and its length", () => {
+    const r = speedUpReplay(
+      {
+        writes: [
+          [0, "a"],
+          [2, "b"],
+          [12, "c"],
+        ],
+        duration: 13,
+      },
+      2,
+      5,
+    );
+    expect(r.writes).toEqual([
+      [0, "a"],
+      [2, "b"],
+      [4, "c"],
+    ]);
+    expect(r.duration).toBeCloseTo(4.2);
+  });
+
   const pace = {
     typeMsPerChar: 100,
     afterActionMs: 400,

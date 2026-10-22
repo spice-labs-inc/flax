@@ -1,16 +1,24 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { buildCues, toVtt, type Word } from "./captions.ts";
-import { RECORDINGS_ROOT_ENV, castPath, parseCast } from "./cast-file.ts";
+import { MAX_POSTER_BYTES } from "../deliver/media.ts";
+import { SCENARIO_ID } from "../output-check/youtube.ts";
+import {
+  DOCS_ROOT_ENV,
+  RECORDINGS_ROOT_ENV,
+  castPath,
+  parseCast,
+} from "./cast-file.ts";
 import {
   FPS,
   chapterTimes,
   planEdit,
   posterStep,
+  youtubeChapters,
   type Chapter,
   type EditOptions,
   type EditPlan,
@@ -23,6 +31,8 @@ import {
   captionHtml,
   cardHtml,
   posterHtml,
+  speedHtml,
+  speedLabel,
 } from "./paint.ts";
 import {
   CAPTION_BAND,
@@ -60,6 +70,7 @@ import type { StandInRules } from "./stand-ins.ts";
 import {
   drawTerminal,
   replayText,
+  speedUpReplay,
   terminalReplay,
   type TerminalPace,
   type TerminalReplay,
@@ -148,6 +159,10 @@ export interface RenderRecordingOptions extends EditOptions {
   tts: NarrationVoice;
   assets?: RenderAssets;
   production?: Production;
+  /** Seconds cut from the start and the end of a step's raw video (not a terminal scene's), the step named by its 1-based index or its text. */
+  trim?: { at: StepRef; start?: number; end?: number }[];
+  /** The docs checkout a terminal override's `docs:<path>` cast is read from. Default FLAX_DOCS_ROOT. */
+  docsRoot?: string;
   /** The stand-in rules for what terminal scenes show (the set the sidecar's `standIns` names). */
   standIns?: StandInRules;
   /** How terminal scenes are paced (the sidecar's pace fills what this leaves out) and their font size in layout pixels. */
@@ -158,8 +173,10 @@ export interface RenderRecordingOptions extends EditOptions {
   captionBand?: number;
   /** Draw the captions into the band too; captions.vtt is written either way. */
   burnCaptions?: boolean;
-  /** Write media.json listing the three files. Default true. */
+  /** Write media.json listing the three files, with the video's entry in data.scenarios. Default true. */
   manifest?: boolean;
+  /** The chapters media.json gives YouTube: one starting less than `minSeconds` (default 10) after the one before it is folded into that one. */
+  chapters?: { minSeconds?: number };
   /** ffmpeg encoder threads; default all cores. */
   threads?: number;
   /** Keep the working files (audio, painted pictures, terminal frames) in out/.render. */
@@ -167,7 +184,7 @@ export interface RenderRecordingOptions extends EditOptions {
   log?: Log;
 }
 
-/** What a rendered recording is, as media.json's data carries it. */
+/** What a rendered recording is; chapters at their exact output times. */
 export interface RecordingMedia {
   id: string;
   title: string;
@@ -180,13 +197,36 @@ export interface RecordingMedia {
   publish?: Record<string, unknown>;
 }
 
+/**
+ * The video's entry in media.json's data.scenarios, as the kit's YouTube
+ * output and delivery read it: the files (paths relative to `out`), the
+ * length, the YouTube chapters, and the title, description, tags and
+ * playlist (from the sidecar's publish.youtube, else its publish, else
+ * its title and description), with the rest of publish carried as is.
+ */
+export interface ScenarioEntry {
+  video: string;
+  captions: string;
+  poster: string;
+  duration: number;
+  title: string;
+  description: string;
+  tags: string[];
+  chapters: Chapter[];
+  playlist?: string | null;
+  [key: string]: unknown;
+}
+
 /** Absolute paths of what renderRecording wrote, and the edit it made. */
 export interface RenderedRecording {
   video: string;
   captions: string;
+  /** poster.png, or poster.jpg when no PNG fits the kit's poster limit. */
   poster: string;
   manifest?: string;
   media: RecordingMedia;
+  /** What media.json's data.scenarios[media.id] holds. */
+  entry: ScenarioEntry;
   plan: EditPlan;
   /** What each terminal scene shows, as plain text, by step. */
   terminals: { step: number; text: string }[];
@@ -283,7 +323,7 @@ async function stepTerminal(
   steps: readonly TimelineStep[],
   sidecar: Sidecar,
   step: TimelineStep,
-  o: { pace: TerminalPace; standIns?: StandInRules },
+  o: { pace: TerminalPace; standIns?: StandInRules; docsRoot?: string },
 ): Promise<TerminalReplay | undefined> {
   const override = terminalOverride(steps, sidecar, step.index);
   const common = {
@@ -292,7 +332,12 @@ async function stepTerminal(
     ...(o.standIns ? { standIns: o.standIns } : {}),
   };
   if (override?.cast) {
-    const file = castPath(override.cast, dir, process.env[RECORDINGS_ROOT_ENV]);
+    const file = castPath(
+      override.cast,
+      dir,
+      process.env[RECORDINGS_ROOT_ENV],
+      o.docsRoot,
+    );
     return terminalReplay({
       ...common,
       cast: parseCast(await readFile(file, "utf8"), override.cast),
@@ -328,6 +373,68 @@ async function stepTerminal(
 
 const QUIET = ["-hide_banner", "-loglevel", "error", "-y"];
 
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * Keeps a poster within the kit's limit for a thumbnail (2 MB): a larger
+ * one is redrawn at 1920 by 1080, and when that PNG is still too large it
+ * becomes a JPEG beside it (poster.jpg) at the best quality that fits.
+ * Returns the poster's file.
+ */
+export async function fitPoster(
+  file: string,
+  o: { maxBytes?: number; background?: string } = {},
+): Promise<string> {
+  const max = o.maxBytes ?? MAX_POSTER_BYTES;
+  if ((await stat(file)).size <= max) return file;
+  const small = { width: 1920, height: 1080 };
+  const vf = fit(small, o.background ?? "black");
+  const png = join(dirname(file), `.${basename(file)}-1920.png`);
+  await run(ffmpegPath(), [
+    ...QUIET,
+    "-i",
+    file,
+    "-vf",
+    vf,
+    "-frames:v",
+    "1",
+    "-fflags",
+    "+bitexact",
+    png,
+  ]);
+  if ((await stat(png)).size <= max) {
+    await rename(png, file);
+    return file;
+  }
+  const jpg = join(
+    dirname(file),
+    `${basename(file).replace(/\.[^.]*$/, "")}.jpg`,
+  );
+  for (const q of [2, 4, 7, 10, 15, 20, 31]) {
+    await run(ffmpegPath(), [
+      ...QUIET,
+      "-i",
+      png,
+      "-frames:v",
+      "1",
+      "-q:v",
+      String(q),
+      "-fflags",
+      "+bitexact",
+      jpg,
+    ]);
+    if ((await stat(jpg)).size <= max) {
+      await rm(png, { force: true });
+      await rm(file, { force: true });
+      return jpg;
+    }
+  }
+  await rm(png, { force: true });
+  throw new Error(`the poster does not fit in ${max} bytes even as a JPEG`);
+}
+
 /**
  * Renders a record run into video.mp4 (2560 by 1440, H.264 and AAC),
  * captions.vtt, poster.png and media.json in `out`: hidden steps cut, each
@@ -344,6 +451,10 @@ export async function renderRecording(
   const rec = await readRecording(opts.recordDir, opts.sidecar);
   refuseFailed(rec.timeline);
   const { timeline, sidecar } = rec;
+  if ((opts.manifest ?? true) && !SCENARIO_ID.test(sidecar.id))
+    throw new Error(
+      `the sidecar's id "${sidecar.id}" is not a scenario id media.json can carry (${SCENARIO_ID.source})`,
+    );
   const steps = timeline.steps;
   const assets = opts.assets ?? {};
   const bg = assets.background ?? "black";
@@ -355,7 +466,6 @@ export async function renderRecording(
   const frame: Size = { width: FRAME_WIDTH, height: FRAME_HEIGHT };
   const picture: Size = { width: FRAME_WIDTH, height: FRAME_HEIGHT - band };
   const source = sourceSize(timeline);
-  const scale = timeline.scale ?? 1;
   const fps = FPS;
   const work = join(opts.out, ".render");
   await mkdir(work, { recursive: true });
@@ -399,12 +509,14 @@ export async function renderRecording(
         : {}),
       ...opts.terminal,
     };
+    const docsRoot = opts.docsRoot ?? process.env[DOCS_ROOT_ENV];
     const replays = new Map<number, TerminalReplay>();
     for (const step of steps) {
       if (hidden.has(step.index)) continue;
       const replay = await stepTerminal(rec.dir, steps, sidecar, step, {
         pace,
         ...(opts.standIns ? { standIns: opts.standIns } : {}),
+        ...(docsRoot ? { docsRoot } : {}),
       });
       if (replay) replays.set(step.index, replay);
     }
@@ -431,6 +543,21 @@ export async function renderRecording(
         })),
         terminals: new Map(
           [...replays].map(([index, r]) => [index, r.duration]),
+        ),
+        trims: new Map(
+          (opts.trim ?? []).map((t) => {
+            if ((t.start ?? 0) < 0 || (t.end ?? 0) < 0)
+              throw new Error(
+                `trim at ${String(t.at)}: seconds cut must not be negative`,
+              );
+            return [
+              resolveStep(steps, t.at).index,
+              {
+                ...(t.start ? { start: t.start } : {}),
+                ...(t.end ? { end: t.end } : {}),
+              },
+            ];
+          }),
         ),
         ...(titleCard ? { titleCard } : {}),
         ...(endCard ? { endCard } : {}),
@@ -516,14 +643,8 @@ export async function renderRecording(
       const time = plan.steps.get(step.index);
       if (!time)
         throw new Error(`callout "${c.text}" is on hidden step ${step.index}`);
-      const box = c.box
-        ? {
-            x: c.box.x * scale,
-            y: c.box.y * scale,
-            width: c.box.width * scale,
-            height: c.box.height * scale,
-          }
-        : stepBox(step, ["highlight", "point", "click", "type"]);
+      const box =
+        c.box ?? stepBox(step, ["highlight", "point", "click", "type"]);
       if (!box)
         throw new Error(
           `callout "${c.text}": step ${step.index} has no box to point at; give one`,
@@ -543,6 +664,22 @@ export async function renderRecording(
         join(work, `callout-${i}.png`),
       );
       overlays.push({ file, y: 0, start, end });
+    }
+    if (opts.idle !== false && opts.idle?.badge !== false) {
+      const badges = new Map<string, string>();
+      for (const span of plan.idle) {
+        const label = speedLabel(span.speed);
+        let file = badges.get(label);
+        if (!file) {
+          file = await painter.paint(
+            speedHtml(span.speed, picture, assets.css),
+            picture,
+            join(work, `speed-${badges.size}.png`),
+          );
+          badges.set(label, file);
+        }
+        overlays.push({ file, y: 0, start: span.start, end: span.end });
+      }
     }
     if (opts.burnCaptions)
       for (const [i, cue] of cues.entries()) {
@@ -589,16 +726,21 @@ export async function renderRecording(
     for (const p of plan.pieces) {
       if (p.kind !== "terminal") continue;
       const dir = join(work, `terminal-${p.step}`);
-      const drawn = await drawTerminal(painter, replays.get(p.step)!, {
-        size: picture,
-        frames: p.frames,
-        fps,
-        dir,
-        ...(assets.css ? { css: assets.css } : {}),
-        ...(opts.terminal?.fontSize
-          ? { fontSize: opts.terminal.fontSize }
-          : {}),
-      });
+      const replay = replays.get(p.step)!;
+      const drawn = await drawTerminal(
+        painter,
+        p.idle ? speedUpReplay(replay, p.idle.at, p.idle.speed) : replay,
+        {
+          size: picture,
+          frames: p.frames,
+          fps,
+          dir,
+          ...(assets.css ? { css: assets.css } : {}),
+          ...(opts.terminal?.fontSize
+            ? { fontSize: opts.terminal.fontSize }
+            : {}),
+        },
+      );
       log(`  terminal scene for step ${p.step}: ${drawn.shots} frames drawn`);
       terminalLists.set(p.step, drawn.list);
       terminalLast.set(p.step, drawn.last);
@@ -612,8 +754,10 @@ export async function renderRecording(
             !hidden.has(s.index) &&
             !replays.has(s.index) &&
             s.screen &&
-            (s.startMs ?? 0) / 1000 >= p.srcStart - 0.002 &&
-            (s.endMs ?? 0) / 1000 <= p.srcEnd + 0.002,
+            (((s.startMs ?? 0) / 1000 >= p.srcStart - 0.002 &&
+              (s.endMs ?? 0) / 1000 <= p.srcEnd + 0.002) ||
+              ((s.startMs ?? 0) / 1000 < p.srcEnd - 0.002 &&
+                (s.endMs ?? 0) / 1000 > p.srcStart + 0.002)),
         )
         .at(-1)?.screen;
 
@@ -800,13 +944,13 @@ export async function renderRecording(
         screen,
       ]);
     }
-    const poster = join(opts.out, "poster.png");
+    const posterPng = join(opts.out, "poster.png");
     const posterTitle = sidecar.poster?.title ?? sidecar.title;
     const kicker = sidecar.poster?.kicker;
     if (assets.poster)
       await assets.poster({
         screen,
-        out: poster,
+        out: posterPng,
         title: posterTitle,
         ...(kicker ? { kicker } : {}),
       });
@@ -819,7 +963,7 @@ export async function renderRecording(
           assets.css,
         ),
         frame,
-        poster,
+        posterPng,
       );
     } else
       await run(ffmpegPath(), [
@@ -832,8 +976,11 @@ export async function renderRecording(
         "1",
         "-fflags",
         "+bitexact",
-        poster,
+        posterPng,
       ]);
+    const poster = await fitPoster(posterPng, { background: bg });
+    if (poster !== posterPng)
+      log(`poster: ${basename(poster)}, to fit the poster limit`);
 
     const chapters = [
       ...(sidecar.intro?.chapter && plan.titleCard
@@ -855,12 +1002,25 @@ export async function renderRecording(
       posterStep: pstep.index,
       ...(sidecar.publish ? { publish: sidecar.publish } : {}),
     };
+    const { youtube, ...publish } = sidecar.publish ?? {};
+    const entry: ScenarioEntry = {
+      title: sidecar.title,
+      description: sidecar.description ?? "",
+      tags: [],
+      ...publish,
+      ...(isObject(youtube) ? youtube : {}),
+      video: "video.mp4",
+      captions: "captions.vtt",
+      poster: basename(poster),
+      duration: plan.duration,
+      chapters: youtubeChapters(chapters, plan.duration, opts.chapters),
+    };
     let manifest: string | undefined;
     if (opts.manifest ?? true) {
       await writeManifest(
         opts.out,
-        ["video.mp4", "captions.vtt", "poster.png"],
-        media,
+        [entry.video, entry.captions, entry.poster],
+        { scenarios: { [sidecar.id]: entry } },
       );
       manifest = join(opts.out, "media.json");
     }
@@ -870,6 +1030,7 @@ export async function renderRecording(
       poster,
       ...(manifest ? { manifest } : {}),
       media,
+      entry,
       plan,
       terminals: [...replays].map(([step, r]) => ({
         step,

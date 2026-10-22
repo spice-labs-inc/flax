@@ -32,7 +32,8 @@ export interface FakeStep extends Partial<
  * screens/<index>.png, terminal/<index>.json for a step with commands
  * (with the sidecar's display and preface for it) and the sidecar as
  * <id>.video.yml. `scale` is the recording's video pixels
- * per CSS pixel, as the timeline says; boxes are given in video pixels.
+ * per CSS pixel, as the timeline says; boxes are given in viewport CSS
+ * pixels, as the recorder writes them.
  */
 export async function writeFakeRecording(
   dir: string,

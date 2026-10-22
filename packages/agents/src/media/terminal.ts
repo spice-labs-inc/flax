@@ -264,3 +264,17 @@ export async function drawTerminal(
     await page.close();
   }
 }
+
+/** The replay with every write from `at` seconds on coming `speed` times sooner, for a long scene sped up after its narration. */
+export function speedUpReplay(
+  replay: TerminalReplay,
+  at: number,
+  speed: number,
+): TerminalReplay {
+  const warp = (t: number) => (t <= at ? t : at + (t - at) / speed);
+  return {
+    ...replay,
+    writes: replay.writes.map(([t, d]) => [warp(t), d]),
+    duration: warp(replay.duration),
+  };
+}

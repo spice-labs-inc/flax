@@ -1,13 +1,32 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { MAX_POSTER_BYTES, scenarioMedia } from "../src/deliver/media.ts";
 import { parseVtt } from "../src/media/captions.ts";
 import {
   ffmpegPath,
+  fitPoster,
   probeMedia,
   renderRecording,
 } from "../src/media/render.ts";
@@ -59,7 +78,7 @@ function named([r, g, b]: [number, number, number]): string {
   return `rgb(${r},${g},${b})`;
 }
 
-// The recording is 1440 by 900 at scale 2, so boxes are in 2880 by 1800 video pixels.
+// The recording is 1440 by 900 at scale 2; boxes are in viewport CSS pixels, as the recorder writes them.
 const STEPS: FakeStep[] = [
   { keyword: "Given", text: "a signed-in user", color: "red", seconds: 1.5 },
   {
@@ -71,7 +90,7 @@ const STEPS: FakeStep[] = [
       {
         kind: "click",
         atMs: 1800,
-        box: { x: 1200, y: 800, width: 480, height: 200 },
+        box: { x: 600, y: 400, width: 240, height: 100 },
       },
     ],
   },
@@ -101,7 +120,7 @@ const STEPS: FakeStep[] = [
       {
         kind: "highlight",
         atMs: 4700,
-        box: { x: 800, y: 600, width: 600, height: 240 },
+        box: { x: 400, y: 300, width: 300, height: 120 },
       },
     ],
   },
@@ -146,6 +165,9 @@ describe("renderRecording", () => {
   let dir: string;
   beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), "flax-render-"));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
   afterAll(async () => {
     await rm(dir, { recursive: true, force: true });
@@ -287,7 +309,23 @@ describe("renderRecording", () => {
       "poster.png",
       "video.mp4",
     ]);
+    // Too short for three chapters ten seconds apart, so YouTube gets none.
     expect(manifest.data).toEqual({
+      scenarios: {
+        "open-the-list": {
+          title: "Open the list",
+          description: "",
+          tags: ["example"],
+          video: "video.mp4",
+          captions: "captions.vtt",
+          poster: "poster.png",
+          duration: plan.duration,
+          chapters: [],
+        },
+      },
+    });
+    expect(rendered.entry).toEqual(manifest.data.scenarios["open-the-list"]);
+    expect(rendered.media).toEqual({
       id: "open-the-list",
       title: "Open the list",
       scenario: "Open the list",
@@ -334,6 +372,221 @@ describe("renderRecording", () => {
     ]);
   }, 180_000);
 
+  it("speeds up a long wait with a badge, replays a docs cast, fits the chapters and the poster to the delivery", async () => {
+    const docs = join(dir, "docs");
+    await mkdir(join(docs, "casts"), { recursive: true });
+    await writeFile(
+      join(docs, "casts", "sync.cast"),
+      [
+        JSON.stringify({ version: 2, width: 80, height: 24 }),
+        JSON.stringify([3.5, "o", "synced from the docs\r\n"]),
+      ].join("\n") + "\n",
+    );
+    vi.stubEnv("FLAX_DOCS_ROOT", docs);
+    const record = join(dir, "long");
+    const sidecar: Sidecar = {
+      scenario: "Wait for the report",
+      id: "wait-for-the-report",
+      title: "Wait for the report",
+      description: "The report, start to finish.",
+      narration: [
+        { at: 1, text: "Open the list." },
+        { at: 3, text: "Sync the notes." },
+      ],
+      chapters: [
+        { at: 1, title: "Open" },
+        { at: 3, title: "Sync" },
+        { at: 4, title: "Check" },
+      ],
+      terminal: { at: 3, cast: "docs:casts/sync.cast" },
+      publish: {
+        youtube: {
+          title: "Waiting for a report",
+          tags: ["reports"],
+          playlist: "Tutorials",
+        },
+        owner: "docs-team",
+      },
+    };
+    await writeFakeRecording(
+      record,
+      [
+        {
+          keyword: "When",
+          text: "I open the list",
+          color: "green",
+          seconds: 2,
+        },
+        {
+          keyword: "And",
+          text: "I wait for the report",
+          color: "blue",
+          seconds: 16,
+        },
+        {
+          keyword: "And",
+          text: "I sync the notes",
+          color: "white",
+          seconds: 1,
+        },
+        { keyword: "Then", text: "I see the report", color: "red", seconds: 5 },
+      ],
+      sidecar,
+    );
+    const out = join(dir, "long-out");
+    const rendered = await renderRecording({
+      recordDir: record,
+      tts: sineVoice(),
+      out,
+      threads: 2,
+      chapters: { minSeconds: 3 },
+      assets: {
+        poster: async ({ out }) => {
+          await run(ffmpegPath(), [
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=gray:s=2560x1440,noise=alls=100:allf=u",
+            "-frames:v",
+            "1",
+            out,
+          ]);
+        },
+      },
+    });
+
+    // The 16 s wait has no narration, so it plays in 4 s at four times the speed.
+    const plan = rendered.plan;
+    expect(plan.idle).toEqual([{ start: 2, end: 6, speed: 4 }]);
+    expect(plan.steps.get(2)).toEqual({ start: 2, end: 6 });
+    const at = (x: number, y: number, t: number) =>
+      pixel(rendered.video, x, y, t).then(named);
+    expect(await at(1280, 640, 4)).toBe("blue");
+    // The badge sits at the picture's top right, over the pillarbox, only while the wait is sped up.
+    expect(await at(2440, 60, 4)).toBe("white");
+    expect(await at(2440, 60, 1)).toBe("rgb(0,0,0)");
+    expect(await at(2440, 60, plan.steps.get(4)!.start + 1)).toBe("rgb(0,0,0)");
+
+    expect(rendered.terminals).toEqual([
+      { step: 3, text: "synced from the docs\n" },
+    ]);
+
+    const check = plan.steps.get(4)!;
+    expect(rendered.entry.chapters).toEqual([
+      { start: 0, title: "Open" },
+      { start: 6, title: "Sync" },
+      { start: Math.floor(check.start), title: "Check" },
+    ]);
+
+    // The noisy poster is over 2 MB as a PNG at either size, so it is a JPEG.
+    expect(rendered.poster).toBe(join(out, "poster.jpg"));
+    expect(existsSync(join(out, "poster.png"))).toBe(false);
+    const poster = await probeMedia(rendered.poster);
+    expect([poster.width, poster.height]).toEqual([1920, 1080]);
+    expect((await stat(rendered.poster)).size).toBeLessThanOrEqual(
+      MAX_POSTER_BYTES,
+    );
+
+    const manifest = JSON.parse(await readFile(rendered.manifest!, "utf8"));
+    expect(manifest.data.scenarios["wait-for-the-report"]).toMatchObject({
+      title: "Waiting for a report",
+      description: "The report, start to finish.",
+      tags: ["reports"],
+      playlist: "Tutorials",
+      owner: "docs-team",
+      poster: "poster.jpg",
+    });
+    const media = scenarioMedia(manifest);
+    if ("error" in media) throw new Error(media.error);
+    const delivered = media.scenarios.get("wait-for-the-report")!;
+    expect(delivered.poster.type).toBe("image/jpeg");
+    expect(delivered.duration).toBe(plan.duration);
+  }, 180_000);
+
+  it("reads a docs cast from the docsRoot option, and refuses one with no docs root", async () => {
+    vi.stubEnv("FLAX_DOCS_ROOT", "");
+    const record = join(dir, "no-docs");
+    const sidecar: Sidecar = {
+      scenario: "Sync",
+      id: "sync",
+      title: "Sync",
+      terminal: { at: 1, cast: "docs:casts/missing.cast" },
+    };
+    await writeFakeRecording(
+      record,
+      [{ keyword: "When", text: "I sync", color: "white", seconds: 1 }],
+      sidecar,
+    );
+    const render = (docsRoot?: string) =>
+      renderRecording({
+        recordDir: record,
+        tts: sineVoice(),
+        out: join(dir, "no-docs-out"),
+        ...(docsRoot ? { docsRoot } : {}),
+      });
+    await expect(render()).rejects.toThrow(
+      /docs:casts\/missing.cast: set FLAX_DOCS_ROOT/,
+    );
+    await expect(render(join(dir, "elsewhere"))).rejects.toThrow(
+      /elsewhere\/casts\/missing.cast/,
+    );
+  }, 60_000);
+
+  it("points a callout at the recorder's CSS box on a recording at device scale 1.25, and trims a step", async () => {
+    const record = join(dir, "scaled");
+    const sidecar: Sidecar = {
+      scenario: "Find the item",
+      id: "find-the-item",
+      title: "Find the item",
+      narration: [
+        { at: 1, text: "Open it." },
+        { at: 2, text: "Here it is." },
+      ],
+    };
+    await writeFakeRecording(
+      record,
+      [
+        { keyword: "When", text: "I open it", color: "green", seconds: 2 },
+        {
+          keyword: "Then",
+          text: "I see the item",
+          color: "blue",
+          seconds: 3,
+          actions: [
+            {
+              kind: "highlight",
+              atMs: 2500,
+              box: { x: 800, y: 500, width: 200, height: 100 },
+            },
+          ],
+        },
+      ],
+      sidecar,
+      { viewport: { width: 1280, height: 800 }, size: "400x250", scale: 1.25 },
+    );
+    const rendered = await renderRecording({
+      recordDir: record,
+      tts: sineVoice(),
+      out: join(dir, "scaled-out"),
+      threads: 2,
+      assets: { css: ":root{--media-dim:rgba(0,0,0,.6)}" },
+      production: { callouts: [{ at: 2, text: "The item" }] },
+      trim: [{ at: "When I open it", start: 0.5 }],
+    });
+    const item = rendered.plan.steps.get(2)!;
+    expect(rendered.plan.steps.get(1)).toEqual({ start: 0, end: 1.5 });
+    expect(item).toEqual({ start: 1.5, end: 4.5 });
+    // The viewport fills 2048 by 1280 of the picture from x 256, 1.6 picture pixels a CSS pixel: the box is 1536, 800, 320 by 160.
+    const t = item.start + 1;
+    expect((await pixel(rendered.video, 1696, 880, t))[2]).toBeGreaterThan(200);
+    expect((await pixel(rendered.video, 1460, 880, t))[2]).toBeLessThan(150);
+    expect((await pixel(rendered.video, 700, 300, t))[2]).toBeLessThan(150);
+  }, 180_000);
+
   it("refuses a recording of a failed run and writes nothing", async () => {
     const record = join(dir, "failed");
     await writeFakeRecording(
@@ -349,5 +602,57 @@ describe("renderRecording", () => {
       /refusing to render: the recording of Open the list is marked failed/,
     );
     expect(existsSync(join(out, "video.mp4"))).toBe(false);
+  }, 60_000);
+});
+
+describe("fitPoster", () => {
+  let dir: string;
+  let noisy: string;
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), "flax-poster-"));
+    noisy = join(dir, "noisy.png");
+    await run(ffmpegPath(), [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=gray:s=2560x1440,noise=alls=40:allf=u",
+      "-frames:v",
+      "1",
+      noisy,
+    ]);
+  });
+  afterAll(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("leaves a poster within the limit alone, redraws a larger one at 1920 by 1080, and makes a JPEG when that is still too large", async () => {
+    const full = (await stat(noisy)).size;
+    const kept = join(dir, "kept", "poster.png");
+    await mkdir(join(dir, "kept"));
+    await copyFile(noisy, kept);
+    expect(await fitPoster(kept, { maxBytes: full })).toBe(kept);
+    expect((await probeMedia(kept)).width).toBe(2560);
+
+    const smaller = join(dir, "smaller", "poster.png");
+    await mkdir(join(dir, "smaller"));
+    await copyFile(noisy, smaller);
+    expect(await fitPoster(smaller, { maxBytes: full - 1 })).toBe(smaller);
+    const small = await probeMedia(smaller);
+    expect([small.width, small.height]).toEqual([1920, 1080]);
+    const png1920 = (await stat(smaller)).size;
+    expect(await readdir(join(dir, "smaller"))).toEqual(["poster.png"]);
+
+    const jpeg = join(dir, "jpeg", "poster.png");
+    await mkdir(join(dir, "jpeg"));
+    await copyFile(noisy, jpeg);
+    const fitted = await fitPoster(jpeg, { maxBytes: png1920 - 1 });
+    expect(fitted).toBe(join(dir, "jpeg", "poster.jpg"));
+    expect(await readdir(join(dir, "jpeg"))).toEqual(["poster.jpg"]);
+    expect((await stat(fitted)).size).toBeLessThan(png1920);
+    expect((await probeMedia(fitted)).width).toBe(1920);
   }, 60_000);
 });

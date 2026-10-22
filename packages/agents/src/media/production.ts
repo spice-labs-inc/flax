@@ -36,18 +36,16 @@ export function fitRect(viewport: Size, picture: Size): Box {
   };
 }
 
-/** The raw video's size in the pixels its boxes are in: the viewport times the recording's scale. */
-export function sourceSize(
-  timeline: Pick<Timeline, "viewport" | "scale">,
-): Size {
-  const scale = timeline.scale ?? 1;
-  return {
-    width: timeline.viewport.width * scale,
-    height: timeline.viewport.height * scale,
-  };
+/**
+ * The raw video's size in the units its boxes are in: viewport CSS pixels.
+ * The video itself is the viewport times the recording's scale; fitted
+ * into the picture, both land in the same place.
+ */
+export function sourceSize(timeline: Pick<Timeline, "viewport">): Size {
+  return { width: timeline.viewport.width, height: timeline.viewport.height };
 }
 
-/** A box of the raw video (`source` pixels) as picture pixels. */
+/** A box of the raw video (`source` units, viewport CSS pixels) as picture pixels. */
 export function toPicture(box: Box, source: Size, picture: Size): Box {
   const rect = fitRect(source, picture);
   const s = rect.width / source.width;

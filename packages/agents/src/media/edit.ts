@@ -1,3 +1,4 @@
+import { MIN_CHAPTERS, MIN_CHAPTER_SECONDS } from "../output-check/youtube.ts";
 import {
   hiddenSteps,
   highlightedSteps,
@@ -24,6 +25,20 @@ export interface EditOptions {
   tail?: number;
   /** The fastest a scene's picture may play to fit a shorter narration. Default 1: nothing is sped up. */
   maxSpeed?: number;
+  /** Seconds a narrated scene's picture may run on after the block's last word; the rest of the scene is cut. Default: no limit. */
+  maxTail?: number;
+  /** Long waits: the part of a step no narration is spoken over, when longer than `after` seconds, plays sped up to last `seconds`; false plays every step at its own pace. */
+  idle?: IdleOptions | false;
+}
+
+/** How a long unnarrated stretch of a step is sped up. */
+export interface IdleOptions {
+  /** Seconds an unnarrated stretch may last before it is sped up. Default 10. */
+  after?: number;
+  /** Seconds a sped-up stretch lasts. Default 4. */
+  seconds?: number;
+  /** Shows the speed-up (x40) in a corner of the picture while it lasts. Default true. */
+  badge?: boolean;
 }
 
 /** A card before or after the recording: at least `seconds` long, longer when its narration needs it. */
@@ -42,6 +57,8 @@ export interface EditInput {
   narration: readonly { step: number; seconds: number }[];
   /** Steps shown as a terminal scene in place of the raw video, and the scene's length in seconds. */
   terminals?: ReadonlyMap<number, number>;
+  /** Seconds cut from the start and the end of a step's raw video, by step. */
+  trims?: ReadonlyMap<number, { start?: number; end?: number }>;
   titleCard?: CardTime;
   endCard?: CardTime;
 }
@@ -56,6 +73,8 @@ export type Piece =
       speed: number;
       start: number;
       frames: number;
+      /** A long unnarrated stretch, sped up. */
+      idle?: boolean;
     }
   | {
       kind: "hold";
@@ -63,7 +82,14 @@ export type Piece =
       start: number;
       frames: number;
     }
-  | { kind: "terminal"; step: number; start: number; frames: number }
+  | {
+      kind: "terminal";
+      step: number;
+      start: number;
+      frames: number;
+      /** From `at` seconds into the replay, its writes come `speed` times faster. */
+      idle?: { at: number; speed: number };
+    }
   | { kind: "card"; card: "title" | "end"; start: number; frames: number };
 
 /** A run of visible steps that starts at a narrated step (or the first visible one). */
@@ -94,8 +120,17 @@ export interface EditPlan {
   narration: number[];
   titleCard?: { start: number; end: number; narration?: number };
   endCard?: { start: number; end: number; narration?: number };
+  /** The sped-up stretches on the output timeline. */
+  idle: IdleSpan[];
   frames: number;
   duration: number;
+}
+
+/** A sped-up stretch of the output and how many times faster it plays. */
+export interface IdleSpan {
+  start: number;
+  end: number;
+  speed: number;
 }
 
 const f2s = (frames: number, fps: number) => frames / fps;
@@ -129,6 +164,14 @@ export function planEdit(
   const leadIn = opts.leadIn ?? 0;
   const tail = opts.tail ?? 0.5;
   const maxSpeed = Math.max(1, opts.maxSpeed ?? 1);
+  const idle =
+    opts.idle === false
+      ? undefined
+      : { after: opts.idle?.after ?? 10, seconds: opts.idle?.seconds ?? 4 };
+  if (idle && !(idle.seconds > 0 && idle.seconds < idle.after))
+    throw new Error(
+      `idle.seconds (${idle.seconds}) must be more than 0 and less than idle.after (${idle.after})`,
+    );
   const visible = [...input.steps]
     .sort((a, b) => a.index - b.index)
     .filter((s) => !input.hidden.has(s.index));
@@ -166,6 +209,7 @@ export function planEdit(
   const scenes: Scene[] = [];
   const stepTimes = new Map<number, StepTime>();
   const narration: number[] = new Array<number>(input.narration.length).fill(0);
+  const idleSpans: IdleSpan[] = [];
   let frame = 0;
 
   const card = (kind: "title" | "end", c: CardTime) => {
@@ -188,13 +232,24 @@ export function planEdit(
     ? card("title", input.titleCard)
     : undefined;
 
+  for (const index of input.trims?.keys() ?? [])
+    if (input.terminals?.has(index))
+      throw new Error(
+        `step ${index} is a terminal scene; a trim cuts only a step's raw video`,
+      );
+  // A step's raw video, its trim cut off.
+  const span = (s: TimelineStep): [number, number] => {
+    const trim = input.trims?.get(s.index);
+    const a = begin(s) + (trim?.start ?? 0);
+    return [a, Math.max(a, end(s) - (trim?.end ?? 0))];
+  };
+
   for (const group of groups) {
     const terminal = (s: TimelineStep) => input.terminals?.get(s.index);
-    const srcLength = group.steps.reduce(
-      (n, s) =>
-        terminal(s) === undefined ? n + Math.max(0, end(s) - begin(s)) : n,
-      0,
-    );
+    const srcLength = group.steps.reduce((n, s) => {
+      const [a, b] = span(s);
+      return terminal(s) === undefined ? n + (b - a) : n;
+    }, 0);
     const fixed = group.steps.reduce((n, s) => n + (terminal(s) ?? 0), 0);
     const audio =
       group.narration === undefined
@@ -209,32 +264,108 @@ export function planEdit(
         ? Math.min(maxSpeed, srcLength / (need - fixed))
         : 1;
     const sceneStart = frame;
+    const room = () =>
+      audio === undefined || opts.maxTail === undefined
+        ? Infinity
+        : leadIn + audio + opts.maxTail - f2s(frame - sceneStart, fps);
     // Contiguous steps share one clip, so a cut only falls where a step was hidden.
     let clip: Extract<Piece, { kind: "clip" }> | undefined;
     let lastSrc = 0;
-    for (const step of group.steps) {
-      const a = begin(step);
-      const b = Math.max(a, end(step));
-      const start = f2s(frame, fps);
-      const shown = terminal(step);
-      if (shown !== undefined) {
-        const frames = Math.max(1, Math.ceil(shown * fps - 1e-9));
-        pieces.push({ kind: "terminal", step: step.index, start, frames });
-        clip = undefined;
-        frame += frames;
-        stepTimes.set(step.index, { start, end: f2s(frame, fps) });
-        lastSrc = b;
-        continue;
-      }
-      const frames = Math.max(1, Math.round(((b - a) / speed) * fps));
-      if (clip && Math.abs(clip.srcEnd - a) < 0.0015) {
+    // Seconds of a step played at its scene's pace; what follows plays sped up.
+    const paced = (length: number) => {
+      if (!idle) return length;
+      const spoken = Math.min(
+        length,
+        Math.max(0, need - f2s(frame - sceneStart, fps)),
+      );
+      return length - spoken > idle.after ? spoken : length;
+    };
+    const idleFrames = idle ? Math.round(idle.seconds * fps) : 0;
+    const addClip = (
+      a: number,
+      b: number,
+      at: number,
+      frames: number,
+      idled: boolean,
+    ) => {
+      const pace = idled ? (b - a) / f2s(frames, fps) : speed;
+      if (clip && Math.abs(clip.srcEnd - a) < 0.0015 && !clip.idle && !idled) {
         clip.srcEnd = b;
         clip.frames += frames;
       } else {
-        clip = { kind: "clip", srcStart: a, srcEnd: b, speed, start, frames };
+        clip = {
+          kind: "clip",
+          srcStart: a,
+          srcEnd: b,
+          speed: pace,
+          start: at,
+          frames,
+          ...(idled ? { idle: true } : {}),
+        };
         pieces.push(clip);
       }
-      frame += frames;
+      if (idled)
+        idleSpans.push({ start: at, end: at + f2s(frames, fps), speed: pace });
+    };
+    for (const step of group.steps) {
+      const [a, whole] = span(step);
+      const start = f2s(frame, fps);
+      const left = room();
+      if (left <= 1e-9) {
+        stepTimes.set(step.index, { start, end: start });
+        continue;
+      }
+      const full = terminal(step);
+      if (full !== undefined) {
+        const shown = Math.min(full, left);
+        const kept = paced(shown);
+        const frames =
+          kept < shown
+            ? Math.ceil(kept * fps - 1e-9) + idleFrames
+            : Math.max(1, Math.ceil(shown * fps - 1e-9));
+        const fast =
+          kept < shown
+            ? {
+                at: kept,
+                speed: (shown - kept) / (f2s(frames, fps) - kept),
+              }
+            : undefined;
+        pieces.push({
+          kind: "terminal",
+          step: step.index,
+          start,
+          frames,
+          ...(fast ? { idle: fast } : {}),
+        });
+        if (fast)
+          idleSpans.push({
+            start: start + fast.at,
+            end: start + f2s(frames, fps),
+            speed: fast.speed,
+          });
+        clip = undefined;
+        frame += frames;
+        stepTimes.set(step.index, { start, end: f2s(frame, fps) });
+        lastSrc = whole;
+        continue;
+      }
+      const b = Math.min(whole, a + left * speed);
+      const length = (b - a) / speed;
+      const kept = paced(length);
+      if (kept < length) {
+        const keptFrames = Math.round(kept * fps);
+        const split = a + f2s(keptFrames, fps) * speed;
+        if (keptFrames > 0) {
+          addClip(a, split, start, keptFrames, false);
+          frame += keptFrames;
+        }
+        addClip(split, b, f2s(frame, fps), idleFrames, true);
+        frame += idleFrames;
+      } else {
+        const frames = Math.max(1, Math.round(length * fps));
+        addClip(a, b, start, frames, false);
+        frame += frames;
+      }
       stepTimes.set(step.index, { start, end: f2s(frame, fps) });
       lastSrc = b;
     }
@@ -276,6 +407,7 @@ export function planEdit(
     narration,
     ...(titleCard ? { titleCard } : {}),
     ...(endCard ? { endCard } : {}),
+    idle: idleSpans,
     frames: frame,
     duration: f2s(frame, fps),
   };
@@ -320,6 +452,29 @@ export function chapterTimes(
       return { start: plan.steps.get(step.index)!.start, title: c.title };
     })
     .sort((a, b) => a.start - b.start);
+}
+
+/**
+ * Chapters as YouTube shows them: whole seconds, the first at 0, a chapter
+ * starting less than `minSeconds` (default 10) after the one kept before
+ * it folded into that one, and the last folded too when it starts less
+ * than `minSeconds` before the end; none when fewer than three remain.
+ */
+export function youtubeChapters(
+  chapters: readonly Chapter[],
+  duration: number,
+  opts: { minSeconds?: number } = {},
+): Chapter[] {
+  const min = opts.minSeconds ?? MIN_CHAPTER_SECONDS;
+  const out: Chapter[] = [];
+  for (const c of [...chapters].sort((a, b) => a.start - b.start)) {
+    const start = out.length === 0 ? 0 : Math.floor(c.start);
+    const prev = out.at(-1);
+    if (prev && start - prev.start < min) continue;
+    out.push({ start, title: c.title });
+  }
+  while (out.length > 1 && duration - out.at(-1)!.start < min) out.pop();
+  return out.length >= MIN_CHAPTERS ? out : [];
 }
 
 /**

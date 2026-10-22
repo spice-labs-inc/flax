@@ -182,3 +182,22 @@ export function posterHtml(
     }<h1>${escapeHtml(o.title)}</h1></main>`,
   );
 }
+
+/** How many times faster a sped-up stretch plays, as its badge says it: ×40, ×2.5. */
+export function speedLabel(speed: number): string {
+  const n = speed >= 10 ? Math.round(speed) : Math.round(speed * 10) / 10;
+  return `×${n}`;
+}
+
+/** The badge over a sped-up stretch: the speed in a small pill at the picture's top right, in the accent colors. */
+export function speedHtml(speed: number, picture: Size, css = ""): string {
+  const W = picture.width / LAYOUT_SCALE;
+  const H = picture.height / LAYOUT_SCALE;
+  return page(
+    css,
+    `body{width:${W}px;height:${H}px;font-family:var(--media-font)}
+    div{position:absolute;top:24px;right:24px;font-size:26px;font-weight:700;line-height:1;
+      color:var(--media-accent-text);background:var(--media-accent);padding:10px 16px;border-radius:999px;opacity:.9}`,
+    `<div>${escapeHtml(speedLabel(speed))}</div>`,
+  );
+}

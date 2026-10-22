@@ -56,6 +56,9 @@ export function replayTimeline(
 /** Names the directory of unpacked recordings-<edition>.tar.gz release assets that recording: casts are read from. */
 export const RECORDINGS_ROOT_ENV = "FLAX_RECORDINGS_ROOT";
 
+/** Names the docs checkout that docs: casts are read from. */
+export const DOCS_ROOT_ENV = "FLAX_DOCS_ROOT";
+
 const RECORDING =
   /^recording:([a-z][a-z0-9-]*)\/([a-z0-9][a-z0-9-]*(?:@[a-z]+=[a-z0-9-]+(?:,[a-z]+=[a-z0-9-]+)*)?)$/;
 
@@ -76,7 +79,7 @@ export function parseRecording(ref: string): RecordingRef | undefined {
   return { edition: m[1]!, name: m[2]! };
 }
 
-/** Where a video's cast step reads its cast: "recording:<edition>/<id>[@shell=<s>]" from the recordings directory, "docs:<path>" from the public-docs checkout, else from the scenario directory. */
+/** Where a video's cast step reads its cast: "recording:<edition>/<id>[@shell=<s>]" from the recordings directory, "docs:<path>" from the docs checkout, else from the scenario directory. */
 export function castPath(
   ref: string,
   scenarioDir: string,
@@ -93,7 +96,7 @@ export function castPath(
   }
   if (ref.startsWith("docs:")) {
     if (!docsRoot)
-      throw new Error(`${ref}: set FLAX_DOCS_ROOT to a public-docs checkout`);
+      throw new Error(`${ref}: set ${DOCS_ROOT_ENV} to a docs checkout`);
     return join(docsRoot, ref.slice(5));
   }
   return isAbsolute(ref) ? ref : resolve(scenarioDir, ref);

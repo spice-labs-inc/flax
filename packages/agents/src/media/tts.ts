@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Word } from "./captions.ts";
@@ -34,14 +34,15 @@ export interface VoiceSettings {
   speed?: number;
 }
 
-/** The text-to-speech request body: the spoken form of `written`, the model, and the voice settings when given. */
+/** The text-to-speech request body: the spoken form of `written` (by `say`, default the workspace's hints), the model, and the voice settings when given. */
 export function speechRequest(
   written: string,
   modelId: string,
   settings?: VoiceSettings,
+  say: (text: string) => string = spoken,
 ): { text: string; model_id: string; voice_settings?: VoiceSettings } {
   return {
-    text: spoken(written),
+    text: say(written),
     model_id: modelId,
     ...(settings === undefined || Object.keys(settings).length === 0
       ? {}
@@ -55,9 +56,9 @@ const ELEVENLABS = "https://api.elevenlabs.io/v1";
 const SAMPLE_RATE = 24000;
 
 /**
- * What the voice says for a written token (brand/pronunciations.json):
- * longest keys first, on word boundaries, case-sensitively. Captions keep
- * the written text.
+ * What the voice says for a written token, by pronunciation hints such as
+ * { "SQL": "sequel" }: longest keys first, on word boundaries,
+ * case-sensitively. Captions keep the written text.
  */
 export function pronouncer(
   hints: Record<string, string>,
@@ -77,15 +78,20 @@ export function pronouncer(
   return (text) => rules.reduce((s, [re, v]) => s.replace(re, `$1${v}`), text);
 }
 
+/** The workspace's pronunciation hints, `<mediaRoot>/brand/pronunciations.json`; none when the file is absent. */
+export function workspacePronunciations(
+  mediaRoot = MEDIA_ROOT,
+): Record<string, string> {
+  const file = join(mediaRoot, "brand", "pronunciations.json");
+  if (!existsSync(file)) return {};
+  return JSON.parse(readFileSync(file, "utf8")) as Record<string, string>;
+}
+
 let brandPronouncer: ((text: string) => string) | undefined;
 
-/** The spoken form of `text` under the brand's pronunciation hints. */
+/** The spoken form of `text` under the workspace's pronunciation hints, if it has any. */
 export function spoken(text: string): string {
-  brandPronouncer ??= pronouncer(
-    JSON.parse(
-      readFileSync(join(MEDIA_ROOT, "brand", "pronunciations.json"), "utf8"),
-    ) as Record<string, string>,
-  );
+  brandPronouncer ??= pronouncer(workspacePronunciations());
   return brandPronouncer(text);
 }
 
@@ -176,13 +182,19 @@ export async function busyRetry(
  * An ElevenLabs voice with character alignment, for word-timed captions.
  * `voiceName` is a name in the account's voice library or a voice id; the
  * model defaults to Eleven v4; `settings` tunes the voice for every line.
+ * `pronunciations` says how written tokens are spoken; without it, the
+ * workspace's pronunciations.json when there is one.
  */
 export async function elevenLabsVoice(
   voiceName: string,
   modelId = "eleven_v4",
   settings?: VoiceSettings,
+  options: { pronunciations?: Record<string, string> } = {},
 ): Promise<Voice> {
   const key = elevenLabsKey();
+  const say = options.pronunciations
+    ? pronouncer(options.pronunciations)
+    : spoken;
   const list = await fetch(`${ELEVENLABS}/voices`, {
     headers: { "xi-api-key": key },
   });
@@ -213,7 +225,9 @@ export async function elevenLabsVoice(
           {
             method: "POST",
             headers: { "xi-api-key": key, "content-type": "application/json" },
-            body: JSON.stringify(speechRequest(written, modelId, settings)),
+            body: JSON.stringify(
+              speechRequest(written, modelId, settings, say),
+            ),
           },
         ),
       );
@@ -232,7 +246,7 @@ export async function elevenLabsVoice(
         pcm,
         sampleRate: SAMPLE_RATE,
         duration,
-        words: alignWords(written, body.alignment, duration),
+        words: alignWords(written, body.alignment, duration, say),
       };
     },
   };

@@ -16,7 +16,7 @@ open-a-note/
   open-a-note.video.yml   a copy of the sidecar
 ```
 
-Times in `timeline.json` are milliseconds from the raw video's first frame. The timeline says whether the run passed (`status`), which steps are hidden and highlighted, and the recording's `scale`: video pixels per viewport CSS pixel. A step's actions are what the recorder did during it (`click`, `type`, `goto`, `point`, `highlight`), each with a time and, for the ones on an element, its box in video pixels. Background steps are listed with index 0 and are never filmed.
+Times in `timeline.json` are milliseconds from the raw video's first frame. The timeline says whether the run passed (`status`), which steps are hidden and highlighted, and the recording's `scale`: video pixels per viewport CSS pixel. A step's actions are what the recorder did during it (`click`, `type`, `goto`, `point`, `highlight`), each with a time and, for the ones on an element, its box in viewport CSS pixels. The renderer places boxes (zoom, callouts) by the viewport, so a recording at any scale lines up. Background steps are listed with index 0 and are never filmed.
 
 The sidecar beside a feature file says how a scenario becomes a video. It is `<feature>.video.yml`, or `<feature>.<id>.video.yml` when a feature has several recorded scenarios; the copy in the record directory is matched to the timeline by `scenario`. The fields the renderer reads:
 
@@ -52,7 +52,8 @@ outro:
   heading: "docs.notes-co.example"
   sub: "Get started"
   text: "Every command is in the quick start."
-publish: { playlist: tutorials }  # passed through to media.json untouched
+publish:                         # carried into media.json's entry for the video
+  youtube: { title: "Open a note", tags: [notes], playlist: Tutorials }
 ```
 
 A step named by text matches its keyword as written in the feature (`And`, `But` included) and its text; when the keyword differs, a text that only one step has still matches. Text references survive inserted steps, so they are the better choice.
@@ -63,10 +64,12 @@ A step named by text matches its keyword as written in the feature (`And`, `But`
 
 - `video.mp4`: 2560 by 1440, H.264 and AAC, 30 frames a second. The recording is fitted into the picture above a caption band (160 pixels by default, `captionBand: 0` for none).
 - `captions.vtt`: the narration's words, the intro's and outro's included, grouped into readable cues.
-- `poster.png`: the poster step's screen (or its terminal scene's last frame) fitted into the frame; with a poster `title` or `kicker`, those over it; or what your `assets.poster` draws.
-- `media.json`: the manifest listing the three files, with `data` holding the id, title, description, scenario, duration, chapters (start seconds and title, the intro's and outro's included), the voice's name, the poster step and the sidecar's `publish` map.
+- `poster.png`: the poster step's screen (or its terminal scene's last frame) fitted into the frame; with a poster `title` or `kicker`, those over it; or what your `assets.poster` draws. A poster over the delivery's 2 MB thumbnail limit is redrawn at 1920 by 1080, and when that is still over, written as `poster.jpg` at the best JPEG quality that fits.
+- `media.json`: the manifest listing the three files, with the video's entry in `data.scenarios.<id>` (the sidecar's `id`), the shape the YouTube output and its delivery read: `video`, `captions`, `poster`, `duration`, `chapters`, and `title`, `description`, `tags` and `playlist` from the sidecar's `publish.youtube`, else from `publish`, else the sidecar's `title` and `description`. The rest of `publish` is carried into the entry as is.
 
-The result also carries the edit plan and, for each terminal scene, the plain text it shows.
+The entry's chapters follow YouTube's rules: whole seconds, the first at 0, a chapter starting less than 10 seconds after the one before it folded into that one (the last too when it starts less than 10 seconds before the end), and none at all when fewer than three remain. `chapters: { minSeconds }` changes the 10; the kit's YouTube check refuses chapters shorter than 10 seconds. The result's `media.chapters` keeps every chapter at its exact time, the intro's and outro's included.
+
+The result also carries the entry, the edit plan and, for each terminal scene, the plain text it shows. A job that makes several videos renders each into its own folder with `manifest: false` and writes one media.json whose `data.scenarios` holds each result's `entry`, its paths prefixed with the folder.
 
 ```ts
 import { renderRecording } from "@flax/agents/media/render";
@@ -74,7 +77,10 @@ import { elevenLabsVoice } from "@flax/agents/media/tts";
 
 await renderRecording({
   recordDir: "runs/2026-01-14/open-a-note",
-  tts: (voice) => elevenLabsVoice(voice ?? "narrator"),
+  tts: (voice) =>
+    elevenLabsVoice(voice ?? "narrator", undefined, undefined, {
+      pronunciations: { SQL: "sequel" },
+    }),
   out: process.env.FLAX_AGENTS_MEDIA_DIR!,
   standIns: rulesByName[sidecar.standIns ?? "default"],
   assets: {
@@ -87,6 +93,8 @@ await renderRecording({
 });
 ```
 
+`elevenLabsVoice` speaks each written token as `pronunciations` says, while the captions keep the written words. Without the option it reads `src/media/brand/pronunciations.json` in the workspace when the file is there, and pronounces everything as written when it is not.
+
 A recording of a failed run is refused: when the timeline is marked failed or any step did not pass, nothing is rendered, so a video never shows a flow that the checks did not prove.
 
 ## How the edit works
@@ -96,8 +104,11 @@ The edit is pure arithmetic (`src/media/edit.ts`, `planEdit`), done before any e
 1. Hidden steps are cut: Background steps, then what the recorder marked, else the sidecar's `hide` list, else every Given. Steps that ran back to back stay one stretch of the raw video; a cut falls only where a hidden step or a terminal scene was.
 2. A visible step that ran commands is a terminal scene (below) in place of its browser frames, as long as its replay.
 3. The visible steps fall into scenes. A scene starts at each step a narration block names (a block on a hidden step moves to the next visible one) and runs to the next one.
-4. Each block starts at its scene's start (plus `leadIn`, default 0). When the block and its `tail` (default 0.5 seconds) are longer than the scene, the scene's last frame holds until they are done. A scene longer than its narration plays at its own pace; `maxSpeed` (default 1) lets its browser frames play faster to fit.
-5. The intro and outro cards go before and after: each at least its `seconds` (default 3), longer when its narration needs it.
+4. Each block starts at its scene's start (plus `leadIn`, default 0). When the block and its `tail` (default 0.5 seconds) are longer than the scene, the scene's last frame holds until they are done. A scene longer than its narration plays at its own pace; `maxSpeed` (default 1) lets its browser frames play faster to fit, and `maxTail` cuts the scene's picture that many seconds after the block's last word (steps cut whole keep their place at the cut, so chapters on them still land).
+5. Long waits are sped up: when the part of a step that no narration is spoken over (the step's time after its scene's block and tail are done, or the whole step in a scene without one) lasts more than `idle.after` seconds (default 10), that part plays in `idle.seconds` (default 4), as fast as it takes, with a badge such as `×40` at the picture's top right while it lasts. Terminal scenes are sped up the same way. Narration is never sped up; `idle: false` plays every step at its own pace, and `idle.badge: false` leaves the badge out.
+6. The intro and outro cards go before and after: each at least its `seconds` (default 3), longer when its narration needs it.
+
+`trim` cuts seconds from the start or end of a step's raw video, the step named by index or text as in the sidecar: `trim: [{ at: "When I open the notes list", start: 1.5 }]`. It is a render option, so the sidecar stays as it is; a trim on a terminal scene is refused.
 
 Every length is a whole number of frames, so the narration, the captions, the chapters and the picture agree to the frame. Two blocks on one step, a block with no visible step at or after it, and a scenario with every step hidden are refused.
 
@@ -108,7 +119,7 @@ Chapters start at their step's place in the output; the intro's chapter starts a
 A visible step with commands is drawn as a terminal by xterm in Chromium, frame by frame, so the scene is the same on every render:
 
 - From `terminal/<step>.json`: each command typed after a `$` prompt at the sidecar's `pace.typeMsPerChar` (default 60 ms), a pause (`afterActionMs`, default 600 ms), the command's recorded run time (at most 2 seconds), its output scrolled out, and the last prompt held for reading (`readMs`, default 1200 ms).
-- The sidecar's `terminal` override for the step: `display` shows another command line (a list replaces the step's commands in order), `preface` types lines before them, and `cast` replays an asciicast v2 file instead (relative to the record directory, absolute, or `recording:<edition>/<id>` from `FLAX_RECORDINGS_ROOT`).
+- The sidecar's `terminal` override for the step: `display` shows another command line (a list replaces the step's commands in order), `preface` types lines before them, and `cast` replays an asciicast v2 file instead (relative to the record directory, absolute, `recording:<edition>/<id>` from `FLAX_RECORDINGS_ROOT`, or `docs:<path>` from the docs checkout the `docsRoot` option names, `FLAX_DOCS_ROOT` by default).
 - Without a transcript, `terminal/<step>.cast` is replayed, idle gaps capped at 2 seconds, at the grid it was recorded at.
 
 Stand-ins (`standIns`) apply to every command, output and preface line shown, so an export line can show a placeholder in place of a real secret. `terminal` in the render options overrides the pace and the font size (18 layout pixels, 36 in the frame). The terminal's look reads `--media-terminal-backdrop`, `--media-terminal-bg`, `--media-terminal-bar`, `--media-terminal-text`, `--media-terminal-cursor` and `--media-mono-font` (see `TERMINAL_DEFAULTS` in `src/media/terminal.ts`).
@@ -123,7 +134,7 @@ Each is off unless asked for, and each takes its look from `assets`:
 - `production.callouts`: a label pointing at a box during a step, the rest of the picture dimmed. The box is the one given (in viewport CSS pixels), else the step's last highlighted, pointed or clicked box.
 - `burnCaptions`: the cues drawn into the caption band as well as written to `captions.vtt`.
 
-Pictures drawn with Chromium (cards, the poster, callouts, burned captions, terminals) read `assets.css`: font faces and the custom properties `--media-font`, `--media-text`, `--media-band`, `--media-accent`, `--media-accent-text` and `--media-dim` (see `PAINT_DEFAULTS` in `src/media/paint.ts` for the neutral defaults).
+Pictures drawn with Chromium (cards, the poster, callouts, burned captions, terminals, the speed badge) read `assets.css`: font faces and the custom properties `--media-font`, `--media-text`, `--media-band`, `--media-accent`, `--media-accent-text` and `--media-dim` (see `PAINT_DEFAULTS` in `src/media/paint.ts` for the neutral defaults).
 
 ## Stand-ins
 

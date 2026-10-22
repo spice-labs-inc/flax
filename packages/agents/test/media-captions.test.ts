@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildCues,
   timelineWords,
@@ -6,7 +9,13 @@ import {
   vttTime,
   type Word,
 } from "../src/media/captions.ts";
-import { alignWords, pronouncer, spoken } from "../src/media/tts.ts";
+import {
+  alignWords,
+  elevenLabsVoice,
+  pronouncer,
+  spoken,
+  workspacePronunciations,
+} from "../src/media/tts.ts";
 
 /** Words of `text`, each `step` seconds long, starting at `at`. */
 function words(text: string, at = 0, step = 0.3): Word[] {
@@ -103,5 +112,59 @@ describe("the brand pronunciations", () => {
     );
     expect(spoken("ECDSA, or SLH-DSA")).toBe("E C D S A, or S L H D S A");
     expect(spoken("ITEM and it")).toBe("ITEM and it");
+  });
+});
+
+describe("pronunciations", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("are none, not an error, when the workspace has no pronunciations file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "flax-no-brand-"));
+    try {
+      expect(workspacePronunciations(dir)).toEqual({});
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("given to elevenLabsVoice are what it asks the voice to say, and the captions keep the written words", async () => {
+    vi.stubEnv("ELEVENLABS_API_KEY", "test-key");
+    const bodies: { text: string }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith("/voices"))
+          return Response.json({
+            voices: [{ voice_id: "v1", name: "Narrator - calm" }],
+          });
+        const body = JSON.parse(String(init!.body)) as { text: string };
+        bodies.push(body);
+        const chars = [...body.text];
+        return Response.json({
+          audio_base64: Buffer.alloc(4800).toString("base64"),
+          alignment: {
+            characters: chars,
+            character_start_times_seconds: chars.map((_, i) => i * 0.05),
+            character_end_times_seconds: chars.map((_, i) => (i + 1) * 0.05),
+          },
+        });
+      }),
+    );
+    const voice = await elevenLabsVoice("narrator", undefined, undefined, {
+      pronunciations: { SQL: "sequel", IT: "eye tee" },
+    });
+    const audio = await voice.synth("Run SQL for IT now");
+    expect(bodies[0]!.text).toBe("Run sequel for eye tee now");
+    expect(audio.words.map((w) => w.text)).toEqual([
+      "Run",
+      "SQL",
+      "for",
+      "IT",
+      "now",
+    ]);
+    expect(audio.words[3]!.end).toBeCloseTo(1.1);
   });
 });
