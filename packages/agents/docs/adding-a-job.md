@@ -183,6 +183,9 @@ Every field is present and commented. The ones you will usually change:
     `path`, `commit` the page is read at, `key`, a plain one-line
     `value`); delivery sets them after every check. No key may be in
     both, and `intent`, `audience` and `owner` in neither.
+    `data_keys` holds the YAML and JSON files the job may change to their
+    shape: only the values of the keys it names may change (with
+    evidence), never another value, a key, a list's length or a comment.
     `review_model` (`model`, `thinking`) runs the second check on a model
     of another family than the writer's (see
     [Pull request delivery](delivery.md#pull-request-delivery)).

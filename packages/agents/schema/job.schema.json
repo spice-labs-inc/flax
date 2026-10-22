@@ -565,6 +565,17 @@
               "uniqueItems": true,
               "items": { "$ref": "#/$defs/frontmatterKey" }
             },
+            "data_keys": {
+              "description": "In a YAML or JSON file the job may change (.yml, .yaml, .json), the keys whose values the model may change, each changed line with evidence like any other; the PR checker refuses a change to any other value, to a key, to the file's shape (which maps hold which keys, how long each list is) or to a comment. A value in a list counts as its key's. Such files are not held to this when not set.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
             "review_team": {
               "description": "The organization team, by its slug, asked to review every pull request the job opens, besides the people whose changes the pull request cites. The team needs access to the repositories. None when not set.",
               "type": "string",

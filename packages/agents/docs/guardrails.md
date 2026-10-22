@@ -1345,6 +1345,13 @@ merged:>=<day>`, list commits of `main` only and at most 50, read files
     `used_by`, which the atlas generates; lines there need evidence like any other, and `intent`,
     `audience` and `owner` never count as allowed); the message names the
     keys, and the protected ones;
+  - with the `pr` output's `data_keys`, in a YAML or JSON file (`.yml`,
+    `.yaml`, `.json`), it changes a value of a key not in `data_keys` (a
+    value in a list counts as its key's), adds, removes, renames or moves
+    a key, changes how long a list is or how many documents the file
+    holds, changes a comment, or leaves a file that no longer parses
+    (`src/output-check/data-values.ts`); a file a program reads keeps its
+    shape, and only the text a person would review changes;
   - on an `.mdx` page, it changes a component tag: every `<Cast>`, `<Step>`,
     `<Only>`, `<Edition>`, `<Credential>`, `<Verbatim>`, `<OsCommand>`,
     `<When>` and edition badge tag stays as it is, in the same order, so a

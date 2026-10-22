@@ -60,6 +60,7 @@ export function prOutputContext(
       ...(output.stamp_keys === undefined
         ? {}
         : { stampKeys: output.stamp_keys }),
+      ...(output.data_keys === undefined ? {} : { dataKeys: output.data_keys }),
       ...(output.review_team === undefined
         ? {}
         : { reviewTeam: output.review_team }),

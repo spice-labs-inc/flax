@@ -16,6 +16,7 @@ import {
 import { isPlainRelativePath, matchesAnyGlob } from "./glob.ts";
 import { linkProblems, shippedLinkHosts, type AddedLine } from "./links.ts";
 import { CODE_PATH, literalOnlyProblems } from "./literals.ts";
+import { DATA_PATH, dataValueProblems } from "./data-values.ts";
 import { languageOf } from "./string-literals.ts";
 import { quoteProblem, type ToolResultText } from "../run-job/evidence.ts";
 import {
@@ -33,6 +34,8 @@ export interface PrPolicy {
   frontmatterKeys?: readonly string[];
   /** Frontmatter keys only the job's code sets, through the input's stamps; the model may not change them. */
   stampKeys?: readonly string[];
+  /** In a YAML or JSON file, the keys whose values a patch may change; every other value, every key, the shape and the comments stay as they are. Not checked when not set. */
+  dataKeys?: readonly string[];
   /** The organization team asked to review every new pull request, by its slug. */
   reviewTeam?: string;
   /** Globs of files the job's media stage may write (media.pr_paths); none when not set. */
@@ -820,6 +823,14 @@ function checkPage(page: ProposedPage, context: CheckContext): PageVerdict {
   if (fm !== undefined) problems.push(fm);
   if (CODE_PATH.test(page.path) && context.policy.codeFix === undefined)
     problems.push(...literalOnlyProblems(pinned.lines, applied.lines));
+  if (DATA_PATH.test(page.path) && context.policy.dataKeys !== undefined)
+    problems.push(
+      ...dataValueProblems(
+        pinned.lines,
+        applied.lines,
+        context.policy.dataKeys,
+      ),
+    );
   if (MDX_PATH.test(page.path)) {
     const component = componentProblem(pinned.lines, applied.lines);
     if (component !== undefined) problems.push(component);

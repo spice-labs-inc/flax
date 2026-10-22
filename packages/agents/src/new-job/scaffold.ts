@@ -72,8 +72,9 @@ collect_tools: []
 #           paths: [globs the job may change], max_changed_lines: <number>,
 #           untrusted_input: report_only (no pull request when the model
 #           saw text anyone can write) or open_pr; optionally
-#           frontmatter_keys: [keys the model may change] and
-#           stamp_keys: [keys only collect.ts sets, through stamps]
+#           frontmatter_keys: [keys the model may change],
+#           stamp_keys: [keys only collect.ts sets, through stamps] and
+#           data_keys: [keys whose values may change in YAML or JSON files]
 output:
   kind: file
 

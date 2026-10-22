@@ -42,6 +42,8 @@ export type Output =
       frontmatter_keys?: string[];
       /** Frontmatter keys the job's code sets through the input's stamps, applied at delivery; none when not set. */
       stamp_keys?: string[];
+      /** In a YAML or JSON file, the keys whose values the model may change; such files are not held to it when not set. */
+      data_keys?: string[];
       /** The organization team asked to review every new pull request, by its slug; none when not set. */
       review_team?: string;
       /** The model the second check runs on, of another family than the writer; the job's own model when not set. */
