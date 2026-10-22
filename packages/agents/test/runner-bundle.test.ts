@@ -215,6 +215,13 @@ describe("the runner bundles", () => {
       expect(text.includes(KIT_ROOT), file).toBe(false);
   }, 60_000);
 
+  it("carry the kit's schemas, so the preflight runs before a workspace installs its packages", async () => {
+    const bundles = await buildBundles(FIXTURE_WORKSPACE);
+    const runner = bundles.get(RUNNER_BUNDLE)!;
+    // The job schema is compiled from the bundle, never read from the package directory.
+    expect(runner).toContain("https://agents-kit.dev/schema/job.schema.json");
+  }, 60_000);
+
   it("hand the runner every tool mapping before its command line starts", () => {
     const tools = bundledTools(FIXTURE_WORKSPACE);
     expect(tools).toContain("echo");

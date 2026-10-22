@@ -12,7 +12,8 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { stringify } from "yaml";
 import { commitAuthor } from "../src/deliver/writer.ts";
 import { generate } from "../src/generate/generate.ts";
-import { KIT_ROOT, PATCH_SET_SCHEMA_PATH } from "../src/lib/paths.ts";
+import { KIT_ROOT } from "../src/lib/paths.ts";
+import { PATCH_SET_SCHEMA } from "../src/lib/schemas.ts";
 import { loadRepo } from "../src/lib/repo.ts";
 import type {
   LaunchRequest,
@@ -160,7 +161,11 @@ function backendPage(evidencePath: string) {
         removed: ["Calls engine on port 8080."],
         added: ["Calls engine on port 9090."],
         evidence: [
-          { repo: "notes-co/engine", commit: ENGINE_COMMIT, path: evidencePath },
+          {
+            repo: "notes-co/engine",
+            commit: ENGINE_COMMIT,
+            path: evidencePath,
+          },
         ],
         why: "engine listens on 9090 now.",
       },
@@ -179,8 +184,7 @@ const REJECT_BACKEND = {
 
 const SHADOW_LINKS = Array.from(
   { length: 10 },
-  (_, i) =>
-    `- https://github.com/notes-co/agents/actions/runs/${i + 1}`,
+  (_, i) => `- https://github.com/notes-co/agents/actions/runs/${i + 1}`,
 ).join("\n");
 
 function prJob(
@@ -209,7 +213,7 @@ function prJob(
       ...overrides,
     }),
     "prompt.md": "Correct facts on the atlas pages from the commits.\n",
-    "output.json": readFileSync(PATCH_SET_SCHEMA_PATH, "utf8"),
+    "output.json": JSON.stringify(PATCH_SET_SCHEMA),
     "fixtures/input.json": JSON.stringify(input),
     "fixtures/output.json": JSON.stringify(fixture),
     ...(live ? { "SHADOW_RUNS.md": SHADOW_LINKS } : {}),
@@ -805,7 +809,10 @@ describe("a live pull request job", () => {
     const { w, hook } = writerFor();
     const opts = await options(
       await repo(prJob({ mode: "live" }, {}, TWO_GOOD, INPUT2)),
-      { launcher: new ScriptedLauncher(TWO_GOOD, REJECT_BACKEND), writer: hook },
+      {
+        launcher: new ScriptedLauncher(TWO_GOOD, REJECT_BACKEND),
+        writer: hook,
+      },
     );
     const result = await runJob(opts);
     expect(result.ok).toBe(true);

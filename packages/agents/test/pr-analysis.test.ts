@@ -8,7 +8,7 @@ import type {
 } from "../src/deliver/slack-poster.ts";
 import { generate } from "../src/generate/generate.ts";
 import type { Output } from "../src/lib/job.ts";
-import { PATCH_SET_SCHEMA_PATH } from "../src/lib/paths.ts";
+import { PATCH_SET_SCHEMA } from "../src/lib/schemas.ts";
 import { loadRepo } from "../src/lib/repo.ts";
 import { postAnalysis } from "../src/run-job/analysis-output.ts";
 import type { PrNotify } from "../src/run-job/load.ts";
@@ -19,8 +19,7 @@ import type { SlackMessage } from "../src/run-job/slack-render.ts";
 import { jobFiles, makeRepo } from "./helpers.ts";
 
 const JOB = "crash-check";
-const RUN_URL =
-  "https://github.com/notes-co/agents/actions/runs/123";
+const RUN_URL = "https://github.com/notes-co/agents/actions/runs/123";
 const CRASHES = { name: "crash-investigations", id: "C0CRASH001" };
 const SHADOW = { name: "agents-shadow", id: "C0SHADOW01" };
 const NOTIFY: PrNotify = {
@@ -115,9 +114,7 @@ describe("the analysis a pull request job posts when it publishes nothing", () =
     expect(sent).not.toContain(SECRET);
     expect(sent).not.toContain(PROJECT);
     expect(sent).toContain("project :id");
-    expect(sent).toContain(
-      "<https://logs.svc.notes-co.example/web/logs|logs>",
-    );
+    expect(sent).toContain("<https://logs.svc.notes-co.example/web/logs|logs>");
     expect(sent).not.toContain("evil.example/x|");
     expect(sent).not.toContain(" @here");
     expect(record.changes.length).toBeGreaterThan(0);
@@ -244,7 +241,7 @@ console.log(JSON.stringify({ publish: false, reason: "an infra problem, not code
               notify: "agents-shadow",
             },
           }),
-          "output.json": readFileSync(PATCH_SET_SCHEMA_PATH, "utf8"),
+          "output.json": JSON.stringify(PATCH_SET_SCHEMA),
           "fixtures/input.json": JSON.stringify({ pages: [] }),
           "fixtures/output.json": JSON.stringify({ pages: [] }),
           "publish.ts": PUBLISH,

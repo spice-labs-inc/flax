@@ -111,7 +111,16 @@ export function loadRepo(root: string): Repo {
   const { allowlists, problems } = loadAllowlists(root);
   const { box, problems: boxProblems } = loadBox(root);
   const { pins, problems: mcpServerProblems } = loadServerPins(root);
-  const { gateway, caPem, problems: gatewayProblems } = loadGateway(root, new Date(), workspace.provider, workspace.budgetUsdPerMonth);
+  const {
+    gateway,
+    caPem,
+    problems: gatewayProblems,
+  } = loadGateway(
+    root,
+    new Date(),
+    workspace.provider,
+    workspace.budgetUsdPerMonth,
+  );
   const { hosts: githubHosts, problems: githubHostProblems } =
     loadGithubHosts(root);
   const { hosts: linkHosts, problems: linkHostProblems } = loadLinkHosts(root);

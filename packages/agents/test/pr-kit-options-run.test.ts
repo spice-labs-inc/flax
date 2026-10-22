@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { jobOptionsCheck } from "../src/check/job-options.ts";
 import { generate } from "../src/generate/generate.ts";
-import { KIT_ROOT, PATCH_SET_SCHEMA_PATH } from "../src/lib/paths.ts";
+import { KIT_ROOT } from "../src/lib/paths.ts";
+import { PATCH_SET_SCHEMA } from "../src/lib/schemas.ts";
 import { loadRepo } from "../src/lib/repo.ts";
 import { checkReport } from "../src/output-check/report.ts";
 import { runJob } from "../src/run-job/run.ts";
@@ -85,7 +86,7 @@ async function stubRun(
     jobs: {
       demo: {
         ...jobFiles("demo", { output: { ...OUTPUT, ...extra } }),
-        "output.json": readFileSync(PATCH_SET_SCHEMA_PATH, "utf8"),
+        "output.json": JSON.stringify(PATCH_SET_SCHEMA),
         "fixtures/input.json": JSON.stringify(INPUT),
         "fixtures/output.json": JSON.stringify(ANSWER),
         "collect.ts": "console.log('{}');\n",
@@ -128,10 +129,7 @@ describe("a stub run of a pull request job with the kit's options", () => {
       branch: `agent/demo/${KEY}`,
     });
     expect(
-      readFileSync(
-        join(out, "delivery", "notes-co-atlas.md"),
-        "utf8",
-      ),
+      readFileSync(join(out, "delivery", "notes-co-atlas.md"), "utf8"),
     ).toMatch(new RegExp(`^# demo: ${KEY}, 1 page \\(\\d{4}-\\d{2}-\\d{2}\\)`));
   });
 

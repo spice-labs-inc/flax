@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import { describeErrors } from "./ajv.ts";
-import { LINK_HOSTS_FILE, LINK_HOSTS_SCHEMA_PATH } from "./paths.ts";
+import { LINK_HOSTS_FILE } from "./paths.ts";
+import { LINK_HOSTS_SCHEMA } from "./schemas.ts";
 import { firstLine, problem, type Problem } from "./problem.ts";
 
 /** A link-hosts.yml that has passed its schema. */
@@ -21,7 +22,7 @@ export function linkHostsProblems(data: unknown): Problem[] {
     allErrors: true,
     strict: true,
     verbose: true,
-  }).compile(JSON.parse(readFileSync(LINK_HOSTS_SCHEMA_PATH, "utf8")));
+  }).compile(LINK_HOSTS_SCHEMA);
   if (validator(data)) return [];
   return describeErrors(validator.errors).map((e) =>
     problem(LINK_HOSTS_FILE, e.message, e.field),

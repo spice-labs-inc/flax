@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
 import { workspace } from "../lib/workspace.ts";
 import { createAjv, describeErrors } from "../lib/ajv.ts";
 import {
-  PATCH_SET_SCHEMA_PATH,
-  PATCH_SET_TOOL_QUOTES_SCHEMA_PATH,
-} from "../lib/paths.ts";
+  PATCH_SET_SCHEMA,
+  PATCH_SET_TOOL_QUOTES_SCHEMA,
+} from "../lib/schemas.ts";
 import type { LinkHosts } from "../lib/link-hosts.ts";
 import type { RepoCode } from "../lib/allowlists.ts";
 import { mediaPathProblem, type MediaFile } from "../lib/media.ts";
@@ -271,13 +270,9 @@ let toolQuotesValidator: Validator | undefined;
 function validateShape(answer: unknown, toolQuotes = false): string[] {
   const validator = toolQuotes
     ? (toolQuotesValidator ??= createAjv().compile(
-        JSON.parse(
-          readFileSync(PATCH_SET_TOOL_QUOTES_SCHEMA_PATH, "utf8"),
-        ) as object,
+        PATCH_SET_TOOL_QUOTES_SCHEMA as object,
       ))
-    : (patchSetValidator ??= createAjv().compile(
-        JSON.parse(readFileSync(PATCH_SET_SCHEMA_PATH, "utf8")) as object,
-      ));
+    : (patchSetValidator ??= createAjv().compile(PATCH_SET_SCHEMA));
   if (validator(answer)) return [];
   return describeErrors(validator.errors).map((e) =>
     e.field === undefined ? e.message : `${e.field}: ${e.message}`,

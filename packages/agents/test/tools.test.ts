@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -13,7 +13,7 @@ import {
   type JobConfig,
   type ModelJobConfig,
 } from "../src/lib/job.ts";
-import { TOOL_SCHEMA_PATH } from "../src/lib/paths.ts";
+import { TOOL_SCHEMA } from "../src/lib/schemas.ts";
 import {
   argumentProblems,
   MAX_ARGUMENT_ITEMS,
@@ -109,7 +109,7 @@ describe("tool.yml", () => {
   });
 
   it("offers in tool.schema.json exactly the upstreams UPSTREAM_OPERATIONS names", () => {
-    const schema = JSON.parse(readFileSync(TOOL_SCHEMA_PATH, "utf8")) as {
+    const schema = TOOL_SCHEMA as {
       properties: {
         upstream: { properties: { server: { enum: string[] } } };
       };

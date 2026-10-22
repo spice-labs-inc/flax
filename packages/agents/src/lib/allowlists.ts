@@ -42,7 +42,8 @@ export function modelFamily(id: string): string {
   const provider = slash === -1 ? "" : id.slice(0, slash).toLowerCase();
   let name = id.slice(slash + 1).toLowerCase();
   // A provider that prefixes every model with its own name (acme/acme-glm-5.3) adds nothing to the family.
-  if (provider !== "" && name.startsWith(`${provider}-`)) name = name.slice(provider.length + 1);
+  if (provider !== "" && name.startsWith(`${provider}-`))
+    name = name.slice(provider.length + 1);
   return name.split(/[-.\d]/, 1)[0]!;
 }
 
@@ -135,145 +136,148 @@ const codeGlobs = {
 // Built when first used, not at import: the repos.yml docs pattern names the workspace's GitHub owner.
 function makeSchemas() {
   return {
-  "models.yml": {
-    type: "array",
-    items: {
-      type: "object",
-      additionalProperties: false,
-      required: [
-        "id",
-        "provider",
-        "usd_per_million_input",
-        "usd_per_million_output",
-      ],
-      properties: {
-        id: { type: "string", minLength: 1 },
-        provider: { type: "string", minLength: 1 },
-        usd_per_million_input: price,
-        usd_per_million_output: price,
-        confirmed: { type: "boolean" },
-        thinking: {
-          type: "array",
-          minItems: 1,
-          uniqueItems: true,
-          items: { enum: [...THINKING_LEVELS] },
+    "models.yml": {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "id",
+          "provider",
+          "usd_per_million_input",
+          "usd_per_million_output",
+        ],
+        properties: {
+          id: { type: "string", minLength: 1 },
+          provider: { type: "string", minLength: 1 },
+          usd_per_million_input: price,
+          usd_per_million_output: price,
+          confirmed: { type: "boolean" },
+          thinking: {
+            type: "array",
+            minItems: 1,
+            uniqueItems: true,
+            items: { enum: [...THINKING_LEVELS] },
+          },
         },
       },
     },
-  },
-  "channels.yml": {
-    type: "object",
-    additionalProperties: false,
-    required: ["post", "read"],
-    properties: {
-      post: {
-        type: "array",
-        items: {
+    "channels.yml": {
+      type: "object",
+      additionalProperties: false,
+      required: ["post", "read"],
+      properties: {
+        post: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["name"],
+            properties: { id: channelId, name: channelName },
+          },
+        },
+        shadow: {
           type: "object",
           additionalProperties: false,
           required: ["name"],
           properties: { id: channelId, name: channelName },
         },
-      },
-      shadow: {
-        type: "object",
-        additionalProperties: false,
-        required: ["name"],
-        properties: { id: channelId, name: channelName },
-      },
-      read: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["id", "name"],
-          properties: { id: channelId, name: channelName },
+        read: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id", "name"],
+            properties: { id: channelId, name: channelName },
+          },
         },
-      },
-      links: {
-        type: "array",
-        uniqueItems: true,
-        items: {
-          type: "string",
-          pattern: "^https://[a-z0-9-]+(\\.[a-z0-9-]+)+/([A-Za-z0-9._~%-]+/)*$",
+        links: {
+          type: "array",
+          uniqueItems: true,
+          items: {
+            type: "string",
+            pattern:
+              "^https://[a-z0-9-]+(\\.[a-z0-9-]+)+/([A-Za-z0-9._~%-]+/)*$",
+          },
         },
       },
     },
-  },
-  "repos.yml": {
-    type: "array",
-    uniqueItems: true,
-    items: {
-      oneOf: [
-        { type: "string", pattern: REPO_NAME },
-        {
-          type: "object",
-          additionalProperties: false,
-          required: ["repo"],
-          properties: {
-            repo: { type: "string", pattern: REPO_NAME },
-            code: {
-              type: "object",
-              additionalProperties: false,
-              required: ["paths", "tests", "test_command"],
-              properties: {
-                paths: codeGlobs,
-                tests: codeGlobs,
-                test_command: {
-                  type: "string",
-                  pattern: "^[A-Za-z0-9 ._:/=@-]{1,120}$",
+    "repos.yml": {
+      type: "array",
+      uniqueItems: true,
+      items: {
+        oneOf: [
+          { type: "string", pattern: REPO_NAME },
+          {
+            type: "object",
+            additionalProperties: false,
+            required: ["repo"],
+            properties: {
+              repo: { type: "string", pattern: REPO_NAME },
+              code: {
+                type: "object",
+                additionalProperties: false,
+                required: ["paths", "tests", "test_command"],
+                properties: {
+                  paths: codeGlobs,
+                  tests: codeGlobs,
+                  test_command: {
+                    type: "string",
+                    pattern: "^[A-Za-z0-9 ._:/=@-]{1,120}$",
+                  },
                 },
               },
-            },
-            preview: {
-              type: "object",
-              additionalProperties: false,
-              required: ["commands", "url"],
-              properties: {
-                commands: {
-                  type: "array",
-                  minItems: 1,
-                  maxItems: 5,
-                  items: {
+              preview: {
+                type: "object",
+                additionalProperties: false,
+                required: ["commands", "url"],
+                properties: {
+                  commands: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 5,
+                    items: {
+                      type: "string",
+                      pattern: "^[A-Za-z0-9 ._:/=@-]{1,100}$",
+                    },
+                  },
+                  url: {
                     type: "string",
-                    pattern: "^[A-Za-z0-9 ._:/=@-]{1,100}$",
+                    pattern: "^http://localhost:[0-9]{2,5}$",
                   },
-                },
-                url: {
-                  type: "string",
-                  pattern: "^http://localhost:[0-9]{2,5}$",
-                },
-                pages: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: ["dir", "prefix"],
-                  properties: {
-                    dir: {
-                      type: "string",
-                      pattern: "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
-                    },
-                    prefix: {
-                      type: "string",
-                      pattern: "^/([A-Za-z0-9._-]+/)*$",
+                  pages: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["dir", "prefix"],
+                    properties: {
+                      dir: {
+                        type: "string",
+                        pattern: "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+                      },
+                      prefix: {
+                        type: "string",
+                        pattern: "^/([A-Za-z0-9._-]+/)*$",
+                      },
                     },
                   },
-                },
-                docs: {
-                  type: "string",
-                  pattern: orgGithubUrlPattern(),
+                  docs: {
+                    type: "string",
+                    pattern: orgGithubUrlPattern(),
+                  },
                 },
               },
             },
           },
-        },
-      ],
+        ],
+      },
     },
-  },
-} as const;
+  } as const;
 }
 type ListFile = keyof ReturnType<typeof makeSchemas>;
 
-let compiled: { pattern: string; validators: Record<ListFile, ValidateFunction> } | undefined;
+let compiled:
+  | { pattern: string; validators: Record<ListFile, ValidateFunction> }
+  | undefined;
 
 function validators(): Record<ListFile, ValidateFunction> {
   const pattern = orgGithubUrlPattern();
@@ -282,7 +286,10 @@ function validators(): Record<ListFile, ValidateFunction> {
     compiled = {
       pattern,
       validators: Object.fromEntries(
-        Object.entries(makeSchemas()).map(([file, schema]) => [file, ajv.compile(schema)]),
+        Object.entries(makeSchemas()).map(([file, schema]) => [
+          file,
+          ajv.compile(schema),
+        ]),
       ) as Record<ListFile, ValidateFunction>,
     };
   }

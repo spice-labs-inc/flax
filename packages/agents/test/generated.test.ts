@@ -16,7 +16,7 @@ import {
 import type { JobConfig } from "../src/lib/job.ts";
 import type { ToolEntry } from "../src/lib/tools.ts";
 import { loadRepo } from "../src/lib/repo.ts";
-import { PATCH_SET_SCHEMA_PATH } from "../src/lib/paths.ts";
+import { PATCH_SET_SCHEMA } from "../src/lib/schemas.ts";
 import type { Box } from "../src/lib/box.ts";
 import {
   BOX,
@@ -181,11 +181,7 @@ describe("generated files", () => {
       group: "job-demo",
       "cancel-in-progress": false,
     });
-    expect(wf.jobs.run["runs-on"]).toEqual([
-      "self-hosted",
-      "pool-a",
-      "agents",
-    ]);
+    expect(wf.jobs.run["runs-on"]).toEqual(["self-hosted", "pool-a", "agents"]);
     expect(wf.jobs.run.permissions).toEqual({
       contents: "read",
       packages: "read",
@@ -603,7 +599,7 @@ function livePrRepo(): string {
             untrusted_input: "report_only",
           },
         }),
-        "output.json": readFileSync(PATCH_SET_SCHEMA_PATH, "utf8"),
+        "output.json": JSON.stringify(PATCH_SET_SCHEMA),
         "SHADOW_RUNS.md": Array.from(
           { length: 4 },
           (_, i) =>

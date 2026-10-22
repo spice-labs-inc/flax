@@ -35,12 +35,16 @@ import {
 } from "./manifest.ts";
 
 /** The nearest package.json above a file, with the package's name. */
-function packageOfFile(file: string): { dir: string; name: string } | undefined {
+function packageOfFile(
+  file: string,
+): { dir: string; name: string } | undefined {
   let dir = dirname(file);
   for (;;) {
     const manifest = join(dir, "package.json");
     if (existsSync(manifest)) {
-      const name = (JSON.parse(readFileSync(manifest, "utf8")) as { name?: unknown }).name;
+      const name = (
+        JSON.parse(readFileSync(manifest, "utf8")) as { name?: unknown }
+      ).name;
       if (typeof name === "string" && name !== "") return { dir, name };
     }
     const parent = dirname(dir);
@@ -61,7 +65,8 @@ export function manifestPath(root: string, input: string): string | undefined {
   const real = resolve(root, input);
   if (!existsSync(real)) return undefined;
   const rootReal = realpathSync(root);
-  if (real.startsWith(rootReal + sep)) return relative(rootReal, real).split(sep).join("/");
+  if (real.startsWith(rootReal + sep))
+    return relative(rootReal, real).split(sep).join("/");
   // A workspace entry that is a symbolic link (tools -> elsewhere): its files keep the workspace's path.
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isSymbolicLink()) continue;
@@ -76,7 +81,8 @@ export function manifestPath(root: string, input: string): string | undefined {
   }
   // The kit first: it holds a nested package (the Pi plugin) that is not a package of its own in any workspace.
   const kitReal = realpathSync(KIT_ROOT);
-  if (real.startsWith(kitReal + sep)) return `node_modules/${KIT_PACKAGE}/${relative(kitReal, real).split(sep).join("/")}`;
+  if (real.startsWith(kitReal + sep))
+    return `node_modules/${KIT_PACKAGE}/${relative(kitReal, real).split(sep).join("/")}`;
   const pkg = packageOfFile(real);
   if (pkg === undefined) return undefined;
   return `node_modules/${pkg.name}/${relative(pkg.dir, real).split(sep).join("/")}`;
@@ -176,7 +182,8 @@ export async function bundleOne(
     minifySyntax: true,
     banner: { js: BANNER },
     define: {
-      // The kit root, relative to the bundle: schemas and the agent Dockerfile are read from the package at run time.
+      // The kit root, relative to the bundle: the agent Dockerfile and the job templates are read from the package at run
+      // time (after a workspace installs its packages); the schemas travel inside the bundle (src/lib/schemas.ts).
       FLAX_AGENTS_BUNDLE_ROOT: JSON.stringify(
         `${relative(dirname(outfile), KIT_ROOT)}/`,
       ),
@@ -252,7 +259,9 @@ export async function buildBundles(root: string): Promise<Map<string, string>> {
       if (path !== undefined) sources.add(path);
     }
   }
-  const kitPackage = JSON.parse(readFileSync(join(KIT_ROOT, "package.json"), "utf8")) as { version: string };
+  const kitPackage = JSON.parse(
+    readFileSync(join(KIT_ROOT, "package.json"), "utf8"),
+  ) as { version: string };
   const manifest: BundleManifest = {
     kit: { name: KIT_PACKAGE, version: kitPackage.version },
     files: Object.fromEntries(

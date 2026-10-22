@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import {
   Ajv2020,
   type ErrorObject,
@@ -6,7 +5,7 @@ import {
 } from "ajv/dist/2020.js";
 import formats from "ajv-formats";
 import { cronProblem, isValidCron } from "./cron.ts";
-import { JOB_SCHEMA_PATH } from "./paths.ts";
+import { JOB_SCHEMA } from "./schemas.ts";
 
 /** An Ajv instance for schemas that jobs write themselves (output.json). */
 export function createAjv(): Ajv2020 {
@@ -26,9 +25,7 @@ export function jobSchemaValidator(): ValidateFunction {
       discriminator: true,
     });
     ajv.addFormat("cron", isValidCron);
-    jobValidator = ajv.compile(
-      JSON.parse(readFileSync(JOB_SCHEMA_PATH, "utf8")),
-    );
+    jobValidator = ajv.compile(JOB_SCHEMA);
   }
   return jobValidator;
 }

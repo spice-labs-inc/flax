@@ -13,7 +13,8 @@ import {
 } from "../src/collect/env.ts";
 import { generate } from "../src/generate/generate.ts";
 import { KIT_ACTION_STEP, workflowPath } from "../src/generate/render.ts";
-import { KIT_ROOT, PATCH_SET_SCHEMA_PATH } from "../src/lib/paths.ts";
+import { KIT_ROOT } from "../src/lib/paths.ts";
+import { PATCH_SET_SCHEMA } from "../src/lib/schemas.ts";
 import { loadRepo } from "../src/lib/repo.ts";
 import {
   checkCollectInputs,
@@ -67,7 +68,7 @@ function prJob(
 ): Record<string, string> {
   return {
     ...jobFiles("demo", { output: PR_OUTPUT, ...overrides }),
-    "output.json": readFileSync(PATCH_SET_SCHEMA_PATH, "utf8"),
+    "output.json": JSON.stringify(PATCH_SET_SCHEMA),
     "fixtures/input.json": JSON.stringify(input),
     "fixtures/output.json": JSON.stringify({ pages: [] }),
   };
@@ -199,7 +200,12 @@ describe("a run whose collect.ts has nothing to do", () => {
 
   it("is never in the input of a job shipped today, which therefore runs as before", () => {
     for (const job of loadRepo(FIXTURE_WORKSPACE).jobs) {
-      const fixture = join(FIXTURE_WORKSPACE, "jobs", job.name, "fixtures/input.json");
+      const fixture = join(
+        FIXTURE_WORKSPACE,
+        "jobs",
+        job.name,
+        "fixtures/input.json",
+      );
       if (!existsSync(fixture)) continue;
       expect(
         nothingToDoReason(JSON.parse(readFileSync(fixture, "utf8"))),

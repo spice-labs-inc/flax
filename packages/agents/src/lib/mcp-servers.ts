@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import { describeErrors } from "./ajv.ts";
-import { MCP_SERVERS_FILE, MCP_SERVERS_SCHEMA_PATH } from "./paths.ts";
+import { MCP_SERVERS_FILE } from "./paths.ts";
+import { MCP_SERVERS_SCHEMA } from "./schemas.ts";
 import { firstLine, problem, type Problem } from "./problem.ts";
 
 export const PLATFORMS = ["linux-amd64", "linux-arm64"] as const;
@@ -37,7 +38,7 @@ function pinsValidator(): ValidateFunction {
     allErrors: true,
     strict: true,
     verbose: true,
-  }).compile(JSON.parse(readFileSync(MCP_SERVERS_SCHEMA_PATH, "utf8")));
+  }).compile(MCP_SERVERS_SCHEMA);
   return validator;
 }
 

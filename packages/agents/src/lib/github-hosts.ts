@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import { describeErrors } from "./ajv.ts";
-import { GITHUB_HOSTS_FILE, GITHUB_HOSTS_SCHEMA_PATH } from "./paths.ts";
+import { GITHUB_HOSTS_FILE } from "./paths.ts";
+import { GITHUB_HOSTS_SCHEMA } from "./schemas.ts";
 import { firstLine, problem, type Problem } from "./problem.ts";
 
 export const GITHUB_META_URL = "https://api.github.com/meta";
@@ -22,7 +23,7 @@ function hostsValidator(): ValidateFunction {
     allErrors: true,
     strict: true,
     verbose: true,
-  }).compile(JSON.parse(readFileSync(GITHUB_HOSTS_SCHEMA_PATH, "utf8")));
+  }).compile(GITHUB_HOSTS_SCHEMA);
   return validator;
 }
 

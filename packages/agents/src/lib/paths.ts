@@ -4,6 +4,8 @@ import { BUNDLE_ROOT } from "./bundled.ts";
 const ROOT_URL = new URL(BUNDLE_ROOT ?? "../../", import.meta.url);
 
 export const KIT_ROOT = fileURLToPath(ROOT_URL);
+// The schema files as paths, for a workspace that reads one itself (the kit
+// compiles its own validators from src/lib/schemas.ts, which a bundle carries).
 export const JOB_SCHEMA_PATH = fileURLToPath(
   new URL("schema/job.schema.json", ROOT_URL),
 );

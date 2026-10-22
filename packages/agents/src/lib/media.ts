@@ -12,7 +12,7 @@ import {
 import { join, sep } from "node:path";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { describeErrors } from "./ajv.ts";
-import { MEDIA_SCHEMA_PATH } from "./paths.ts";
+import { MEDIA_SCHEMA } from "./schemas.ts";
 import { byCodePoint } from "./sort.ts";
 
 /** The empty directory media.ts writes into, in its environment. */
@@ -104,8 +104,12 @@ export function networkJoinSecrets(): string[] {
   const out = new Set<string>();
   for (const join of Object.values(workspace().networkJoins))
     for (const step of [...join.join, ...(join.leave ?? [])])
-      for (const value of [...Object.values(step.with ?? {}), ...Object.values(step.env ?? {})])
-        for (const m of String(value).matchAll(/secrets\.([A-Z0-9_]+)/g)) out.add(m[1]!);
+      for (const value of [
+        ...Object.values(step.with ?? {}),
+        ...Object.values(step.env ?? {}),
+      ])
+        for (const m of String(value).matchAll(/secrets\.([A-Z0-9_]+)/g))
+          out.add(m[1]!);
   return [...out];
 }
 
@@ -175,7 +179,7 @@ function schemaProblems(data: unknown): string[] {
     allErrors: true,
     strict: true,
     verbose: true,
-  }).compile(JSON.parse(readFileSync(MEDIA_SCHEMA_PATH, "utf8")));
+  }).compile(MEDIA_SCHEMA);
   if (validator(data)) return [];
   return describeErrors(validator.errors).map((e) =>
     e.field === undefined ? e.message : `${e.field}: ${e.message}`,

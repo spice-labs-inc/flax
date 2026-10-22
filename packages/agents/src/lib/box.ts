@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import { describeErrors } from "./ajv.ts";
-import { BOX_FILE, BOX_SCHEMA_PATH } from "./paths.ts";
+import { BOX_FILE } from "./paths.ts";
+import { BOX_SCHEMA } from "./schemas.ts";
 import {
   firstLine,
   isError,
@@ -42,7 +43,7 @@ function boxValidator(): ValidateFunction {
     allErrors: true,
     strict: true,
     verbose: true,
-  }).compile(JSON.parse(readFileSync(BOX_SCHEMA_PATH, "utf8")));
+  }).compile(BOX_SCHEMA);
   return validator;
 }
 
@@ -90,7 +91,12 @@ export function checkBox(data: unknown): LoadedBox {
   if (!box.pinned)
     return { box, problems: [warning(BOX_FILE, UNPINNED_MESSAGE, "pinned")] };
   const problems: Problem[] = [];
-  for (const key of ["box_release", "box_commit", "lbx_sha256", "image"] as const) {
+  for (const key of [
+    "box_release",
+    "box_commit",
+    "lbx_sha256",
+    "image",
+  ] as const) {
     if (PLACEHOLDER.test(placeholderPart(key, box[key]))) {
       problems.push(
         problem(

@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { generate } from "../src/generate/generate.ts";
-import { PATCH_SET_SCHEMA_PATH } from "../src/lib/paths.ts";
+import { PATCH_SET_SCHEMA } from "../src/lib/schemas.ts";
 import { loadRepo } from "../src/lib/repo.ts";
 import type {
   LaunchRequest,
@@ -123,7 +123,7 @@ async function repo(mode: "live" | "shadow" = "live"): Promise<string> {
           },
         }),
         "prompt.md": "Correct facts on the atlas pages from the commits.\n",
-        "output.json": readFileSync(PATCH_SET_SCHEMA_PATH, "utf8"),
+        "output.json": JSON.stringify(PATCH_SET_SCHEMA),
         "fixtures/input.json": JSON.stringify(ORIGINAL),
         "fixtures/output.json": JSON.stringify({ pages: [] }),
         ...(mode === "live"

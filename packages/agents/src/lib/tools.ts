@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import { createAjv, describeErrors } from "./ajv.ts";
-import { TOOL_SCHEMA_PATH, toolFile, TOOLS_DIR } from "./paths.ts";
+import { toolFile, TOOLS_DIR } from "./paths.ts";
+import { TOOL_SCHEMA } from "./schemas.ts";
 import { firstLine, problem, type Problem } from "./problem.ts";
 import { byCodePoint } from "./sort.ts";
 
@@ -78,10 +79,15 @@ export const UPSTREAM_OPERATIONS: Readonly<Record<string, readonly string[]>> =
  * The secrets each upstream needs, by environment variable. They reach
  * only the runner process: never the box, lbx or collect.ts.
  */
-export function upstreamSecretsByServer(): Readonly<Record<string, readonly string[]>> {
+export function upstreamSecretsByServer(): Readonly<
+  Record<string, readonly string[]>
+> {
   const ws = workspace();
   const kube = Object.values(ws.clusters);
-  const o2 = ws.openobserve === undefined ? [] : [ws.clusters[ws.openobserve.cluster] ?? "KUBECONFIG_OPENOBSERVE"];
+  const o2 =
+    ws.openobserve === undefined
+      ? []
+      : [ws.clusters[ws.openobserve.cluster] ?? "KUBECONFIG_OPENOBSERVE"];
   return {
     builtin: [],
     kubernetes: kube,
@@ -146,7 +152,9 @@ export function toolOperations(
 
 /** The secrets those upstreams need, each once, in the order of TOOL_SECRET_ENV. */
 export function upstreamSecrets(servers: readonly string[]): string[] {
-  const wanted = new Set(servers.flatMap((s) => upstreamSecretsByServer()[s] ?? []));
+  const wanted = new Set(
+    servers.flatMap((s) => upstreamSecretsByServer()[s] ?? []),
+  );
   return toolSecretEnv().filter((name) => wanted.has(name));
 }
 
@@ -266,7 +274,7 @@ function toolValidator(): ValidateFunction {
     allErrors: true,
     strict: true,
     verbose: true,
-  }).compile(JSON.parse(readFileSync(TOOL_SCHEMA_PATH, "utf8")));
+  }).compile(TOOL_SCHEMA);
   return validator;
 }
 

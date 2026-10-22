@@ -6,7 +6,8 @@ import { Ajv2020, type ValidateFunction } from "ajv/dist/2020.js";
 import { parse } from "yaml";
 import { describeErrors } from "./ajv.ts";
 import type { Model } from "./allowlists.ts";
-import { GATEWAY_FILE, GATEWAY_SCHEMA_PATH } from "./paths.ts";
+import { GATEWAY_FILE } from "./paths.ts";
+import { GATEWAY_SCHEMA } from "./schemas.ts";
 import { WORKSPACE_FILE } from "./workspace.ts";
 import { firstLine, problem, type Problem } from "./problem.ts";
 
@@ -46,20 +47,32 @@ export const GATEWAY_ISSUER_KEY_ENV = "LLM_GATEWAY_ISSUER_KEY";
 export const MODEL_API_KEY_ENV = "MODEL_API_KEY";
 
 /** The secret the runner's model calls need, by the workspace's key mode. */
-export function modelKeyEnv(provider: Pick<Provider, "keyMode"> = workspace().provider): string {
-  return provider.keyMode === "static" ? MODEL_API_KEY_ENV : GATEWAY_ISSUER_KEY_ENV;
+export function modelKeyEnv(
+  provider: Pick<Provider, "keyMode"> = workspace().provider,
+): string {
+  return provider.keyMode === "static"
+    ? MODEL_API_KEY_ENV
+    : GATEWAY_ISSUER_KEY_ENV;
 }
 
 /** Both model key names, whichever mode a workspace is in: neither may reach the box. */
-export const MODEL_KEY_ENVS: readonly string[] = [GATEWAY_ISSUER_KEY_ENV, MODEL_API_KEY_ENV];
+export const MODEL_KEY_ENVS: readonly string[] = [
+  GATEWAY_ISSUER_KEY_ENV,
+  MODEL_API_KEY_ENV,
+];
 
 /** The environment prefix the box's Pi provider reads its base URL and key under: <NAME>_BASE_URL, <NAME>_API_KEY. */
-export function providerEnvPrefix(provider: Pick<Provider, "name"> = workspace().provider): string {
+export function providerEnvPrefix(
+  provider: Pick<Provider, "name"> = workspace().provider,
+): string {
   return provider.name.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
 }
 
 /** The gateway a static provider stands for when the workspace keeps no gateway.yml. */
-export function staticGateway(provider: Provider, budgetUsdPerMonth: number): Gateway {
+export function staticGateway(
+  provider: Provider,
+  budgetUsdPerMonth: number,
+): Gateway {
   const url = provider.baseUrl ?? "";
   let host = "";
   try {
@@ -117,7 +130,7 @@ function gatewayValidator(): ValidateFunction {
     allErrors: true,
     strict: true,
     verbose: true,
-  }).compile(JSON.parse(readFileSync(GATEWAY_SCHEMA_PATH, "utf8")));
+  }).compile(GATEWAY_SCHEMA);
   return validator;
 }
 
@@ -176,7 +189,15 @@ export function loadGateway(
     if (provider.keyMode === "static") {
       const gateway = staticGateway(provider, budgetUsdPerMonth);
       return gateway.server_name === ""
-        ? { problems: [problem(WORKSPACE_FILE, "agents.provider.baseUrl must be an https URL for a static provider", "agents.provider.baseUrl")] }
+        ? {
+            problems: [
+              problem(
+                WORKSPACE_FILE,
+                "agents.provider.baseUrl must be an https URL for a static provider",
+                "agents.provider.baseUrl",
+              ),
+            ],
+          }
         : { gateway, problems: [] };
     }
     return { problems: [problem(GATEWAY_FILE, "is missing")] };
@@ -197,8 +218,12 @@ export function loadGateway(
       ),
     };
   }
-  const gateway: Gateway = { mode: provider.keyMode, ...(data as Omit<Gateway, "mode">) };
-  if (gateway.mode === "static" && provider.baseUrl !== undefined) gateway.url = provider.baseUrl;
+  const gateway: Gateway = {
+    mode: provider.keyMode,
+    ...(data as Omit<Gateway, "mode">),
+  };
+  if (gateway.mode === "static" && provider.baseUrl !== undefined)
+    gateway.url = provider.baseUrl;
   const caPath = join(root, gateway.ca!);
   if (!existsSync(caPath) || !lstatSync(caPath).isFile())
     return {
