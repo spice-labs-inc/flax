@@ -1,0 +1,36 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-run-report
+
+description: Reads the run report of one agents job run, by the job's name and the workflow run id. Returns whether the run passed, its mode and input source, what its pull request delivery did (pages changed, pages left out and which check left each out, the pull requests opened and whether each merged itself), and from its input the pages it worked on, the pages it deferred and why, and whether it waited on its own open pull request. Never page text, answers or transcripts.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [job, run_id]
+  properties:
+    job:
+      type: string
+      description: The job's name, as in jobs/<name>/.
+      maxLength: 41
+      pattern: "^[a-z][a-z0-9-]{1,40}$"
+    run_id:
+      type: integer
+      description: The workflow run id of one of the job's runs.
+      minimum: 1
+      maximum: 9007199254740991
+
+# Read in the tools server with the run's read-only token, not through
+# github-mcp-server: the job-<name>-report artifact of one agents run,
+# downloaded from a host in github-log-hosts.yml, of which only status.json
+# and input.json are read and reduced to names and counts.
+upstream:
+  server: github
+  operations: [run_report_read]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

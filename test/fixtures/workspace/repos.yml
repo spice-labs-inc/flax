@@ -1,0 +1,47 @@
+# Repositories, as owner/name, that a job with output kind pr may open pull
+# requests against. Adding a repository here needs code owner review.
+# atlas: the atlas doc refresh (repos/*.md, INDEX.md, ARCHITECTURE.md,
+# GLOSSARY.md, GAPS.md).
+# internal-docs: the internal docs watch (every page under src/content/docs).
+# public-docs: the public docs watch (every page under src/content/docs).
+# agents: the scenario watch (src/media/scenarios/*/scenario.ts, string
+# and number values only).
+#
+# An entry may be { repo, preview }: how a reviewer runs the site locally to
+# look at a pull request's pages. preview.commands run in a checkout of the
+# pull request's branch; preview.url is where the site then is; preview.pages
+# maps a docs page under dir to prefix + its path without the extension;
+# preview.docs links the repository's own instructions. Pull request bodies
+# print it under Preview.
+- notes-co/atlas
+- repo: notes-co/internal-docs
+  preview:
+    commands: [pnpm install, pnpm dev]
+    url: http://localhost:4325
+    pages: { dir: src/content/docs, prefix: /docs/ }
+    docs: https://github.com/notes-co/internal-docs#development
+- repo: notes-co/public-docs
+  preview:
+    commands: [pnpm install, pnpm dev]
+    url: http://localhost:4321
+    pages: { dir: src/content/docs, prefix: /docs/ }
+    docs: https://github.com/notes-co/public-docs#development
+- notes-co/agents
+# engine, backend: the crash investigator's draft fixes (bigtent is public:
+# its crashes get an analysis, never a pull request). code says
+# where a fix may change code and add a test, and how a person runs the
+# tests; a job with output.code_fix holds each page to its repository's
+# code paths. Never workflows, build or dependency files, lockfiles,
+# Dockerfiles, charts or migrations (pnpm check and the PR checker refuse
+# them whatever the globs say). The writer app must be installed on each
+# before the job goes live.
+- repo: notes-co/engine
+  code:
+    paths: [runtime/src/**/*.rs, pqc_report/src/**/*.rs, "*/tests/**/*.rs"]
+    tests: ["*/tests/**/*.rs"]
+    test_command: cargo test --workspace --all-targets --locked
+- repo: notes-co/backend
+  code:
+    paths: [src/main/java/**/*.java, src/test/java/**/*.java]
+    tests: [src/test/java/**/*.java]
+    test_command: mvn -B clean install

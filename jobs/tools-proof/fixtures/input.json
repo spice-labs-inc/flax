@@ -1,0 +1,6 @@
+{
+  "cluster": "{{cluster}}",
+  "namespace": "{{namespace}}",
+  "repo": "{{proofRepo}}",
+  "channel": "{{alertChannel}}"
+}

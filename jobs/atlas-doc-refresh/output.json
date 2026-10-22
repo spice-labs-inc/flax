@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposed documentation changes",
+  "description": "One entry per page: no change, or a unified diff with the evidence for every changed line. The rules beyond shape are checked by src/output-check/pr.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pages"],
+  "properties": {
+    "pages": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/page" }
+    }
+  },
+  "$defs": {
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo", "path", "decision", "reason"],
+      "properties": {
+        "repo": {
+          "description": "The page's repository, as owner/name.",
+          "type": "string",
+          "maxLength": 141
+        },
+        "path": {
+          "description": "The page's path in its repository.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "decision": { "enum": ["no_change", "patch"] },
+        "reason": {
+          "description": "One or two sentences: why the page needs no change, or what the patch corrects.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "patch": {
+          "description": "A unified diff of this page only, against the given text. Only with decision patch.",
+          "type": "string",
+          "maxLength": 40000
+        },
+        "changes": {
+          "description": "Every removed and added line of the patch, grouped by the evidence that makes the change true. Only with decision patch.",
+          "type": "array",
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/change" }
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["removed", "added", "evidence"],
+      "properties": {
+        "removed": {
+          "description": "Lines this change removes, exactly as in the page.",
+          "type": "array",
+          "maxItems": 40,
+          "items": { "type": "string", "maxLength": 20000 }
+        },
+        "added": {
+          "description": "Lines this change adds, exactly as in the patch.",
+          "type": "array",
+          "maxItems": 40,
+          "items": { "type": "string", "maxLength": 20000 }
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/citation" }
+        },
+        "why": {
+          "description": "What the evidence shows, in one sentence.",
+          "type": "string",
+          "maxLength": 1000
+        }
+      }
+    },
+    "citation": {
+      "description": "A primary source: a line of a file at a commit, or a commit.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo"],
+      "properties": {
+        "repo": { "type": "string", "maxLength": 141 },
+        "path": { "type": "string", "maxLength": 400 },
+        "line": { "type": "integer", "minimum": 1 },
+        "commit": { "type": "string", "maxLength": 40 }
+      }
+    }
+  }
+}

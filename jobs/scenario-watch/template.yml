@@ -1,0 +1,46 @@
+# A pull request job that keeps demo video scenario files (narration, UI
+# steps and YouTube text, one scenario.ts per video in the workspace
+# repository) true to the product: collect.ts gathers the week's merged
+# changes, the names they removed, the UI's navigation source and releases,
+# and the model proposes the smallest evidence-backed edits, twice a week.
+description: Keeps the demo video scenarios (narration, steps and YouTube text) true to the product, as pull requests with the smallest evidence-backed edits, twice a week.
+fields:
+  model:
+    description: The model id the job writes with, as models.yml lists it.
+    example: anthropic/claude-sonnet-4-5
+  scenariosDir:
+    description: The directory in the workspace repository holding one <id>/scenario.ts per demo video.
+    example: src/media/scenarios
+  uiRepo:
+    description: The name, under the workspace's GitHub owner, of the SvelteKit app repository whose navigation source and routes every UI name in a patch is checked against.
+    example: web
+  uiNavFiles:
+    description: A JSON list of the files in uiRepo that name its menus and views; the model gets them without their style blocks.
+    example: '["src/lib/nav/Menu.svelte", "src/lib/nav/TopBar.svelte"]'
+  docsRepos:
+    description: A JSON list of repository names that are documentation themselves, whose merged changes never make a scenario stale.
+    example: '["docs", "atlas"]'
+  releaseRepos:
+    description: A JSON list of repository names whose releases customers can get and whose merged changes the videos show.
+    example: '["cli", "web", "api"]'
+  reviewTeam:
+    description: The slug of the organization team asked to review every pull request the job opens.
+    example: engineering
+  productName:
+    description: The product's name, as the narration says it.
+    example: Notes
+  productNames:
+    description: The product and edition names exactly as the scenarios already use them, comma separated.
+    example: Notes, Notes Teams, the Notes CLI
+  cliCommand:
+    description: The product's command line program, as typed.
+    example: notes
+  internalNames:
+    description: Internal codenames the narration must never say, comma separated.
+    example: workshop, ledger
+  internalHosts:
+    description: Internal host names the narration must never say, comma separated.
+    example: notes-co.internal
+notes:
+  - The private job tracked how far each engine library change had traveled toward a customer release (an engine release, then a CLI release pinning it in a pom.xml property) and ranked such changes first. That chain is specific to one product's build and is dropped; signals carry only the window's releases.
+  - The private job's prompt named a trial workflow that replayed every changed scenario before merge; the template says a person reviews the pull request and leaves any trial run to the workspace.

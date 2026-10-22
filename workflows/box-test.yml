@@ -1,0 +1,150 @@
+name: Box test
+
+# Copied to the repository's .github/workflows by the monorepo (paths filter
+# packages/agents/**): the kit's own box test, run against its fixture
+# workspace at packages/agents/test/fixtures/workspace. Not generated into
+# workspaces.
+#
+# Takes the sandbox (lbx) release the fixture's box.yml pins exactly as a
+# workspace job would: downloads the release binary, checks it against
+# lbx_sha256 and the release's own checksum file, checks the release notes
+# name box_commit, pulls the pinned image, runs the hello job as a stub (no
+# box, no model) and then the box smoke run: the pinned image started with
+# the release's `lbx --run` (no network, fresh data directory) running
+# `pi --version`. The sandbox's own test suites are its repository's CI;
+# the kit pins a release binary, not a source tree, so they are not run here.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: box-test
+  cancel-in-progress: false
+
+env:
+  BOX_REPO: spice-labs-inc/lbx
+  LBX_BINARY: lbx-x86_64-unknown-linux-musl
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+
+      - name: Read the pinned box
+        id: box
+        working-directory: packages/agents
+        run: |
+          set -euo pipefail
+          node -e '
+            const { parse } = require("yaml");
+            const box = parse(require("node:fs").readFileSync("test/fixtures/workspace/box.yml", "utf8"));
+            if (box.pinned !== true) { console.error("box.yml is not pinned"); process.exit(1); }
+            for (const key of ["box_release", "box_commit", "lbx_sha256", "image"]) {
+              if (typeof box[key] !== "string" || box[key] === "") { console.error("box.yml has no " + key); process.exit(1); }
+              console.log(key + "=" + box[key]);
+            }
+          ' | tee -a "$GITHUB_OUTPUT"
+
+      - name: Download and verify the pinned release binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOX_RELEASE: ${{ steps.box.outputs.box_release }}
+          BOX_COMMIT: ${{ steps.box.outputs.box_commit }}
+          LBX_SHA256: ${{ steps.box.outputs.lbx_sha256 }}
+        run: |
+          set -euo pipefail
+          body="$(gh release view "$BOX_RELEASE" --repo "$BOX_REPO" --json body --jq .body | tr -d '\r')"
+          commits="$(printf '%s\n' "$body" | sed -n 's/^- Commit: `\{0,1\}\([0-9a-f]\{40\}\)`\{0,1\} *$/\1/p')"
+          if [ "$commits" != "$BOX_COMMIT" ]; then
+            echo "::error::$BOX_REPO release $BOX_RELEASE names commit '${commits:-none}', but box.yml pins box_commit $BOX_COMMIT; refusing to run"
+            exit 1
+          fi
+          dir="$RUNNER_TEMP/lbx-release"
+          rm -rf "$dir"
+          mkdir -p "$dir/bin"
+          gh release download "$BOX_RELEASE" --repo "$BOX_REPO" --dir "$dir" \
+            --pattern "$LBX_BINARY" --pattern "$LBX_BINARY.sha256"
+          (cd "$dir" && sha256sum -c "$LBX_BINARY.sha256")
+          if [ "$(sha256sum "$dir/$LBX_BINARY" | cut -d' ' -f1)" != "$LBX_SHA256" ]; then
+            echo "::error::$LBX_BINARY of $BOX_RELEASE does not have the sha256 box.yml pins as lbx_sha256"
+            exit 1
+          fi
+          install -m 0755 "$dir/$LBX_BINARY" "$dir/bin/lbx"
+          "$dir/bin/lbx" --help > /dev/null
+          echo "$dir/bin" >> "$GITHUB_PATH"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Pull the pinned image
+        env:
+          BOX_IMAGE: ${{ steps.box.outputs.image }}
+          BOX_COMMIT: ${{ steps.box.outputs.box_commit }}
+        run: |
+          set -euo pipefail
+          docker pull "$BOX_IMAGE"
+          built_from="$(docker image inspect --format '{{index .Config.Labels "io.flax.agent-image.box-commit"}}' "$BOX_IMAGE")"
+          if [ "$built_from" != "$BOX_COMMIT" ]; then
+            echo "::error::the pinned image holds the entrypoint of commit '$built_from', not box_commit $BOX_COMMIT"
+            exit 1
+          fi
+
+      - name: Run the hello job as a stub
+        run: pnpm -C packages/agents exec node bin/flax-agents.mjs run-job hello --stub --workspace test/fixtures/workspace
+
+      - name: Smoke run through lbx --run
+        env:
+          BOX_IMAGE: ${{ steps.box.outputs.image }}
+        run: |
+          set -euo pipefail
+          # The same layout run-job uses: private directories outside the
+          # home directory, with the data directory apart from the
+          # configuration and lbx's state. lbx refuses a data directory
+          # inside the home directory, and on a GitHub-hosted runner
+          # RUNNER_TEMP is inside it, so the system temp directory takes
+          # over there.
+          base="$RUNNER_TEMP"
+          case "$base/" in "$HOME"/*) base="${TMPDIR:-/tmp}" ;; esac
+          smoke="$(mktemp -d "$base/agent-smoke.XXXXXX")"
+          chmod 0700 "$smoke"
+          mkdir -m 0700 "$smoke/data" "$smoke/lbx" "$smoke/state"
+          printf 'image.docker=%s\n' "$BOX_IMAGE" > "$smoke/lbx/config"
+          chmod 0600 "$smoke/lbx/config"
+          name="agent-smoke-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          rc=0
+          LBX_CONFIG="$smoke/lbx/config" LBX_STATE_DIR="$smoke/state" \
+            lbx --run --runtime docker \
+              --no-network \
+              --data "$smoke/data" \
+              --timeout 120 \
+              "$name" -- sh -c 'pi --version' | tee "$smoke/out.txt" || rc=$?
+          status="$(cat "$smoke/state/runs/$name/status" 2>/dev/null || true)"
+          echo "lbx exited $rc; status file: ${status:-missing}"
+          if [ "$status" != "status=exited code=0" ]; then
+            echo "::error::the pinned image failed the lbx --run smoke run ($status)"
+            exit 1
+          fi
+          want="$(docker image inspect --format '{{index .Config.Labels "io.flax.agent-image.pi"}}' "$BOX_IMAGE")"
+          if [ "$(tr -d '\r' < "$smoke/out.txt")" != "$want" ]; then
+            echo "::error::pi --version in the run box printed '$(cat "$smoke/out.txt")', expected '$want'"
+            exit 1
+          fi
+          echo "The smoke run (\`lbx --run\`, \`pi --version\` = $want) passed with the pinned box." >> "$GITHUB_STEP_SUMMARY"

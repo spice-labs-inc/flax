@@ -1,0 +1,37 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: k8s-helmreleases
+
+description: Lists the Flux HelmReleases of one Kubernetes cluster (dev, staging, prod or shared-services) with whether each is ready and its last status message, or, given a name and namespace, returns that HelmRelease in full with its conditions and history.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [cluster]
+  properties:
+    cluster:
+      type: string
+      description: The cluster to read.
+      enum: [dev, staging, prod, shared-services]
+    namespace:
+      type: string
+      description: Only HelmReleases in this namespace; required with name.
+      maxLength: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    name:
+      type: string
+      description: A HelmRelease name, to get that one in full.
+      maxLength: 253
+      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+
+# The kind is fixed to helm.toolkit.fluxcd.io/v2 HelmRelease.
+upstream:
+  server: kubernetes
+  operations: [resources_list, resources_get]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536
