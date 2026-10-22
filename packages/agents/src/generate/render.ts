@@ -490,9 +490,40 @@ export const MEDIA_SOURCES_TOKEN_STEP =
 
 /** The step before the package install when the @flax packages come from a private repository. */
 export const PACKAGES_TOKEN_STEP = "Read the private framework packages";
+/** Before it, with agents.packagesTokenApp: the app's contents-read token for those repositories. */
+export const PACKAGES_APP_TOKEN_STEP =
+  "Make a read token for the framework packages";
 /** git sends the token for every github.com clone this job makes; pnpm clones the @flax package tags with git. */
 export const PACKAGES_TOKEN_RUN =
   'git config --global url."https://x-access-token:${PACKAGES_TOKEN}@github.com/".insteadOf "https://github.com/"';
+
+function packagesTokenSteps(): Record<string, unknown>[] {
+  const { packagesTokenSecret: secret, packagesTokenApp: app } = workspace();
+  const gitConfig = (token: string) => ({
+    name: PACKAGES_TOKEN_STEP,
+    env: { PACKAGES_TOKEN: token },
+    run: PACKAGES_TOKEN_RUN,
+  });
+  if (secret !== undefined) return [gitConfig(`\${{ secrets.${secret} }}`)];
+  if (app === undefined) return [];
+  return [
+    {
+      name: PACKAGES_APP_TOKEN_STEP,
+      id: "packages-token",
+      uses: APP_TOKEN_ACTION,
+      with: {
+        "app-id": `\${{ secrets.${app.appIdSecret} }}`,
+        "private-key": `\${{ secrets.${app.privateKeySecret} }}`,
+        owner: app.repositories[0]!.split("/")[0],
+        repositories: app.repositories
+          .map((r) => r.slice(r.indexOf("/") + 1))
+          .join(","),
+        "permission-contents": "read",
+      },
+    },
+    gitConfig("${{ steps.packages-token.outputs.token }}"),
+  ];
+}
 
 /**
  * The steps that install what media.ts needs, before the run and before the
@@ -509,13 +540,7 @@ export function mediaSetupSteps(
   const out: Record<string, unknown>[] = [];
   if (setup.has("packages")) {
     out.push({ name: "Set up pnpm", uses: PNPM_ACTION });
-    const tokenSecret = workspace().packagesTokenSecret;
-    if (tokenSecret !== undefined)
-      out.push({
-        name: PACKAGES_TOKEN_STEP,
-        env: { PACKAGES_TOKEN: `\${{ secrets.${tokenSecret} }}` },
-        run: PACKAGES_TOKEN_RUN,
-      });
+    out.push(...packagesTokenSteps());
     out.push({
       name: "Install the locked packages",
       run: "pnpm install --frozen-lockfile",

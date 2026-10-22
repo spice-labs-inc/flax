@@ -28,6 +28,16 @@ export interface SandboxSource {
   tokenSecret?: string;
 }
 
+/** A GitHub App whose contents-read token reads the repositories the @flax packages are installed from. */
+export interface PackagesTokenApp {
+  /** The secret holding the app id. */
+  appIdSecret: string;
+  /** The secret holding the app private key. */
+  privateKeySecret: string;
+  /** owner/name of each repository the token reads; all under one owner. */
+  repositories: string[];
+}
+
 export type KeyMode = "litellm" | "static";
 
 export interface Provider {
@@ -82,6 +92,8 @@ export interface Workspace {
   sandbox: SandboxSource;
   /** The secret holding a token that reads the repository the @flax packages are installed from while it is private; none for a public one. */
   packagesTokenSecret?: string;
+  /** Instead of packagesTokenSecret: an app that makes a short-lived read token for those repositories. */
+  packagesTokenApp?: PackagesTokenApp;
   /** The agent image repository, without a tag (box.yml pins a digest of it). */
   agentImage: string;
   /** Named network joins a job may ask for (job.yml network: <name>); the steps run before the job, and the leave steps after. */
@@ -158,6 +170,7 @@ const OPTIONAL_KEYS = [
   "board",
   "epicsRepo",
   "packagesTokenSecret",
+  "packagesTokenApp",
   "openobserve",
   "video",
   "docsLint",
@@ -223,6 +236,8 @@ export function agentsSection(
     problems.push(
       `${WORKSPACE_FILE}: agents.packagesTokenSecret must be a secret name`,
     );
+  if (merged.packagesTokenApp !== undefined)
+    problems.push(...packagesTokenAppProblems(merged));
   const p = merged.provider;
   if (!isObject(p) || typeof p.name !== "string" || p.name === "")
     problems.push(`${WORKSPACE_FILE}: agents.provider.name is required`);
@@ -248,6 +263,37 @@ export function agentsSection(
         `${WORKSPACE_FILE}: agents.setupSteps.${name} must be a step list`,
       );
   return { workspace: merged, problems };
+}
+
+function packagesTokenAppProblems(merged: Workspace): string[] {
+  const at = `${WORKSPACE_FILE}: agents.packagesTokenApp`;
+  const app: unknown = merged.packagesTokenApp;
+  if (merged.packagesTokenSecret !== undefined)
+    return [`${at} and agents.packagesTokenSecret may not both be set`];
+  if (!isObject(app))
+    return [`${at} must be { appIdSecret, privateKeySecret, repositories }`];
+  const problems: string[] = [];
+  for (const key of Object.keys(app))
+    if (!["appIdSecret", "privateKeySecret", "repositories"].includes(key))
+      problems.push(
+        `${WORKSPACE_FILE}: unknown key agents.packagesTokenApp.${key}`,
+      );
+  for (const key of ["appIdSecret", "privateKeySecret"])
+    if (typeof app[key] !== "string" || !/^[A-Z][A-Z0-9_]*$/.test(app[key]))
+      problems.push(`${at}.${key} must be a secret name`);
+  const repos = app["repositories"];
+  if (
+    !Array.isArray(repos) ||
+    repos.length === 0 ||
+    !repos.every(
+      (r) =>
+        typeof r === "string" && /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(r),
+    )
+  )
+    problems.push(`${at}.repositories must be a list of owner/name`);
+  else if (new Set(repos.map((r: string) => r.split("/")[0])).size > 1)
+    problems.push(`${at}.repositories must all be under one owner`);
+  return problems;
 }
 
 /** Reads <root>/flax.yml; a missing file is the fallback workspace with a problem saying so. */

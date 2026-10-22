@@ -41,6 +41,7 @@ Two ways to reach a model, chosen with `agents.provider.keyMode`:
 | `runsOn` | the runs-on labels of every generated workflow. Default `[ubuntu-24.04]`. |
 | `sandbox` | `{ repo, tokenSecret }`: the lbx repository whose releases carry the launcher binary (default `spice-labs-inc/lbx`, public) and, for a private one, the secret holding a token. |
 | `packagesTokenSecret` | the secret holding a token that can read the repository the `@flax` packages are installed from, while that repository is private: the generated workflows give it to git before `pnpm install`. Absent for a public one. |
+| `packagesTokenApp` | `{ appIdSecret, privateKeySecret, repositories }`, instead of `packagesTokenSecret`: the secrets holding a GitHub App id and private key, and the `owner/name` repositories (all under one owner) the packages are installed from. Before `pnpm install` the generated workflows make the app a contents-read token for those repositories alone and give it to git the same way. |
 | `agentImage` | the agent image repository without a tag; `box.yml` pins a digest of it. |
 | `displayName`, `commitAuthor` | how the agent is named in check runs and pull request text, and who its commits are by. |
 | `kitAction` | the reusable action every model job workflow calls, `owner/repo/path@ref`. |

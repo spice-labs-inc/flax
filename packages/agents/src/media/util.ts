@@ -9,26 +9,7 @@ export type Log = (line: string) => void;
 // The media root is workspace content (brand, scenarios, fixtures), not the kit's.
 export const MEDIA_ROOT = join(workspaceRoot(), "src/media");
 
-/** Resolves after ms milliseconds. */
-export const sleep = (ms: number): Promise<void> =>
-  new Promise((r) => setTimeout(r, ms));
-
-/** fetch with three tries on network errors (DNS blips, resets), never on HTTP answers. */
-export async function fetchRetry(
-  url: string,
-  init: RequestInit,
-): Promise<Response> {
-  let last: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      return await fetch(url, init);
-    } catch (e) {
-      last = e;
-      await sleep(1500 * attempt);
-    }
-  }
-  throw last;
-}
+export { fetchRetry, sleep } from "@flax/core/http";
 
 /** The first line of an error's message. */
 export function firstLine(e: unknown): string {

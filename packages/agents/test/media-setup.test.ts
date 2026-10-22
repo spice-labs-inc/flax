@@ -7,6 +7,7 @@ import { bundleExternals, mediaCheck } from "../src/check/media.ts";
 import { generate } from "../src/generate/generate.ts";
 import {
   KIT_ACTION_STEP,
+  PACKAGES_APP_TOKEN_STEP,
   PACKAGES_TOKEN_RUN,
   PACKAGES_TOKEN_STEP,
 } from "../src/generate/render.ts";
@@ -370,10 +371,42 @@ describe("media.ts bundles", () => {
   }, 60_000);
 });
 
+async function packagesSteps(agents: Record<string, unknown>): Promise<Step[]> {
+  const flax = parse(FLAX_TEXT);
+  Object.assign(flax.agents, agents);
+  const root = makeRepo({
+    flax: stringify(flax),
+    jobs: {
+      demo: {
+        ...jobFiles("demo", { media: { ...MEDIA, setup: ["packages"] } }),
+        "media.ts": MEDIA_TS,
+      },
+    },
+  });
+  const fixture = workspaceRoot();
+  setWorkspaceRoot(root);
+  try {
+    expect(loadWorkspace(root).problems).toEqual([]);
+    await generate(loadRepo(root));
+    return parse(
+      readFileSync(join(root, ".github/workflows/job-demo.yml"), "utf8"),
+    ).jobs.run.steps;
+  } finally {
+    setWorkspaceRoot(fixture);
+  }
+}
+
+const READER_APP = {
+  appIdSecret: "READER_APP_ID",
+  privateKeySecret: "READER_APP_KEY",
+  repositories: ["example-org/private-lib", "example-org/flax"],
+};
+
 describe("private framework packages", () => {
   it("gives git the packages token right before the install when flax.yml names one, and nothing otherwise", async () => {
     const plain = await steps({ ...MEDIA, setup: ["packages"] });
     expect(plain.map((s) => s.name)).not.toContain(PACKAGES_TOKEN_STEP);
+    expect(plain.map((s) => s.name)).not.toContain(PACKAGES_APP_TOKEN_STEP);
 
     const flax = parse(FLAX_TEXT);
     flax.agents.packagesTokenSecret = "FLAX_READ_TOKEN";
@@ -406,6 +439,96 @@ describe("private framework packages", () => {
     });
     expect(all[at]!.run).toBe(PACKAGES_TOKEN_RUN);
     expect(all[at + 1]!.run).toBe("pnpm install --frozen-lockfile");
+    expect(all.map((s) => s.name)).not.toContain(PACKAGES_APP_TOKEN_STEP);
+  });
+
+  it("makes the app's read token for the named repositories and gives it to git the same way", async () => {
+    const all = await packagesSteps({ packagesTokenApp: READER_APP });
+    const at = all.findIndex((s) => s.name === PACKAGES_APP_TOKEN_STEP);
+    expect(at).toBeGreaterThan(0);
+    expect(all[at - 1]!.name).toBe("Set up pnpm");
+    expect(all[at]).toEqual({
+      name: PACKAGES_APP_TOKEN_STEP,
+      id: "packages-token",
+      uses: "actions/create-github-app-token@v2",
+      with: {
+        "app-id": "${{ secrets.READER_APP_ID }}",
+        "private-key": "${{ secrets.READER_APP_KEY }}",
+        owner: "example-org",
+        repositories: "private-lib,flax",
+        "permission-contents": "read",
+      },
+    });
+    expect(all[at + 1]).toEqual({
+      name: PACKAGES_TOKEN_STEP,
+      env: { PACKAGES_TOKEN: "${{ steps.packages-token.outputs.token }}" },
+      run: PACKAGES_TOKEN_RUN,
+    });
+    expect(all[at + 2]!.run).toBe("pnpm install --frozen-lockfile");
+  });
+});
+
+describe("the packages token app", () => {
+  function problems(app: unknown, agents: Record<string, unknown> = {}) {
+    const flax = parse(FLAX_TEXT);
+    Object.assign(flax.agents, { packagesTokenApp: app, ...agents });
+    return loadWorkspace(makeRepo({ flax: stringify(flax) })).problems;
+  }
+
+  it("is valid with two secret names and repositories under one owner", () => {
+    expect(problems(READER_APP)).toEqual([]);
+  });
+
+  it("may not be set with the packages token secret", () => {
+    expect(
+      problems(READER_APP, { packagesTokenSecret: "FLAX_READ_TOKEN" }),
+    ).toEqual([
+      "flax.yml: agents.packagesTokenApp and agents.packagesTokenSecret may not both be set",
+    ]);
+  });
+
+  it("must be a mapping with known keys", () => {
+    expect(problems("READER_APP_ID")).toEqual([
+      "flax.yml: agents.packagesTokenApp must be { appIdSecret, privateKeySecret, repositories }",
+    ]);
+    expect(problems({ ...READER_APP, owner: "example-org" })).toEqual([
+      "flax.yml: unknown key agents.packagesTokenApp.owner",
+    ]);
+  });
+
+  it("names its secrets by secret name", () => {
+    expect(
+      problems({
+        ...READER_APP,
+        appIdSecret: "reader app id",
+        privateKeySecret: undefined,
+      }),
+    ).toEqual([
+      "flax.yml: agents.packagesTokenApp.appIdSecret must be a secret name",
+      "flax.yml: agents.packagesTokenApp.privateKeySecret must be a secret name",
+    ]);
+  });
+
+  it("lists at least one owner/name repository, all under one owner", () => {
+    const listProblem =
+      "flax.yml: agents.packagesTokenApp.repositories must be a list of owner/name";
+    expect(problems({ ...READER_APP, repositories: [] })).toEqual([
+      listProblem,
+    ]);
+    expect(
+      problems({ ...READER_APP, repositories: "example-org/lib" }),
+    ).toEqual([listProblem]);
+    expect(problems({ ...READER_APP, repositories: ["private-lib"] })).toEqual([
+      listProblem,
+    ]);
+    expect(
+      problems({
+        ...READER_APP,
+        repositories: ["example-org/private-lib", "other-org/lib"],
+      }),
+    ).toEqual([
+      "flax.yml: agents.packagesTokenApp.repositories must all be under one owner",
+    ]);
   });
 });
 

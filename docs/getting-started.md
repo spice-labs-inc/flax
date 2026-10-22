@@ -129,7 +129,7 @@ The packages depend on each other the same way, so a pnpm workspace that install
 git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
 ```
 
-The agents package writes that step into the workflows it generates when `flax.yml` names the secret (`agents.packagesTokenSecret`). The publishing itself is `scripts/publish-packages.sh`, run by the Release workflow when a release is published.
+The agents package writes that step into the workflows it generates when `flax.yml` names the secret (`agents.packagesTokenSecret`). To use a GitHub App instead of a long-lived token, name its id and key secrets and the repositories in `agents.packagesTokenApp`; the workflows then make a short-lived contents-read token for those repositories before the same step. The publishing itself is `scripts/publish-packages.sh`, run by the Release workflow when a release is published.
 
 ## Planned, as of the lane logs
 

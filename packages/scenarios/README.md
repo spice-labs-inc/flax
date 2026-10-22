@@ -68,6 +68,26 @@ Playwright is a peer dependency, loaded only when a scenario asks for a page: a 
 
 `@flax/scenarios/local/terminal`, `local/recorder` and `local/stops` are the public half of a local runner: a real shell (bash, zsh or pwsh) in its own tmux server with a sandbox home, a recorder that keeps a terminal session as a cast with stops, and the stop markers. The product-specific half, which commands are run, how the product's wrapper and container runtime are shimmed, which editions exist, stays in the workspace: a World that subclasses the public one and a runner that sets the variables those steps read. The package ships no `local` command; a workspace writes its own on top of these pieces.
 
+## Mailbox
+
+`@flax/scenarios/mailbox` waits for the emails a scenario causes (a sign-in link, an invite) in an IMAP mailbox the workspace names. It loads no browser.
+
+```ts
+import { awaitLink, plusAddress, type Mailbox } from "@flax/scenarios/mailbox";
+
+const mailbox: Mailbox = { host: "imap.example.com", user: "checks@example.com", password: process.env.MAILBOX_PASSWORD! };
+const to = plusAddress(mailbox.user, `login-${runId}`); // checks+login-<run id>@example.com
+const since = new Date();
+// ... the step asks the product to send the email to `to` ...
+const link = await awaitLink({ mailbox, to, since, pattern: /https:\/\/app\.example\.com\/login\?[^\s"'<>]+/ });
+```
+
+- `Mailbox`: `{ host, port?, user, password, secure? }`; `port` defaults to 993 and `secure` (TLS from the start) to true.
+- `plusAddress(user, tag)`: `user+tag@domain`, so each run's emails are told apart in one mailbox.
+- `awaitMessage({ mailbox, to, since, folders?, timeoutMs?, pollMs?, match?, log? })`: polls until an email to `to` that arrived after `since` and passes `match` is there, newest first, and returns `{ folder, subject, date, text, html }`. Each poll opens a fresh connection and searches `folders` in order (default `INBOX`, `Junk`, `Spam`; a folder the mailbox lacks is skipped, and a provider with another spam folder name is given it). The defaults are 5 minutes and 5 seconds; past the timeout it throws, naming the address.
+- `awaitLink({ ...the same, pattern })`: the first match of `pattern` in the first such email whose text or HTML has one, with `&amp;` undone. `findLink(pattern, text, html?)` is the same extraction on its own.
+- `connect`: how a poll opens the mailbox (`connectImap` by default); tests pass a fake `MailClient`.
+
 ## Library
 
-Everything the commands use is exported: `@flax/scenarios/lib/surface` (reading, merging and writing surface files), `lib/repo` (shallow clones of a workspace's repositories into a cache), `lib/http` (fetch with the synthetic identity), `run/messages` (cucumber messages into results), `run/tags` (the one declarative environment and tag policy), `run/live` (the push to an explorer), `coverage/map`, `dataset/schema`, `dataset/journeys`, and `builders/sveltekit` (a surface builder for a SvelteKit app: routes, test ids, form actions). The data shapes are in `@flax/contract`.
+Everything the commands use is exported: `@flax/scenarios/lib/surface` (reading, merging and writing surface files), `lib/repo` (shallow clones of a workspace's repositories into a cache), `lib/http` (fetch with the synthetic identity), `mailbox` (above), `run/messages` (cucumber messages into results), `run/tags` (the one declarative environment and tag policy), `run/live` (the push to an explorer), `coverage/map`, `dataset/schema`, `dataset/journeys`, and `builders/sveltekit` (a surface builder for a SvelteKit app: routes, test ids, form actions). The data shapes are in `@flax/contract`.

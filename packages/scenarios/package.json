@@ -37,6 +37,8 @@
     "@cucumber/messages": "34.2.1",
     "@flax/contract": "workspace:*",
     "@flax/core": "workspace:*",
+    "imapflow": "2.2.8",
+    "mailparser": "3.9.36",
     "yaml": "^2.9.1"
   },
   "peerDependencies": {
@@ -50,6 +52,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.3.0",
+    "@types/mailparser": "3.9.0",
     "@types/node": "^24.0.0",
     "playwright": "^1.63.0",
     "typescript": "^7.0.2",

@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
-    "./workspace": "./dist/workspace.js"
+    "./workspace": "./dist/workspace.js",
+    "./http": "./dist/http.js"
   },
   "files": [
     "dist"
