@@ -1,0 +1,43 @@
+# Slack channels, without the #. Changing this file needs code owner review.
+
+# Channels a job with output kind slack may post to. A live job posts by the
+# channel id, so a channel needs its id before a live job may name it; the
+# posting Slack app must also be invited to it.
+post:
+  - { id: C0TEST00001, name: product }
+  - { id: C0TEST00018, name: system-health }
+  - { id: C0TEST00013, name: alerts-live-tests }
+  - { id: C0TEST00020, name: crash-investigations }
+
+# The channel shadow runs of slack jobs post to, so a shadow run can be
+# compared with what it replaces. A shadow run posts the message its job
+# would post, under a line saying it is a shadow run; without an id here,
+# shadow runs post nothing. The posting Slack app must be invited to it.
+shadow: { id: C0TEST00019, name: agents-shadow }
+
+# URL prefixes a posted message may link to. Any other link is turned into
+# plain text before posting. Each ends with a slash.
+links:
+  - https://github.com/notes-co/
+  - https://logs.svc.notes-co.example/
+  - https://notes-co.slack.com/
+
+# Channels the slack-history tool may read, by channel id. The agents Slack
+# app must also be invited to each; it cannot join channels by itself.
+read:
+  - { id: C0TEST00003, name: alerts-prod }
+  - { id: C0TEST00011, name: alerts-prod-apps }
+  - { id: C0TEST00004, name: alerts-staging }
+  - { id: C0TEST00010, name: alerts-staging-apps }
+  - { id: C0TEST00002, name: alerts-dev }
+  - { id: C0TEST00009, name: alerts-dev-apps }
+  - { id: C0TEST00006, name: alerts-shared-services }
+  - { id: C0TEST00015, name: alerts-shared-services-apps }
+  - { id: C0TEST00017, name: alerts-prod-engine-merges }
+  - { id: C0TEST00012, name: alerts-prod-engine-panics }
+  - { id: C0TEST00013, name: alerts-live-tests }
+  - { id: C0TEST00016, name: alerts-hetzner }
+  - { id: C0TEST00014, name: alerts-servicee }
+  - { id: C0TEST00008, name: alerts-github }
+  - { id: C0TEST00005, name: alerts-scaleway }
+  - { id: C0TEST00007, name: alerts-tailscale }

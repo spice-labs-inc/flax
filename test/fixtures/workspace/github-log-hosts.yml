@@ -1,0 +1,60 @@
+# The exact hosts a run may reach to read GitHub job logs: api.github.com
+# and the log download hosts GitHub publishes. Written by
+# pnpm fetch-github-hosts from domains.actions_inbound.full_domains at the
+# source below; run it again to update, do not edit by hand. Schema:
+# schema/github-log-hosts.schema.json. The tools server follows GitHub's
+# downloads only to these hosts.
+fetched: 2026-09-29
+source: https://api.github.com/meta
+hosts:
+  - api.github.com
+  - pipelinesghubeus1.actions.githubusercontent.com
+  - pipelinesghubeus10.actions.githubusercontent.com
+  - pipelinesghubeus11.actions.githubusercontent.com
+  - pipelinesghubeus12.actions.githubusercontent.com
+  - pipelinesghubeus13.actions.githubusercontent.com
+  - pipelinesghubeus14.actions.githubusercontent.com
+  - pipelinesghubeus15.actions.githubusercontent.com
+  - pipelinesghubeus2.actions.githubusercontent.com
+  - pipelinesghubeus20.actions.githubusercontent.com
+  - pipelinesghubeus21.actions.githubusercontent.com
+  - pipelinesghubeus22.actions.githubusercontent.com
+  - pipelinesghubeus23.actions.githubusercontent.com
+  - pipelinesghubeus24.actions.githubusercontent.com
+  - pipelinesghubeus25.actions.githubusercontent.com
+  - pipelinesghubeus26.actions.githubusercontent.com
+  - pipelinesghubeus3.actions.githubusercontent.com
+  - pipelinesghubeus4.actions.githubusercontent.com
+  - pipelinesghubeus5.actions.githubusercontent.com
+  - pipelinesghubeus6.actions.githubusercontent.com
+  - pipelinesghubeus7.actions.githubusercontent.com
+  - pipelinesghubeus8.actions.githubusercontent.com
+  - pipelinesghubeus9.actions.githubusercontent.com
+  - pipelinesproxcnc1.actions.githubusercontent.com
+  - pipelinesproxcus1.actions.githubusercontent.com
+  - pipelinesproxeau1.actions.githubusercontent.com
+  - pipelinesproxjpw1.actions.githubusercontent.com
+  - pipelinesproxsdc1.actions.githubusercontent.com
+  - pipelinesproxweu1.actions.githubusercontent.com
+  - pipelinesproxwus31.actions.githubusercontent.com
+  - pipelinesproxwus32.actions.githubusercontent.com
+  - productionresultssa0.blob.core.windows.net
+  - productionresultssa1.blob.core.windows.net
+  - productionresultssa10.blob.core.windows.net
+  - productionresultssa11.blob.core.windows.net
+  - productionresultssa12.blob.core.windows.net
+  - productionresultssa13.blob.core.windows.net
+  - productionresultssa14.blob.core.windows.net
+  - productionresultssa15.blob.core.windows.net
+  - productionresultssa16.blob.core.windows.net
+  - productionresultssa17.blob.core.windows.net
+  - productionresultssa18.blob.core.windows.net
+  - productionresultssa19.blob.core.windows.net
+  - productionresultssa2.blob.core.windows.net
+  - productionresultssa3.blob.core.windows.net
+  - productionresultssa4.blob.core.windows.net
+  - productionresultssa5.blob.core.windows.net
+  - productionresultssa6.blob.core.windows.net
+  - productionresultssa7.blob.core.windows.net
+  - productionresultssa8.blob.core.windows.net
+  - productionresultssa9.blob.core.windows.net

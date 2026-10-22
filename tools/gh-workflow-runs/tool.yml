@@ -1,0 +1,69 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-workflow-runs
+
+description: Lists GitHub Actions workflow runs in one notes-co repository, newest first, optionally for one workflow file, branch, event or status; or, given a run id, lists that run's jobs with their steps and conclusions. Use gh-job-log with a job id to read a failed job's log.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    run_id:
+      type: integer
+      description: A workflow run id, to list that run's jobs instead of runs.
+      minimum: 1
+      maximum: 9007199254740991
+    workflow:
+      type: string
+      description: Only runs of this workflow, by file name (release.yml) or id.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    branch:
+      type: string
+      description: Only runs on this branch.
+      maxLength: 250
+    event:
+      type: string
+      description: Only runs started by this event.
+      enum:
+        [
+          push,
+          pull_request,
+          schedule,
+          workflow_dispatch,
+          workflow_run,
+          release,
+          merge_group,
+        ]
+    status:
+      type: string
+      description: Only runs with this status.
+      enum: [queued, in_progress, completed, requested, waiting]
+    per_page:
+      type: integer
+      description: Results per page, 20 when not given.
+      minimum: 1
+      maximum: 100
+    page:
+      type: integer
+      description: The page, 1 when not given.
+      minimum: 1
+      maximum: 10
+
+# Methods list_workflow_runs and list_workflow_jobs only, in notes-co.
+upstream:
+  server: github
+  operations: [actions_list]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

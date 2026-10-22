@@ -1,0 +1,3 @@
+{
+  "summary": "Scheduled AI jobs run on self-hosted Firecracker runners, one folder per job with a job.yml, a prompt and an output schema. A pull request check rejects unlisted models, budgets over the shared monthly cap and secrets. Jobs start in shadow mode and go live only after four shadow runs and code owner approval."
+}
