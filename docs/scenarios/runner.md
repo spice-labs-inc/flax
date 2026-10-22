@@ -24,6 +24,30 @@ Beside the policy, tags on scenarios say what each one needs:
 - `@planned`: listed, never run.
 - `@local`: runs the product on this machine with no services; a scheduled run never picks it up (see [recorder.md](recorder.md)).
 
+## Cadences
+
+Some scenarios are too heavy for every scheduled run: a long journey, a memory hungry import, a slow export. A cadence gives them a slower schedule of their own. The workspace names each cadence and the tag that puts a scenario on it:
+
+```yaml
+scenarios:
+  cadences:
+    daily: { tag: "@daily", envs: [test] }
+    weekly: {}
+```
+
+`tag` defaults to `@<name>` (`@weekly` above) and `envs` to every environment. Two cadences cannot share a tag, and a cadence tag cannot be one the runner already gives a meaning (`@planned`, `@local`, `@fixture`, `@dispatch`, `@serial`, `@env:<id>`).
+
+An ordinary run leaves out every scenario that carries a cadence tag. `flax scenarios run --env test --cadence daily` runs only the scenarios tagged `@daily`, still under the environment's policy: `@env:` tags, `excludeTags` and the fixture rules apply as they do to any run. On the test environment above the two runs select with
+
+```text
+ordinary:         not @planned and not @local and ((not @env:live and not @env:test) or @env:test) and not @daily and not @weekly and not @fixture and not @dispatch
+--cadence daily:  not @planned and not @local and ((not @env:live and not @env:test) or @env:test) and @daily and not @fixture and not @dispatch
+```
+
+A cadence the workspace does not name is an error, and so is a cadence run in an environment the cadence leaves out. The run records its cadence in `run.json`. Schedule a cadence run like any other run, with its own cron (once a day for `daily`, say), and upload its results as an artifact of its own job; `explorer.results.extraJobs` names that job so the explorer service downloads it too, and it keeps the newest runs of each cadence apart from the ordinary ones.
+
+A cadence run speaks only for its cadence's scenarios, and an ordinary run never for them. Where the coverage map, the explorer and its Now view look at an environment's newest run, they take its newest ordinary run and its newest run of each cadence together, and a scenario's result is its newest from whichever run selected it. A cadence's proof grows old by that cadence's own gap between runs. The explorer counts a cadence scenario as running in every environment its cadence runs in; where it is not reached yet, the explorer says it is left for that cadence's run, and in an environment the cadence leaves out it says the scenario runs only where the cadence does.
+
 `--dry-run` checks that every step is defined without running anything. `--tags` narrows a run to an expression. `--record <dir>` runs only the scenarios that have a video sidecar, paced and filmed (see [recorder.md](recorder.md#browser-recordings)).
 
 ## Fixtures and writes
@@ -36,7 +60,7 @@ Writes go only through fixture identities: the API client refuses any write sign
 
 Each run writes `results/<env>/<run id>/`:
 
-- `run.json`: the run (`env`, `runId`, `startedAt`, `finishedAt`, `versions`, `parallel`) and every scenario's result: its id (`<feature file>:<line>`), name, feature, tags, status (`passed`, `failed`, `skipped`, `undefined`, `pending`, `ambiguous`), duration, its touches (item, need, step index), and for a failure the first failing step, its message and its index (-1 for a hook before the steps, -2 for one after).
+- `run.json`: the run (`env`, `runId`, `startedAt`, `finishedAt`, `versions`, `parallel`, `cadence`) and every scenario's result: its id (`<feature file>:<line>`), name, feature, tags, status (`passed`, `failed`, `skipped`, `undefined`, `pending`, `ambiguous`), duration, its touches (item, need, step index), and for a failure the first failing step, its message and its index (-1 for a hook before the steps, -2 for one after).
 - `planned.json`: every planned scenario (id, name, feature, tags).
 - `messages.ndjson`: the test framework's own message stream, which carries every step's result and timing, attachments (screenshots, logs) and the touches as an attachment with the touches media type.
 

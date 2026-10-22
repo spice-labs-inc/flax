@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildCoverage, pacific, renderGaps } from "../src/coverage/map.ts";
+import { currentRuns, type RunResult } from "@flax/contract";
+import {
+  buildCoverage,
+  mergeRuns,
+  pacific,
+  renderGaps,
+} from "../src/coverage/map.ts";
 import type { SurfaceFile, SurfaceItem } from "../src/lib/types.ts";
 
 const readAt = "2026-10-07T00:00:00.000Z";
@@ -143,5 +149,59 @@ describe("pacific", () => {
     expect(pacific("2026-12-01T20:00:00.000Z")).toBe(
       "Dec 1, 2026, 12:00 PM PST",
     );
+  });
+});
+
+describe("runs of one env with a cadence among them", () => {
+  const result = (id: string, status: "passed" | "failed") => ({
+    id,
+    name: id,
+    feature: "f",
+    tags: [],
+    status,
+    durationMs: 1,
+    touches: [],
+  });
+  const run = (
+    runId: string,
+    scenarios: RunResult["scenarios"],
+    cadence?: string,
+  ): RunResult => ({
+    env: "dev",
+    runId,
+    startedAt: readAt,
+    finishedAt: readAt,
+    versions: {},
+    ...(cadence ? { cadence } : {}),
+    scenarios,
+  });
+  const runs = [
+    run("dev-1", [result("quick", "failed")]),
+    run("dev-2", [result("heavy", "failed")], "daily"),
+    run("dev-3", [result("quick", "passed")]),
+    run("dev-4", [result("heavy", "passed")], "daily"),
+    run("dev-5", [result("quick", "passed")]),
+  ];
+
+  it("speak through the newest ordinary run and the newest run of each cadence", () => {
+    expect(currentRuns(runs, (r) => r.cadence).map((r) => r.runId)).toEqual([
+      "dev-4",
+      "dev-5",
+    ]);
+    expect(
+      currentRuns([...runs, run("dev-6", [], "weekly")], (r) => r.cadence).map(
+        (r) => r.runId,
+      ),
+    ).toEqual(["dev-4", "dev-5", "dev-6"]);
+  });
+
+  it("merge into one run that keeps each scenario's newest result and names no cadence", () => {
+    const merged = mergeRuns([...runs, run("dev-6", [], "daily")])!;
+    expect(merged.runId).toBe("dev-6");
+    expect(merged.cadence).toBeUndefined();
+    expect(merged.scenarios.map((s) => [s.id, s.status])).toEqual([
+      ["heavy", "passed"],
+      ["quick", "passed"],
+    ]);
   });
 });

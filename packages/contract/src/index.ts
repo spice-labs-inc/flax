@@ -105,7 +105,24 @@ export interface RunResult {
   finishedAt: string;
   versions: Record<string, unknown>;
   parallel?: number;
+  /** The cadence the run was started for (`--cadence`); absent for an ordinary run. */
+  cadence?: string;
   scenarios: ScenarioResult[];
+}
+
+/**
+ * The runs that speak for one env now, from its runs oldest first: its newest ordinary run and its newest run of
+ * each cadence, in the order given. A cadence run speaks only for its cadence's scenarios, and an ordinary run
+ * never for them.
+ */
+export function currentRuns<T>(
+  runs: readonly T[],
+  cadenceOf: (run: T) => string | undefined,
+): T[] {
+  const newest = new Map<string | undefined, T>();
+  for (const r of runs) newest.set(cadenceOf(r), r);
+  const keep = new Set(newest.values());
+  return runs.filter((r) => keep.has(r));
 }
 
 export interface PlannedScenario {
@@ -309,6 +326,8 @@ export interface RunInfo {
   versions: Version[];
   scenariosCommit?: string;
   workflowRun?: string;
+  /** The cadence the run was started for; absent for an ordinary run. */
+  cadence?: string;
 }
 
 export interface FeatureEntry {

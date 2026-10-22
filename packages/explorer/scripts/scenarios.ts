@@ -10,6 +10,7 @@ import type {
 } from "@cucumber/messages";
 import {
   STATUS_CODE,
+  currentRuns,
   type Env,
   type RunResult,
   type ScenarioStatus,
@@ -383,10 +384,7 @@ export function scenariosFile(
     }
   });
 
-  const latest = new Map(runs.map((r) => [r.env, r]));
-  const runsFixtures = (e: Env) =>
-    latest.get(e)?.run.scenarios.some((s) => s.tags.includes("@fixture")) ??
-    false;
+  const runsFixtures = fixturesRun(runs);
 
   details.forEach((d, i) => {
     d.applies = envsForTags(d.tags, runsFixtures);
@@ -430,6 +428,7 @@ export function scenariosFile(
         startedAt: r.run.startedAt,
         finishedAt: r.run.finishedAt,
         versions: versionsOf(r.run.versions),
+        ...(r.run.cadence !== undefined ? { cadence: r.run.cadence } : {}),
         ...runIndex(join(resultsDir, r.env, r.id, "index.json")),
       })),
       scenarios: details,
@@ -437,6 +436,30 @@ export function scenariosFile(
     },
     shots,
   };
+}
+
+/** Per env, its runs that speak for it now (oldest first): the newest ordinary run and the newest run of each cadence. */
+export function currentByEnv(
+  runs: readonly RunOnDisk[],
+): Map<Env, RunOnDisk[]> {
+  return new Map(
+    ENVS.map((e) => [
+      e,
+      currentRuns(
+        runs.filter((r) => r.env === e),
+        (r) => r.run.cadence,
+      ),
+    ]),
+  );
+}
+
+/** Whether an env's current runs ran fixture scenarios. */
+export function fixturesRun(runs: readonly RunOnDisk[]): (env: Env) => boolean {
+  const current = currentByEnv(runs);
+  return (e) =>
+    (current.get(e) ?? []).some((r) =>
+      r.run.scenarios.some((s) => s.tags.includes("@fixture")),
+    );
 }
 
 /** The scenarios commit and workflow run index.json records for a run, when it has one. */

@@ -196,10 +196,14 @@ function failedOn(s: ScenarioResult, t: Touch): boolean {
   return at !== -2 && t.step >= at;
 }
 
-/** Runs of one env, oldest first, as one run: each scenario's latest result, named after the newest run. */
+/**
+ * Runs of one env, oldest first, as one run: each scenario's latest result, named after the newest run. A run
+ * holds only the scenarios it selected, so a cadence run and an ordinary run each leave the other's results be.
+ */
 export function mergeRuns(runs: RunResult[]): RunResult | undefined {
-  const newest = runs.at(-1);
-  if (!newest) return undefined;
+  const last = runs.at(-1);
+  if (!last) return undefined;
+  const { cadence: _, ...newest } = last;
   const scenarios = new Map(
     runs.flatMap((r) => r.scenarios).map((s) => [s.id, s]),
   );

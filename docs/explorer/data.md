@@ -22,7 +22,7 @@ The explorer page loads its data at run time from `/data/manifest.json` and the 
 - `snapshots[]`: one per run: `at`, `env`, `runId`, `ran` (scenarios, passed, failed), `runs` (a count per environment so far), and three strings with one character per item in `envs` order: `status`, `scen` and `planned`.
 
 `scenarios.json`: the catalog and every run's record of every scenario.
-- `runs[]`: `env`, `id`, `startedAt`, `finishedAt`, `versions[]` (`service`, `release`, `builtAt`), `scenariosCommit`, `workflowRun`.
+- `runs[]`: `env`, `id`, `startedAt`, `finishedAt`, `versions[]` (`service`, `release`, `builtAt`), `scenariosCommit`, `workflowRun`, and `cadence` for a run started for one.
 - `scenarios[]`: `id`, `name`, `feature`, `tags`, `description`, `steps[]` (keyword, text, background flag, doc string, table), `applies` (the environments a scheduled run runs it in), `records` per environment: `run` (an index into `runs`), `status` (one character: `p` passed, `f` failed, `s` skipped, `u` undefined, `n` pending, `a` ambiguous), `ms`, `codes` (one character per step), `stepMs`, `failure` (`at`, `message`, `step`), `steps`, `logs` (keyed by step index as a string), `shot`.
 - `features[]`: `file`, `surface`, `name`, `description`, `tags`, `scenarios[]` (id, name, tags, line).
 

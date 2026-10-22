@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { currentRuns } from "@flax/contract";
 import { config } from "../config.ts";
 import { writeJson } from "../lib/surface.ts";
 import { ENVS, SURFACES, type SurfaceFile } from "../lib/types.ts";
@@ -26,7 +27,7 @@ export async function runCoverage(argv: string[]): Promise<number> {
   /**
    * One run per env from `<dir>/<env>/<run id>/run.json`: each scenario's latest
    * result across that env's runs (run ids sort by start time), so runs of
-   * different features add up. A scheduled run covers every feature in one run.
+   * different features add up. A scheduled run covers every feature in one run, and a cadence run its cadence's.
    */
   async function latestResults(dir: string): Promise<Evidence> {
     const evidence: Evidence = { runs: [], planned: [] };
@@ -45,13 +46,15 @@ export async function runCoverage(argv: string[]): Promise<number> {
           ) as RunResult,
         );
       }
-      // Planned scenarios come from the newest run only: an older run lists ones that are real scenarios now.
-      const newest = ids
-        .filter((id) => existsSync(join(envDir, id, "planned.json")))
-        .at(-1);
-      if (newest)
+      // Planned scenarios come from the current runs only: an older run lists ones that are real scenarios now.
+      const withPlanned = ids.flatMap((id, i) =>
+        existsSync(join(envDir, id, "planned.json"))
+          ? [{ id, cadence: runs[i]!.cadence }]
+          : [],
+      );
+      for (const { id } of currentRuns(withPlanned, (r) => r.cadence))
         for (const p of JSON.parse(
-          await readFile(join(envDir, newest, "planned.json"), "utf8"),
+          await readFile(join(envDir, id, "planned.json"), "utf8"),
         ) as PlannedScenario[])
           planned.set(p.id, p);
       const merged = mergeRuns(runs);

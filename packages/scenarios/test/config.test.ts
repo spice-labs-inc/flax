@@ -57,3 +57,58 @@ explorer:
     );
   });
 });
+
+describe("cadences in flax.yml", () => {
+  const ws = (cadences: string) => `
+org: notes-co
+environments: [live, test]
+scenarios:
+  cadences:
+${cadences}
+  surfaces:
+    - { name: web }
+`;
+
+  it("reads each cadence with its tag, @<name> by default, and its envs, every env by default", () => {
+    expect(
+      parseConfig(ws(`    daily:\n    weekly: { tag: "@slow", envs: [test] }`))
+        .cadences,
+    ).toEqual([
+      { name: "daily", tag: "@daily", envs: [] },
+      { name: "weekly", tag: "@slow", envs: ["test"] },
+    ]);
+    expect(
+      parseConfig(
+        "org: x\nenvironments: [a]\nscenarios:\n  surfaces: [{ name: web }]\n",
+      ).cadences,
+    ).toEqual([]);
+  });
+
+  it("refuses two cadences with one tag", () => {
+    expect(() =>
+      parseConfig(
+        ws(`    daily: { tag: "@heavy" }\n    weekly: { tag: "@heavy" }`),
+      ),
+    ).toThrow(
+      "flax.yml: scenarios.cadences daily and weekly both use the tag @heavy",
+    );
+  });
+
+  it("refuses a tag the runner already uses, a tag without @, and an env the workspace does not list", () => {
+    expect(() => parseConfig(ws(`    daily: { tag: "@fixture" }`))).toThrow(
+      "scenarios.cadences.daily.tag @fixture already means something to the runner",
+    );
+    expect(() => parseConfig(ws(`    daily: { tag: "@env:live" }`))).toThrow(
+      /already means something/,
+    );
+    expect(() => parseConfig(ws(`    daily: { tag: daily }`))).toThrow(
+      "scenarios.cadences.daily.tag must be one tag starting with @",
+    );
+    expect(() => parseConfig(ws(`    daily: { envs: [stage] }`))).toThrow(
+      "scenarios.cadences.daily.envs names stage, which environments does not list",
+    );
+    expect(() => parseConfig(ws(`    - daily`))).toThrow(
+      "scenarios.cadences must map each cadence name to its settings",
+    );
+  });
+});

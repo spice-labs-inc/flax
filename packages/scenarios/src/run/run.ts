@@ -13,7 +13,7 @@ import { fixtureEnvNames } from "./env.ts";
 import { githubRun, livePushFromEnv, scenariosCommit } from "./live.ts";
 import { scenarioResults } from "./messages.ts";
 import { plannedScenarios } from "./planned.ts";
-import { tagExpression } from "./tags.ts";
+import { cadenceProblem, tagExpression } from "./tags.ts";
 import type { RunResult } from "./results.ts";
 import { planRecordings, type RecordPlan } from "../record/plan.ts";
 import type { Timeline } from "../record/timeline.ts";
@@ -37,6 +37,7 @@ export async function runScenarios(argv: string[]): Promise<number> {
       "dry-run": { type: "boolean", default: false },
       fixtures: { type: "boolean", default: false },
       dispatch: { type: "boolean", default: false },
+      cadence: { type: "string" },
       parallel: { type: "string", default: "1" },
       record: { type: "string" },
       "record-all": { type: "boolean", default: false },
@@ -46,7 +47,7 @@ export async function runScenarios(argv: string[]): Promise<number> {
   const env = ENVS.find((e) => e === values.env);
   if (!env) {
     console.error(
-      `usage: flax scenarios run --env <${ENVS.join("|")}> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--parallel <n>] [--record <dir> [--record-all]] [feature paths...]`,
+      `usage: flax scenarios run --env <${ENVS.join("|")}> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--cadence <name>] [--parallel <n>] [--record <dir> [--record-all]] [feature paths...]`,
     );
     return 2;
   }
@@ -72,6 +73,14 @@ export async function runScenarios(argv: string[]): Promise<number> {
   const fixtureEnvs = fixtureEnvNames();
   if (fixtures && !fixtureEnvs.includes(env)) {
     console.error(`--fixtures runs only on ${fixtureEnvs.join(", ")}`);
+    return 2;
+  }
+
+  const cadence = values.cadence;
+  const wrongCadence =
+    cadence === undefined ? undefined : cadenceProblem(cadence, env, kit);
+  if (wrongCadence) {
+    console.error(wrongCadence);
     return 2;
   }
 
@@ -155,7 +164,14 @@ export async function runScenarios(argv: string[]): Promise<number> {
         ...(kit.cucumber.stripTypes ? [STRIP_LOADER] : []),
         ...kit.cucumber.loaders,
       ],
-      tags: tagExpression(env, values.tags, fixtures, values.dispatch ?? false),
+      tags: tagExpression(
+        env,
+        values.tags,
+        fixtures,
+        values.dispatch ?? false,
+        cadence,
+        kit,
+      ),
       format: ["progress"],
       strict: true,
       dryRun: values["dry-run"] ?? false,
@@ -214,6 +230,7 @@ export async function runScenarios(argv: string[]): Promise<number> {
     finishedAt: new Date().toISOString(),
     versions,
     ...(parallel > 1 ? { parallel } : {}),
+    ...(cadence !== undefined ? { cadence } : {}),
     scenarios: scenarioResults(envelopes),
   };
   const dir = join(values.out ?? kit.paths.results, env, runId);

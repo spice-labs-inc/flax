@@ -13,6 +13,14 @@ export interface EnvConfig {
   fixtures: "always" | "when-asked" | "never";
 }
 
+/** A slower schedule for scenarios too heavy for every run: a scenario with the tag runs only in a run started with `--cadence <name>`. */
+export interface CadenceConfig {
+  name: string;
+  tag: string;
+  /** Envs a run on this cadence runs in; empty means every env. */
+  envs: string[];
+}
+
 /** How a surface's items are named, in product words, from the shape of their ids and details. */
 export interface KindNaming {
   /** By the second segment of the id (`<surface>:<segment>:...`). */
@@ -118,6 +126,8 @@ export interface ScenariosConfig {
   tagLabels: Record<string, string>;
   /** K24 */
   recorder: RecorderConfig;
+  /** Slower schedules, in flax.yml order; ordinary runs leave their scenarios out. */
+  cadences: CadenceConfig[];
 }
 
 /** Defaults for browser recordings (`flax scenarios run --record`); a scenario's video sidecar overrides pace and viewport. */

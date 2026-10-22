@@ -1,3 +1,4 @@
+import { currentRuns } from "@flax/contract";
 import { failedStep, shortMessage } from "./failure.ts";
 import {
   ENVS,
@@ -85,7 +86,7 @@ export interface NotChecked {
 
 export interface EnvNow {
   env: Env;
-  /** The newest run in the env at the timeline point, if any. */
+  /** The newest ordinary run in the env at the timeline point (its newest run when it has only cadence runs), if any. */
   run?: RunInfo;
   ran: number;
   passed: number;
@@ -328,10 +329,13 @@ export function nowModel(
     return out;
   }
 
-  /** The env's state at a timeline point. */
+  /** The env's state at a timeline point, from its current runs: the newest ordinary run and the newest of each cadence. */
   function envNow(env: Env, snap: number): EnvNow {
     const upTo = snapshots[snap]!.at;
-    const run = lastWhere(runs, (r) => r.env === env && r.finishedAt <= upTo);
+    const upToHere = runs.filter((r) => r.env === env && r.finishedAt <= upTo);
+    const current = currentRuns(upToHere, (r) => r.cadence);
+    const run =
+      lastWhere(current, (r) => r.cadence === undefined) ?? current.at(-1);
     const out: EnvNow = {
       env,
       ...(run ? { run } : {}),
@@ -351,7 +355,7 @@ export function nowModel(
         : Infinity,
     };
     if (!run) return out;
-    const runIdx = runs.indexOf(run);
+    const currentIdx = new Set(current.map((r) => runs.indexOf(r)));
     const failingHere = new Set(
       details.flatMap((d, i) =>
         lastWhere(d.records[env], (r) => finishedAt(r) <= upTo)?.status === "f"
@@ -362,7 +366,7 @@ export function nowModel(
     for (const d of details) {
       const recs = d.records[env].filter((r) => finishedAt(r) <= upTo);
       const r = recs[recs.length - 1];
-      if (!r || r.run !== runIdx) continue;
+      if (!r || !currentIdx.has(r.run)) continue;
       out.ran++;
       if (r.status === "p") out.passed++;
       else if (r.status === "f") out.failed++;

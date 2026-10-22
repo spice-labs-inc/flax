@@ -93,6 +93,8 @@ export interface RunInfo {
   versions: Version[];
   scenariosCommit?: string;
   workflowRun?: string;
+  /** The cadence the run was started for; absent for an ordinary run. */
+  cadence?: string;
 }
 
 /** One feature file as the catalog reads it: the product's own description of what a customer can do. */

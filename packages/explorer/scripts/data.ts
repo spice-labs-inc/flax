@@ -24,7 +24,12 @@ import type { JourneyResolution } from "@flax/scenarios/dataset/journeys";
 import { ENVS } from "@flax/scenarios/lib/types";
 import { envsForTags, leftOutBy, type LeftOut } from "@flax/scenarios/run/tags";
 import { isUnreachable } from "../src/lib/unreachable.ts";
-import { attemptsFrom, readEnvelopes } from "./scenarios.ts";
+import {
+  attemptsFrom,
+  currentByEnv,
+  fixturesRun,
+  readEnvelopes,
+} from "./scenarios.ts";
 
 /** One scheduled run as `pnpm results:fetch` leaves it: `<results>/<env>/<id>/run.json` and `planned.json`. */
 export interface RunOnDisk {
@@ -262,6 +267,12 @@ function leftOutPhrase(kind: LeftOut, env: Env) {
       short: what,
     };
   }
+  if (kind.kind === "cadence")
+    return {
+      one: `is left for the ${kind.cadence} run`,
+      many: `are left for the ${kind.cadence} run`,
+      short: `is left for the ${kind.cadence} run`,
+    };
   const pinned = kind.envs.map((e) => envConfig(e).label);
   return {
     one: `runs only on ${listed(pinned)}`,
@@ -283,7 +294,7 @@ interface ReasonContext {
   reach: Map<Env, Reach>;
   ranEver: Map<Env, Set<string>>;
   tags: Map<string, string[]>;
-  /** Per env, whether its newest run ran fixture scenarios. */
+  /** Per env, whether its current runs (the newest ordinary one and the newest of each cadence) ran fixture scenarios. */
   runsFixtures: Map<Env, boolean>;
 }
 
@@ -297,15 +308,8 @@ function reasonContext(runs: RunOnDisk[]): ReasonContext {
       if (s.status === "passed" || s.status === "failed")
         ranEver.get(r.env)!.add(s.id);
     }
-  const runsFixtures = new Map(
-    ENVS.map((e) => [
-      e,
-      runs
-        .filter((r) => r.env === e)
-        .at(-1)
-        ?.run.scenarios.some((s) => s.tags.includes("@fixture")) ?? false,
-    ]),
-  );
+  const fixtures = fixturesRun(runs);
+  const runsFixtures = new Map(ENVS.map((e) => [e, fixtures(e)]));
   return {
     reach: new Map(
       ENVS.map((e) => [e, reachOf(merged.find((m) => m.env === e))]),
@@ -692,7 +696,7 @@ function statusString(map: CoverageMap, merged: RunResult[]): string {
 
 /**
  * data/history.json: the coverage map after each timeline point, rebuilt with the coverage map's own merge rules,
- * plus every scenario any run recorded and the planned scenarios the latest runs list.
+ * plus every scenario any run recorded and the planned scenarios the current runs list.
  */
 export function historyFile(
   root: string,
@@ -744,20 +748,16 @@ export function historyFile(
     }
   }
 
-  const latestByEnv = (upTo: RunOnDisk[]) =>
-    new Map(upTo.map((r) => [r.env, r]));
-  const finalLatest = latestByEnv(runs);
-  const runsFixtures = (e: Env) =>
-    finalLatest
-      .get(e)
-      ?.run.scenarios.some((s) => s.tags.includes("@fixture")) ?? false;
+  const current = (upTo: RunOnDisk[]) =>
+    [...currentByEnv(upTo).values()].flat();
+  const runsFixtures = fixturesRun(runs);
 
   /** The envs a scheduled run would run a planned scenario in, by the runner.s tag rules. */
   const plannedEnvs = (tags: string[]): Env[] =>
     envsForTags(tags, runsFixtures);
 
   const plannedNow = new Map<string, PlannedScenario>();
-  for (const r of finalLatest.values())
+  for (const r of current(runs))
     for (const p of r.planned) plannedNow.set(p.id, p);
   const planned = [...plannedNow.values()]
     .flatMap((p) => {
@@ -809,9 +809,7 @@ export function historyFile(
       )
       .join("");
     const plannedThen = new Set(
-      [...latestByEnv(upTo).values()].flatMap((r) =>
-        r.planned.map((p) => p.id),
-      ),
+      current(upTo).flatMap((r) => r.planned.map((p) => p.id)),
     );
     const ran = point.run.scenarios;
     const ranIn = (e: Env) => upTo.filter((r) => r.env === e).length;

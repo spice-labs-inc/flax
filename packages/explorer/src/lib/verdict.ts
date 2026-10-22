@@ -48,6 +48,9 @@ export interface Verdict {
   asOf?: string;
   /** Its proof is older than twice the env's usual gap between runs. */
   stale: boolean;
+  /** The cadence of the run its proof came from, whose own usual gap measures it. */
+  cadence?: string;
+  gap?: number;
 }
 
 /** The usual gap between runs, as the median of the gaps between these finish times; none with fewer than two. */
@@ -100,8 +103,10 @@ export function asOfText(
   if (!v.asOf)
     return v.stale ? "As of a run older than the runs kept here." : "";
   const at = `As of ${formatPacific(v.asOf)}`;
-  return v.stale && gap !== undefined
-    ? `${at}, which is old: ${ENV_LABEL[env]} usually runs every ${gapWords(gap)}.`
+  const g = v.cadence !== undefined ? v.gap : gap;
+  const what = v.cadence !== undefined ? ` its ${v.cadence} scenarios` : "";
+  return v.stale && g !== undefined
+    ? `${at}, which is old: ${ENV_LABEL[env]} usually runs${what} every ${gapWords(g)}.`
     : `${at}.`;
 }
 
@@ -118,15 +123,33 @@ export function verdictModel(cov: CoverageModel, scen: ScenariosModel) {
   } = cov;
   const { runs, details, recordAt } = scen;
 
-  const runsOf = (env: Env) => runs.filter((r) => r.env === env);
+  /** An env's runs of one cadence, the ordinary ones when it is undefined. */
+  const runsOf = (env: Env, cadence?: string) =>
+    runs.filter((r) => r.env === env && r.cadence === cadence);
+  /** An env's ordinary runs, or all its runs when it has only cadence runs. */
+  const mainRuns = (env: Env) =>
+    runs.some((r) => r.env === env && r.cadence === undefined)
+      ? runsOf(env)
+      : runs.filter((r) => r.env === env);
   const gaps: Record<Env, number | undefined> = byEnv((e) =>
-    usualGap(runsOf(e).map((r) => r.finishedAt)),
+    usualGap(mainRuns(e).map((r) => r.finishedAt)),
   );
+  const cadenceGaps = new Map<string, number | undefined>();
+  const gapOf = (env: Env, cadence: string | undefined) => {
+    if (cadence === undefined) return gaps[env];
+    const key = `${env}/${cadence}`;
+    if (!cadenceGaps.has(key))
+      cadenceGaps.set(
+        key,
+        usualGap(runsOf(env, cadence).map((r) => r.finishedAt)),
+      );
+    return cadenceGaps.get(key);
+  };
 
-  /** The env's newest run at a timeline point. */
+  /** The env's newest ordinary run at a timeline point (its newest run when it has only cadence runs). */
   function runAt(env: Env, snap: number): RunInfo | undefined {
     const at = snapshots[snap]!.at;
-    return lastWhere(runs, (r) => r.env === env && r.finishedAt <= at);
+    return lastWhere(mainRuns(env), (r) => r.finishedAt <= at);
   }
 
   /** The scenarios an item's state rests on: its own touches, or its elements' for a shared hex. */
@@ -136,19 +159,19 @@ export function verdictModel(cov: CoverageModel, scen: ScenariosModel) {
     return refs.flatMap((s) => details[s.sIdx] ?? []);
   }
 
-  /** When the newest record of these statuses among the item's scenarios finished, at a timeline point. */
+  /** The run of the newest record of these statuses among the item's scenarios, at a timeline point. */
   function newestRecord(
     it: Item,
     env: Env,
     snap: number,
     want: string,
-  ): string | undefined {
-    let best: string | undefined;
+  ): RunInfo | undefined {
+    let best: RunInfo | undefined;
     for (const d of behind(it)) {
       const r = recordAt(d, env, snap);
       if (!r || !want.includes(r.status)) continue;
-      const at = runs[r.run]!.finishedAt;
-      if (!best || at > best) best = at;
+      const run = runs[r.run]!;
+      if (!best || run.finishedAt > best.finishedAt) best = run;
     }
     return best;
   }
@@ -178,15 +201,20 @@ export function verdictModel(cov: CoverageModel, scen: ScenariosModel) {
       stale: false,
     };
     if (state === "verified" || state === "failing") {
-      const at = newestRecord(
+      const run = newestRecord(
         it,
         env,
         snap,
         state === "failing" || note === "later-failed" ? "f" : "p",
       );
-      if (at) {
-        v.asOf = at;
-        v.stale = isStale(at, snapshots[snap]!.at, gaps[env]);
+      if (run) {
+        const gap = gapOf(env, run.cadence);
+        v.asOf = run.finishedAt;
+        v.stale = isStale(run.finishedAt, snapshots[snap]!.at, gap);
+        if (run.cadence !== undefined) {
+          v.cadence = run.cadence;
+          if (gap !== undefined) v.gap = gap;
+        }
       } else v.stale = behind(it).length > 0;
     } else if (state === "unchecked" || state === "none") {
       const run = runAt(env, snap);

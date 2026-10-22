@@ -103,14 +103,15 @@ export function featureKey(f: { surface: FeatureSurface; stem: string }) {
 }
 
 /**
- * Recorded scenarios the catalog does not list, by feature file, kept while an env's newest full run still ran them.
+ * Recorded scenarios the catalog does not list, by feature file, kept while an env's newest full run (or its newest
+ * run of a cadence) still ran them.
  * The service's image carries the feature files it was built with while runs use newer commits, so a scenario missing
  * from the catalog alone may be brand new; one missing from every newest full run as well is an old id and drops out.
  */
 export function unlistedScenarios(
   entries: readonly FeatureEntry[],
   details: readonly ScenarioDetail[],
-  runs: readonly { env: Env }[],
+  runs: readonly { env: Env; cadence?: string }[],
 ): Map<string, ScenarioDetail[]> {
   const ranInRun = new Map<number, number>();
   for (const d of details)
@@ -120,10 +121,17 @@ export function unlistedScenarios(
   // A run of a handful of scenarios says nothing about the rest; a full run ran about as many as the env's largest.
   const newestFull = new Set<number>();
   for (const e of ENVS) {
-    const own = runs.flatMap((r, i) => (r.env === e ? [i] : []));
+    const own = runs.flatMap((r, i) =>
+      r.env === e && r.cadence === undefined ? [i] : [],
+    );
     const most = Math.max(0, ...own.map((i) => ranInRun.get(i) ?? 0));
     const full = lastWhere(own, (i) => (ranInRun.get(i) ?? 0) >= most * 0.9);
     if (full !== undefined) newestFull.add(full);
+    const byCadence = new Map<string, number>();
+    runs.forEach((r, i) => {
+      if (r.env === e && r.cadence !== undefined) byCadence.set(r.cadence, i);
+    });
+    for (const i of byCadence.values()) newestFull.add(i);
   }
   const catalogued = new Set(
     entries.flatMap((e) => e.scenarios.map((s) => s.id)),

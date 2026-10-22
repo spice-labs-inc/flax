@@ -159,18 +159,22 @@ export class Poller {
   /** Downloads the runs not here yet; resolves to how many were kept. */
   async artifacts(): Promise<number> {
     let kept = 0;
-    const { repo, job } = this.#source;
+    const { repo, job, extraJobs } = this.#source;
     const present = artifactRuns(this.#resultsDir);
     for (const env of ENVS) {
-      const listed: Artifact[] = [];
-      for (const mode of ["live", "shadow"] as const) {
-        const name = resultsArtifactName(job, mode, env);
-        const body = await this.#gh.json(
-          `/repos/${repo}/actions/artifacts?name=${encodeURIComponent(name)}&per_page=100`,
-        );
-        listed.push(...parseArtifacts(body, name));
+      const wanted: Artifact[] = [];
+      for (const j of [job, ...extraJobs]) {
+        const listed: Artifact[] = [];
+        for (const mode of ["live", "shadow"] as const) {
+          const name = resultsArtifactName(j, mode, env);
+          const body = await this.#gh.json(
+            `/repos/${repo}/actions/artifacts?name=${encodeURIComponent(name)}&per_page=100`,
+          );
+          listed.push(...parseArtifacts(body, name));
+        }
+        wanted.push(...toDownload(listed, present, this.#seen));
       }
-      for (const a of toDownload(listed, present, this.#seen)) {
+      for (const a of wanted) {
         try {
           const zip = await this.#gh.download(
             `/repos/${repo}/actions/artifacts/${a.id}/zip`,
@@ -205,7 +209,7 @@ export class Poller {
     for (const r of prune(this.#resultsDir))
       this.#log(
         "info",
-        `results ${r} dropped, past the newest ${RUNS_PER_ENV}`,
+        `results ${r} dropped, past the newest ${RUNS_PER_ENV} of its kind`,
       );
     writeFileSync(
       join(this.#resultsDir, SEEN),

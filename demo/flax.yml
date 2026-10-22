@@ -162,6 +162,9 @@ scenarios:
     board: explorer/board.json
     documentation: scenarios/documentation.json
   timezone: America/Los_Angeles
+  # Uncomment to run scenarios tagged @nightly only in runs started with --cadence nightly (and leave them out of every other run):
+  # cadences:
+  #   nightly: { tag: "@nightly", envs: [test] }
   tagLabels:
     "@admin": Admin only
     "@fixture": Creates a fixture account
@@ -182,3 +185,4 @@ explorer:
   #   repo: notes-co/notes-scenarios
   #   workflow: scenario-checks.yml
   #   job: scenario-checks
+  #   extraJobs: [scenario-checks-nightly]

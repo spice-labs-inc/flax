@@ -6,6 +6,7 @@ import {
   type Workspace,
 } from "@flax/core";
 import type {
+  CadenceConfig,
   EnvConfig,
   KindNaming,
   ScenariosConfig,
@@ -191,7 +192,51 @@ export function fromWorkspace(ws: Workspace): ScenariosConfig {
     },
     tagLabels: rec(r["tagLabels"]),
     recorder: recorderConfig(recorder, name),
+    cadences: cadencesConfig(
+      r["cadences"],
+      envs.map((e) => e.name),
+    ),
   };
+}
+
+/** Tags the runner gives a meaning of its own, so none of them can put a scenario on a cadence. */
+const RUNNER_TAGS = ["@planned", "@local", "@fixture", "@dispatch", "@serial"];
+
+/** The `cadences` key: per name, the tag that puts a scenario on it (default `@<name>`) and the envs that run it. */
+function cadencesConfig(v: unknown, envNames: string[]): CadenceConfig[] {
+  if (v === undefined || v === null) return [];
+  const bad = (key: string, why: string) =>
+    new Error(`flax.yml: scenarios.cadences${key} ${why}`);
+  if (!isRecord(v)) throw bad("", "must map each cadence name to its settings");
+  const cadences = Object.entries(v).map(([name, raw]): CadenceConfig => {
+    const key = `.${name}`;
+    if (!/^[A-Za-z0-9][\w-]*$/.test(name))
+      throw bad(key, "is not a name: use letters, digits, - and _");
+    if (raw !== null && !isRecord(raw))
+      throw bad(key, "must be a mapping (tag, envs)");
+    const o = isRecord(raw) ? raw : {};
+    const tag = o["tag"] ?? `@${name}`;
+    if (typeof tag !== "string" || !/^@\S+$/.test(tag))
+      throw bad(`${key}.tag`, "must be one tag starting with @");
+    if (RUNNER_TAGS.includes(tag) || tag.startsWith("@env:"))
+      throw bad(`${key}.tag`, `${tag} already means something to the runner`);
+    const envs = list(o["envs"]);
+    const unknown = envs.find((e) => !envNames.includes(e));
+    if (unknown)
+      throw bad(
+        `${key}.envs`,
+        `names ${unknown}, which environments does not list`,
+      );
+    return { name, tag, envs };
+  });
+  const seen = new Map<string, string>();
+  for (const c of cadences) {
+    const other = seen.get(c.tag);
+    if (other)
+      throw bad("", `${other} and ${c.name} both use the tag ${c.tag}`);
+    seen.set(c.tag, c.name);
+  }
+  return cadences;
 }
 
 /** The `recorder` key: defaults for browser recordings, each value that is missing or out of range taking the default. */

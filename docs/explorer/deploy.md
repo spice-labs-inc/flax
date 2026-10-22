@@ -24,7 +24,7 @@ The service checks the bearer token in constant time, accepts only run ids in th
 
 ## Fallback to the code host
 
-With `explorer.results` set in `flax.yml` (`repo`, `workflow`, `job`: the workspace repository, the scheduled check workflow and the job whose artifacts carry the results) and a GitHub App configured (an app id and its private key as PEM or base64), the service downloads new results artifacts under the run artifacts contract every five minutes (an artifact replaces the pushed copy of its run), lists runs in progress every minute (shown as in progress with no live detail when they push nothing), and re-reads the planned-work issues every thirty minutes. Without it, the service relies on ingest alone and the board file is read as committed.
+With `explorer.results` set in `flax.yml` (`repo`, `workflow`, `job`: the workspace repository, the scheduled check workflow and the job whose artifacts carry the results; `extraJobs` lists more jobs whose artifacts carry results under the same naming, such as a slower cadence's own job) and a GitHub App configured (an app id and its private key as PEM or base64), the service downloads new results artifacts under the run artifacts contract every five minutes (an artifact replaces the pushed copy of its run), lists runs in progress every minute (shown as in progress with no live detail when they push nothing), and re-reads the planned-work issues every thirty minutes. Without it, the service relies on ingest alone and the board file is read as committed.
 
 ## Settings
 

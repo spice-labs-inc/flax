@@ -8,7 +8,7 @@ Run in the workspace directory (the one holding `flax.yml`), or point `FLAX_WORK
 
 | command | does |
 |---|---|
-| `flax scenarios run --env <env> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--parallel <n>] [feature paths...]` | runs the scenarios against one environment with cucumber, writes `results/<env>/<run id>/` (`run.json`, `planned.json`, `messages.ndjson`), and, when `EXPLORER_URL` and `EXPLORER_INGEST_TOKEN` are set, pushes the run's progress to an explorer service as it goes |
+| `flax scenarios run --env <env> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--cadence <name>] [--parallel <n>] [feature paths...]` | runs the scenarios against one environment with cucumber (with `--cadence`, only the scenarios on that cadence; without it, none of them), writes `results/<env>/<run id>/` (`run.json`, `planned.json`, `messages.ndjson`), and, when `EXPLORER_URL` and `EXPLORER_INGEST_TOKEN` are set, pushes the run's progress to an explorer service as it goes |
 | `flax scenarios run --env <env> --record <dir> [--record-all] [--dry-run] [feature paths...]` | the same run limited to the scenarios with a video sidecar (`<name>.video.yml` or `<name>.<id>.video.yml` beside the feature; every selected scenario with `--record-all`), paced and filmed: `<dir>/<id>/` gets `video.webm`, `timeline.json`, a screen per step, terminal scenes and the sidecar; see [docs/scenarios/recorder.md](../../docs/scenarios/recorder.md#browser-recordings) |
 | `flax scenarios coverage [--results <dir>]` | the coverage map (`coverage-map.json`) and its report (`GAPS.md`) from the surface files and the latest run per environment |
 | `flax scenarios dataset` | validates `personas/*.yml`, `journeys/stations.yml` and `journeys/*.yml`, then resolves every journey's stations against the coverage map into `journeys.json` |
@@ -32,6 +32,7 @@ Every path above is a default; the `paths` key of the `scenarios:` section renam
 ### flax.yml, the scenarios section
 
 - `envs.<id>`: per environment (the ids come from the shared `environments` list, whose first entry is the reference environment), `hosts` by key (`api`, `web`, whatever the steps and builders need), `excludeTags` (tags a scheduled run never runs there) and `fixtures: always | when-asked | never` (whether runs create fixture accounts there: always, only when started with `--fixtures`, or never).
+- `cadences`: slower schedules for heavy scenarios, by name: `tag` (default `@<name>`) and `envs` (default every environment). Ordinary runs leave out scenarios with a cadence tag, and `run --cadence <name>` runs only those with that cadence's tag; see [docs/scenarios/runner.md](../../docs/scenarios/runner.md#cadences).
 - `surfaces`: in display order; `title`, `role` (`ui`, `service`, `site`, `other`), `envs` (where the surface exists; empty means everywhere), `linkHost` (the host key a route id is appended to for a link), `kinds` (how items are named in product words, by id segment or `details.kind`), `pageKind` and `elementKind`, and `islands` for a surface drawn as several islands.
 - `vocabulary`: `personaTypes`, `stages`, `stationKinds`, `editions`, `editionTitles`, and `elsewhere`, the sentence used for anything verified outside these runs.
 - `textRules`: regular expressions the dataset's prose must not match, with the message to give.

@@ -185,7 +185,19 @@ export function artifactRuns(resultsDir: string): Set<number> {
   return out;
 }
 
-/** Keeps each env's newest runs (run ids sort by start time) and clears scratch left by a crash. */
+/** The cadence a run.json names; a run.json that cannot be read counts as an ordinary run. */
+function cadenceOf(path: string): string | undefined {
+  try {
+    const v: unknown = JSON.parse(readFileSync(path, "utf8"));
+    return isRecord(v) && typeof v["cadence"] === "string"
+      ? v["cadence"]
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Keeps each env's newest ordinary runs and its newest runs of each cadence (run ids sort by start time), and clears scratch left by a crash. */
 export function prune(resultsDir: string, perEnv = RUNS_PER_ENV): string[] {
   const removed: string[] = [];
   for (const env of ENVS) {
@@ -199,7 +211,12 @@ export function prune(resultsDir: string, perEnv = RUNS_PER_ENV): string[] {
       .filter((d) => !d.startsWith(".") && existsSync(join(dir, d, "run.json")))
       .sort()
       .reverse();
-    for (const d of runs.slice(perEnv)) {
+    const kept = new Map<string | undefined, number>();
+    for (const d of runs) {
+      const cadence = cadenceOf(join(dir, d, "run.json"));
+      const n = (kept.get(cadence) ?? 0) + 1;
+      kept.set(cadence, n);
+      if (n <= perEnv) continue;
       rmSync(join(dir, d), { recursive: true, force: true });
       removed.push(`${env}/${d}`);
     }

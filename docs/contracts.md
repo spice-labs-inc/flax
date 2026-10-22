@@ -12,7 +12,7 @@ A `SurfaceFile` has `surface`, `builtAt`, `sources` (every sighting the builder 
 
 Defined in the same file; written by `flax scenarios run` into `results/<env>/<run id>/`, read by the coverage map, the explorer's data build and the scheduled check job.
 
-- `RunResult`: `env`, `runId`, `startedAt`, `finishedAt`, `versions` (what each service answered for its version), optional `parallel`, and `scenarios[]`.
+- `RunResult`: `env`, `runId`, `startedAt`, `finishedAt`, `versions` (what each service answered for its version), optional `parallel`, optional `cadence` (the cadence a `--cadence` run was started for), and `scenarios[]`. `currentRuns(runs, cadenceOf)` picks the runs that speak for one environment now: its newest ordinary run and its newest run of each cadence.
 - `ScenarioResult`: `id` (`<feature file>:<line>`), `name`, `feature`, `tags`, `status` (one of `passed`, `failed`, `skipped`, `undefined`, `pending`, `ambiguous`), `durationMs`, `touches[]`, optional `failure` (`step`, `message`, `at`: the step index, -1 a hook before the steps, -2 one after).
 - `Touch`: `item`, optional `need` (which coverage need the touch proved, or a refusal proved beyond them), optional `step` (the step index; none for a touch outside the steps). Touches also ride in the runner's message stream as an attachment under the touches media type, `application/vnd.flax.touches+json` by default; a workspace with older results sets its own.
 - `PlannedScenario`: `id`, `name`, `feature`, `tags`; written to `planned.json`.
@@ -33,7 +33,7 @@ Defined in the same file; emitted by the explorer service on `GET /live/events` 
 
 ## Workspace configuration shapes
 
-Defined in [`packages/contract/src/config.ts`](../packages/contract/src/config.ts): the shapes the scenarios package and the explorer read from the workspace's `scenarios` and `explorer` sections. `EnvConfig` (name, label, hosts by key, `excludeTags`, `fixtures` as `always`, `when-asked` or `never`), `SurfaceConfig` (name, title, `role` as `ui`, `service`, `site` or `other`, the environments it exists in, `singleHome`, `linkHost`, `kinds` naming, `pageKind` and `elementKind`, `islands`), `IslandSplit`, `KindNaming`, `DatasetVocabulary` (persona types, stages, station kinds, editions) and the whole `ScenariosConfig`. The shared keys (`org`, `github`, `environments`) are the core package's `Workspace` in `packages/core/src/workspace.ts`.
+Defined in [`packages/contract/src/config.ts`](../packages/contract/src/config.ts): the shapes the scenarios package and the explorer read from the workspace's `scenarios` and `explorer` sections. `EnvConfig` (name, label, hosts by key, `excludeTags`, `fixtures` as `always`, `when-asked` or `never`), `SurfaceConfig` (name, title, `role` as `ui`, `service`, `site` or `other`, the environments it exists in, `singleHome`, `linkHost`, `kinds` naming, `pageKind` and `elementKind`, `islands`), `IslandSplit`, `KindNaming`, `CadenceConfig` (name, tag, the environments a run on that cadence runs in), `DatasetVocabulary` (persona types, stages, station kinds, editions) and the whole `ScenariosConfig`. The shared keys (`org`, `github`, `environments`) are the core package's `Workspace` in `packages/core/src/workspace.ts`.
 
 ## Run artifacts
 

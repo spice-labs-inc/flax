@@ -10,6 +10,8 @@ export interface ResultsSource {
   workflow: string;
   /** The job name the artifacts are named after: `<job>-<env>`, `<job>-shadow-<env>`. */
   job: string;
+  /** More jobs whose artifacts carry results under the same names, such as a slower cadence's own job. */
+  extraJobs: string[];
 }
 
 export interface ExplorerConfig {
@@ -37,6 +39,9 @@ export function explorerConfig(dir = workspaceRoot()): ExplorerConfig {
           repo: repo.includes("/") ? repo : `${ws.github ?? ws.org}/${repo}`,
           workflow: str(r["workflow"], "scenario-checks.yml"),
           job: str(r["job"], "scenario-checks"),
+          extraJobs: Array.isArray(r["extraJobs"])
+            ? r["extraJobs"].filter((j): j is string => typeof j === "string")
+            : [],
         }
       : null,
   };
