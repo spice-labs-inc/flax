@@ -1,0 +1,128 @@
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { DATA_FILES, isRecord, } from "@flax/contract";
+import { resolveJourneys } from "@flax/scenarios/dataset/journeys";
+import { loadDatasetFiles } from "@flax/scenarios/dataset/load";
+import { validateDataset } from "@flax/scenarios/dataset/schema";
+import { ENVS } from "@flax/scenarios/lib/types";
+import { coverageAfter, coverageFile, historyFile, journeysFile, readRuns, readDocumentation, readSurfaces, } from "./data.js";
+import { scenariosFile, withinBudget } from "./scenarios.js";
+export { DATA_FILES };
+export class NoRuns extends Error {
+}
+const SHOT_BUDGET = 2_000_000;
+/** Every data file, built from the dataset and the runs on disk; throws when the dataset has errors or there are no runs. */
+export async function buildData(input) {
+    const { root, resultsDir, commit, now, log } = input;
+    const files = readSurfaces(root);
+    const documentation = readDocumentation(root);
+    const runs = readRuns(resultsDir);
+    if (runs.length === 0)
+        throw new NoRuns(`no runs under ${resultsDir}`);
+    const coverage = coverageAfter(files, runs, now);
+    log(`coverage.json: ${coverage.items.length} items from ${runs.length} runs`);
+    const { errors, dataset } = validateDataset(await loadDatasetFiles(root));
+    if (errors.length > 0)
+        throw new Error(`the dataset has errors; pnpm dataset lists them:\n${errors.join("\n")}`);
+    const resolved = resolveJourneys(dataset, coverage);
+    log(`journeys.json: ${dataset.personas.length} personas, ${resolved.journeys.length} journeys, ${resolved.stations.length} stations, ${resolved.orphans.length} orphans`);
+    const history = historyFile(root, files, runs, commit, now);
+    log(`history.json: ${history.snapshots.length} points from ${runs.length} runs (${ENVS.map((e) => `${e} ${runs.filter((r) => r.env === e).length}`).join(", ")}), ${history.scenarios.length} scenarios, ${history.planned.length} planned`);
+    const scen = scenariosFile(root, resultsDir, runs, history.scenarios);
+    const small = input.shrink
+        ? await input.shrink(scen.shots)
+        : { shots: scen.shots, shrunk: false };
+    const { kept, dropped } = withinBudget(small.shots, SHOT_BUDGET);
+    for (const d of scen.file.scenarios)
+        for (const recs of Object.values(d.records))
+            for (const r of recs)
+                if (r.shot && dropped.has(r.shot))
+                    delete r.shot;
+    const shotKb = kept.reduce((n, s) => n + s.base64.length, 0) / 1024;
+    log(`scenarios.json: ${scen.file.scenarios.length} scenarios; shots.json: ${kept.length} failure screenshots (${shotKb.toFixed(0)} KB${small.shrunk ? ", downscaled" : ""})${dropped.size ? `, ${dropped.size} older ones over the budget left out` : ""}`);
+    const open = (xs) => xs.filter((e) => e.state === "open").length;
+    log(`board.json: ${open(input.board.items)} of ${input.board.items.length} planned issues open, ${open(input.board.bugs)} of ${input.board.bugs.length} bugs open`);
+    return {
+        "coverage.json": coverageFile(coverage, files, documentation, runs),
+        "journeys.json": journeysFile(dataset.personas, resolved, commit),
+        "history.json": history,
+        "scenarios.json": scen.file,
+        "shots.json": Object.fromEntries(kept.map((s) => [s.key, `data:${s.mediaType};base64,${s.base64}`])),
+        "board.json": input.board,
+    };
+}
+/** The files into `dir`, each screenshot as its own image under shots/ so shots.json only names a path per key. */
+export function writeData(dir, data) {
+    mkdirSync(dir, { recursive: true });
+    for (const name of DATA_FILES) {
+        const body = name === "shots.json" ? shotFiles(dir, data[name]) : data[name];
+        writeFileSync(join(dir, name), JSON.stringify(body));
+    }
+}
+export const SHOT_EXT = {
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/jpeg": "jpg",
+};
+function shotFiles(dir, shots) {
+    const out = {};
+    if (!isRecord(shots))
+        return out;
+    let n = 0;
+    for (const [key, v] of Object.entries(shots)) {
+        if (typeof v !== "string")
+            continue;
+        const m = /^data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=]+)$/.exec(v);
+        const ext = m && SHOT_EXT[m[1]];
+        if (!m || !ext) {
+            out[key] = v;
+            continue;
+        }
+        if (n === 0)
+            mkdirSync(join(dir, "shots"), { recursive: true });
+        const path = `shots/${++n}.${ext}`;
+        writeFileSync(join(dir, path), Buffer.from(m[2], "base64"));
+        out[key] = path;
+    }
+    return out;
+}
+/** shots.json with each image file read back in as a data URL, for a page that carries its data inside it. */
+export function inlineShots(dir) {
+    const shots = JSON.parse(readFileSync(join(dir, "shots.json"), "utf8"));
+    const out = {};
+    if (!isRecord(shots))
+        return out;
+    for (const [key, v] of Object.entries(shots)) {
+        if (typeof v !== "string")
+            continue;
+        const ext = /^shots\/[\w-]+\.(\w+)$/.exec(v)?.[1];
+        const type = ext && Object.keys(SHOT_EXT).find((t) => SHOT_EXT[t] === ext);
+        out[key] = type
+            ? `data:${type};base64,${readFileSync(join(dir, v)).toString("base64")}`
+            : v;
+    }
+    return out;
+}
+/** The board with each issue's state from a boardQuery answer; an issue the answer does not name is unknown. */
+export function withBoardStates(board, answer, checkedAt) {
+    const data = isRecord(answer) ? answer["data"] : undefined;
+    const stateOf = (i) => {
+        const repo = isRecord(data) ? data[`i${i}`] : undefined;
+        const issue = isRecord(repo) ? repo["issue"] : undefined;
+        const state = isRecord(issue) ? issue["state"] : undefined;
+        return state === "OPEN"
+            ? "open"
+            : state === "CLOSED"
+                ? "closed"
+                : "unknown";
+    };
+    let i = 0;
+    const mark = (e) => ({
+        ...e,
+        state: stateOf(i++),
+    });
+    const items = board.items.map(mark);
+    const bugs = board.bugs.map(mark);
+    return { ...board, checkedAt, items, bugs };
+}
+//# sourceMappingURL=build.js.map

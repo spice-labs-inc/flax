@@ -1,0 +1,150 @@
+/* Unlayered on purpose: the artifact frame injects an unlayered light reset that would beat any @layer rule. */
+
+/* Layout: a survey chart. The map fills the stage, a ledger on the right reads out whatever the map is focused on, a release scrubber runs along the bottom. Each hex is one surface item, split into one sector per environment. */
+:root {
+  --ground: #e6ebe7;
+  --ground-2: #dde4df;
+  --grid: #c9d3cd;
+  --contour: #b3c1b9;
+  --land: #c7d1ca;
+  --land-edge: #9eaea5;
+  --ink: #142128;
+  --ink-2: #4a5b62;
+  --ink-3: #74848a;
+  --panel: #f3f6f4;
+  --rule: #cdd7d1;
+  --accent: #2c46c9;
+  --accent-soft: #dfe4fa;
+  --pass: #138a5a;
+  --pass-glow: rgba(19, 138, 90, 0);
+  --fail: #c93a32;
+  --planned: #6f5bd0;
+  --issue: #8f94a1;
+  --none: #c7d1ca;
+  --never: #e6ebe7;
+  --use-other: #b8860b;
+  --use-staff: #8a7d5c;
+  --use-ours: #9aa6ab;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --text: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --r-s: 6px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d171c;
+    --ground-2: #15232a;
+    --grid: #17262d;
+    --contour: #1e3139;
+    --land: #22343c;
+    --land-edge: #355059;
+    --ink: #dfe9e6;
+    --ink-2: #a4b6b5;
+    --ink-3: #6d8287;
+    --panel: #111d23;
+    --rule: #22343b;
+    --accent: #93a6ff;
+    --accent-soft: #1d2a55;
+    --pass: #36d695;
+    --pass-glow: rgba(54, 214, 149, 0.55);
+    --fail: #ff6f62;
+    --planned: #a897ff;
+    --issue: #7f8695;
+    --none: #22343c;
+    --never: #0d171c;
+    --use-other: #f2c14e;
+    --use-staff: #a69a78;
+    --use-ours: #5d7076;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0d171c;
+  --ground-2: #15232a;
+  --grid: #17262d;
+  --contour: #1e3139;
+  --land: #22343c;
+  --land-edge: #355059;
+  --ink: #dfe9e6;
+  --ink-2: #a4b6b5;
+  --ink-3: #6d8287;
+  --panel: #111d23;
+  --rule: #22343b;
+  --accent: #93a6ff;
+  --accent-soft: #1d2a55;
+  --pass: #36d695;
+  --pass-glow: rgba(54, 214, 149, 0.55);
+  --fail: #ff6f62;
+  --planned: #a897ff;
+  --issue: #7f8695;
+  --none: #22343c;
+  --never: #0d171c;
+  --use-other: #f2c14e;
+  --use-staff: #a69a78;
+  --use-ours: #5d7076;
+  color-scheme: dark;
+}
+
+[hidden] {
+  display: none !important;
+}
+html,
+body,
+#app {
+  height: 100%;
+}
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  padding: 1px 7px 1px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+}
+.chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--ink-3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+@media (max-width: 860px) {
+  html,
+  body,
+  #app {
+    height: auto;
+  }
+}
