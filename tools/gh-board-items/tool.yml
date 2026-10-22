@@ -1,0 +1,47 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-board-items
+
+description: Lists items of the Notes Co Engineering Board (notes-co project 3) with their Status, filtered to items whose board entry changed since a given day (UTC, at most 31 days back), to items in the given statuses, or to both. Each item has its repository, number, title, type, open or closed state, Status, link, when it was added to the board and when its board entry last changed. It does not say what the Status was before. Pages with a cursor.
+
+arguments:
+  type: object
+  additionalProperties: false
+  properties:
+    since:
+      type: string
+      description: Only items whose board entry changed on or after this day, as YYYY-MM-DD in UTC.
+      maxLength: 10
+      pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+    statuses:
+      type: array
+      description: Only items in these statuses.
+      maxItems: 5
+      uniqueItems: true
+      items:
+        type: string
+        enum: [Backlog, Ready, In progress, In review, Done]
+    after:
+      type: string
+      description: The nextCursor of the previous page.
+      maxLength: 200
+      pattern: "^[A-Za-z0-9+/=_-]+$"
+    per_page:
+      type: integer
+      description: Items per page, 50 when not given.
+      minimum: 1
+      maximum: 50
+
+# The organization, the project, the Status field and the filter's shape
+# are fixed; the GitHub upstream refuses any other. Needs the reader app's
+# organization projects read, which only runs whose tools call it ask for.
+upstream:
+  server: github
+  operations: [projects_list]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

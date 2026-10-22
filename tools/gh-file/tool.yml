@@ -1,0 +1,49 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-file
+
+description: Returns one text file of one notes-co repository, after a first line with the file's blob sha, from main or, for a job that pins its repositories, from the commit its input gives for that repository (ref names main or a commit instead); a directory path returns its entries instead. Files over the size cap are cut; for a long file, start_line and line_count return only those lines, and the first line then also says which lines came back and how many the file has.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo, path]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example internal-docs.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    path:
+      type: string
+      description: The path from the repository root, for example src/content/docs/product/index.mdx.
+      maxLength: 400
+      pattern: "^[A-Za-z0-9._-][A-Za-z0-9._/=+()\\[\\]-]*$"
+    start_line:
+      type: integer
+      description: The first line to return, counting from 1. Only for a text file.
+      minimum: 1
+      maximum: 1000000
+    line_count:
+      type: integer
+      description: How many lines to return from start_line (from the first line when start_line is not given). Only for a text file.
+      minimum: 1
+      maximum: 100000
+    ref:
+      type: string
+      description: Where to read instead of the default, main or a commit's full 40-character sha.
+      maxLength: 40
+      pattern: "^(main|[0-9a-f]{40})$"
+
+# main, or a commit by its full sha (the job's pinned commit, or ref); no
+# branch or tag.
+upstream:
+  server: github
+  operations: [get_file_contents]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536

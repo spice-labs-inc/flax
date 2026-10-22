@@ -1,0 +1,26 @@
+# A no-model pull request job that regenerates an architecture atlas's map
+# data: media.ts runs the atlas repository's own refresh script (which
+# clones every documented repository beside the atlas and regenerates the
+# graph, extracting wiring for new and changed docs through the run's media
+# model), then opens one pull request with the data and cache files that
+# changed, merged automatically when only generated data changed.
+description: Refreshes the atlas map data, extracts wiring for new and changed docs, and opens one atlas pull request with the regenerated map.
+fields:
+  atlasRepo:
+    description: The name, under the workspace's GitHub owner, of the repository holding the atlas and its map generator (viz/).
+    example: atlas
+  refreshScript:
+    description: The script in the atlas repository, relative to its root, that regenerates the map; media.ts runs it with bash in a copy of the checkout.
+    example: tools/atlas-map-refresh.sh
+  wiringModel:
+    description: The model id the wiring extraction asks through the media model socket, as models.yml lists it.
+    example: anthropic/claude-sonnet-4-5
+  wiringFallbackModel:
+    description: Another model id, asked once for a doc the wiring model gives up on; never the same as wiringModel.
+    example: anthropic/claude-haiku-4-5
+  network:
+    description: The media stage's network, public, or the name of a network join in flax.yml when the refresh script reaches private services.
+    example: public
+notes:
+  - The private job's refresh script fetched containment data and advisories from two private services over a private network, with an API token and a project id from media.secrets; media.ts waited for a route to each before running it. Those addresses, secrets and the wait are dropped. A script that needs secrets lists them in media.secrets and names them in SCRIPT_SECRETS in media.ts, which passes them on; a script that reaches private services sets network to the workspace's join.
+  - summarize() in media.ts reads the atlas generator's own wiring lines and two optional lines the refresh script prints around it (current and regenerated node, edge and flow step counts); a script that prints neither leaves those fields unset.

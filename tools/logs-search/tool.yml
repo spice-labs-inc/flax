@@ -1,0 +1,41 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: logs-search
+
+description: Runs one SQL SELECT over OpenObserve log streams and returns at most 100 matching rows. Quote stream names with double quotes, for example SELECT COUNT(*) AS n FROM "prod:apps:backend" WHERE level = 'error'. The query must be a single SELECT with no semicolon, and start and end must bound it to at most 24 hours.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [sql, start, end]
+  properties:
+    sql:
+      type: string
+      description: One SELECT statement, with no semicolon.
+      maxLength: 4000
+    start:
+      type: string
+      description: Start of the time range, RFC 3339, for example 2026-09-28T14:00:00Z.
+      maxLength: 40
+    end:
+      type: string
+      description: End of the time range, RFC 3339; at most 24 hours after start and not in the future.
+      maxLength: 40
+    limit:
+      type: integer
+      description: The most rows to return, 100 when not given.
+      minimum: 1
+      maximum: 100
+
+# Log streams only, from row 0, no query function; the answer keeps only the
+# total, the time taken and the rows (a summary, not the scan statistics).
+upstream:
+  server: openobserve
+  operations: [SearchSQL]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

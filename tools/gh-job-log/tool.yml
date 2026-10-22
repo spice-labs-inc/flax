@@ -1,0 +1,39 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-job-log
+
+description: Returns the last lines of one GitHub Actions job's log in a notes-co repository, at most 300 lines. Find job ids with gh-workflow-runs and a run id.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo, job_id]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    job_id:
+      type: integer
+      description: The job id.
+      minimum: 1
+      maximum: 9007199254740991
+    tail:
+      type: integer
+      description: How many lines from the end, 100 when not given.
+      minimum: 1
+      maximum: 300
+
+# return_content is forced to true: without it the answer is a signed
+# download URL, which works as a credential until it expires.
+upstream:
+  server: github
+  operations: [get_job_logs]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

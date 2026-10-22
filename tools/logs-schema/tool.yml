@@ -1,0 +1,28 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: logs-schema
+
+description: Returns the fields of one OpenObserve log stream and their types. Use it before logs-search to learn which columns a stream has.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [stream]
+  properties:
+    stream:
+      type: string
+      description: The stream name, as logs-streams lists it.
+      maxLength: 200
+      pattern: "^[A-Za-z0-9_][A-Za-z0-9_:.-]*$"
+
+# One log stream, in the default organization.
+upstream:
+  server: openobserve
+  operations: [StreamSchema]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 32768

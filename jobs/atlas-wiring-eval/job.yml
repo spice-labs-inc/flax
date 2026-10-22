@@ -1,0 +1,44 @@
+# Job definition. Schema: schema/job.schema.json. Rules: docs/guardrails.md.
+# After editing, run pnpm generate and pnpm check.
+
+name: {{name}} # must equal the folder name
+
+# GitHub handle that gets failure alerts.
+owner: {{owner}}
+
+# One sentence on what this job does.
+purpose: Re-extracts the wiring of sampled atlas docs with a candidate model and compares its edges with the cached answers the architecture map uses, doc by doc.
+
+# Exactly one of:
+#   schedule: "0 13 * * *"   five-field cron, UTC
+#   after: other-job         runs when that job succeeds
+#   manual: true             runs only when started by hand
+# Started by hand, once per candidate model (the media_model input).
+trigger:
+  manual: true
+
+# none: no model runs in a box. media.ts runs the atlas's own evaluation
+# script with the media model; nothing is delivered.
+model: none
+
+tools: []
+
+# The evaluation reads the atlas checkout and writes nothing in it. Its
+# report (media/wiring-eval.txt: every doc's agreement and disagreements)
+# and totals (media/media.json data.totals) stay in the run's report.
+media:
+  network: public
+  secrets: []
+  timeout_minutes: 40
+  sources: [{{github}}/{{atlasRepo}}]
+  # The first candidate; a run started by hand picks another with media_model.
+  model:
+    model: {{wiringModel}}
+    usd_per_run: 1
+    usd_per_month: 1
+
+# file: the report is the result; nothing is posted or opened.
+output:
+  kind: file
+
+mode: shadow

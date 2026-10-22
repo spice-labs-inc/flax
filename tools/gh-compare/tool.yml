@@ -1,0 +1,45 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-compare
+
+description: Compares two commits of one notes-co repository, as GitHub's compare does for base...head (both commit shas, never branch names). Returns the commits in between (sha, date, first line of the message, author login; oldest first, at most 250) and the files changed (path, status, lines added and removed). With patch_lines, each file also gets the first lines of its diff, while they fit in the result; the result says what it left out.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo, base, head]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    base:
+      type: string
+      description: The older commit's sha, 7 to 40 hex characters.
+      maxLength: 40
+      pattern: "^[0-9a-f]{7,40}$"
+    head:
+      type: string
+      description: The newer commit's sha, 7 to 40 hex characters.
+      maxLength: 40
+      pattern: "^[0-9a-f]{7,40}$"
+    patch_lines:
+      type: integer
+      description: The most diff lines per file, 0 (no diffs) when not given.
+      minimum: 0
+      maximum: 400
+
+# Read in the tools server with the run's read-only token, not through
+# github-mcp-server: one fixed GET of
+# repos/notes-co/{repo}/compare/{base}...{head}.
+upstream:
+  server: github
+  operations: [compare_commits]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 131072

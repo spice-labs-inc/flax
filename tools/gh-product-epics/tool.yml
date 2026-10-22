@@ -1,0 +1,49 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-product-epics
+
+description: Lists the product epics, the issues of notes-co/product, most recently updated first, with number, title, open or closed state, labels, link, creation and last update time; optionally only open or closed ones, and only those updated since a given day (UTC, at most 31 days back). Pages with a cursor. With number, reads one epic instead, adding when and why it was closed.
+
+arguments:
+  type: object
+  additionalProperties: false
+  properties:
+    number:
+      type: integer
+      description: Read this one epic instead of listing.
+      minimum: 1
+      maximum: 1000000
+    state:
+      type: string
+      description: Only open or only closed epics; both when not given.
+      enum: [open, closed]
+    since:
+      type: string
+      description: Only epics updated on or after this day, as YYYY-MM-DD in UTC.
+      maxLength: 10
+      pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+    after:
+      type: string
+      description: The nextCursor of the previous page.
+      maxLength: 200
+      pattern: "^[A-Za-z0-9+/=_-]+$"
+    per_page:
+      type: integer
+      description: Epics per page, 50 when not given.
+      minimum: 1
+      maximum: 100
+
+# The repository is fixed to notes-co/product, issue_read to its get
+# method, and the list's fields to ones without body, author or assignees;
+# the GitHub upstream refuses any other. Needs the reader app's issues
+# read, which only runs whose tools call it ask for.
+upstream:
+  server: github
+  operations: [list_issues, issue_read]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

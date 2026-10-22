@@ -1,0 +1,41 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: traces-search
+
+description: Runs one SQL SELECT over an OpenObserve trace stream (such as prod) and returns at most 100 rows, for counts and groupings of spans. Quote the stream with double quotes, for example SELECT http_status_code, COUNT(*) AS n FROM "prod" WHERE service_name = 'eg-public' GROUP BY http_status_code. The query must be a single SELECT with no semicolon, and start and end must bound it to at most 24 hours.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [sql, start, end]
+  properties:
+    sql:
+      type: string
+      description: One SELECT statement over a trace stream, with no semicolon.
+      maxLength: 4000
+    start:
+      type: string
+      description: Start of the time range, RFC 3339, for example 2026-09-28T14:00:00Z.
+      maxLength: 40
+    end:
+      type: string
+      description: End of the time range, RFC 3339; at most 24 hours after start and not in the future.
+      maxLength: 40
+    limit:
+      type: integer
+      description: The most rows to return, 100 when not given.
+      minimum: 1
+      maximum: 100
+
+# Trace streams only, from row 0, no query function; the answer keeps only the
+# total, the time taken and the rows.
+upstream:
+  server: openobserve
+  operations: [SearchTracesSQL]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

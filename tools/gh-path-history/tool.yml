@@ -1,0 +1,44 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-path-history
+
+description: Lists the commits that changed one path (a file or a directory) of one notes-co repository, newest first, on a branch (main when not given) or in the history of a commit given by its full sha. Each commit comes with its sha, date, author login when GitHub knows the person, the first line of its message, and the number of the pull request it belongs to when there is one (the merged one when there are several). At most 50 commits; the result says when there are more.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo, path]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    path:
+      type: string
+      description: The path from the repository root, for example src/main.rs.
+      maxLength: 400
+      pattern: "^[A-Za-z0-9._-][A-Za-z0-9._/=+()\\[\\]-]*$"
+    ref:
+      type: string
+      description: A branch name, or a commit's full 40-character sha to start from; main when not given.
+      maxLength: 200
+      pattern: "^[A-Za-z0-9._/-]+$"
+    count:
+      type: integer
+      description: How many commits, 20 when not given.
+      minimum: 1
+      maximum: 50
+
+# Served by the tools server with the run's read-only token: one fixed
+# GraphQL query (the commit history of the path, with each commit's
+# associated pull requests).
+upstream:
+  server: github
+  operations: [path_history]
+
+# untrusted: commit messages, and a branch can hold commits nobody
+# reviewed.
+source: untrusted
+
+result_max_bytes: 65536

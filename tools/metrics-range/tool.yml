@@ -1,0 +1,39 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: metrics-range
+
+description: Runs a PromQL query over a time range in OpenObserve and returns the series, one point per step. The range may be at most 24 hours long and the step at least 60 seconds.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [query, start, end]
+  properties:
+    query:
+      type: string
+      description: The PromQL expression, for example sum(rate(http_requests_total[5m])).
+      maxLength: 2000
+    start:
+      type: string
+      description: Start of the range, RFC 3339, for example 2026-09-28T14:00:00Z.
+      maxLength: 40
+    end:
+      type: string
+      description: End of the range, RFC 3339; at most 24 hours after start and not in the future.
+      maxLength: 40
+    step_seconds:
+      type: integer
+      description: Seconds between points, 300 when not given.
+      minimum: 60
+      maximum: 3600
+
+upstream:
+  server: openobserve
+  operations: [PrometheusRangeQuery]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536

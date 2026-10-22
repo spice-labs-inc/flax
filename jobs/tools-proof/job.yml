@@ -1,0 +1,50 @@
+# Job definition. Schema: schema/job.schema.json. Rules: docs/guardrails.md.
+# After editing, run pnpm generate and pnpm check.
+
+name: {{name}} # must equal the folder name
+
+# GitHub handle that gets failure alerts.
+owner: {{owner}}
+
+# One sentence on what this job does.
+purpose: Answers four questions that only the tools can answer, one per upstream, to prove the tools path end to end.
+
+# Exactly one of:
+#   schedule: "0 13 * * *"   five-field cron, UTC
+#   after: other-job         runs when that job succeeds
+#   manual: true             runs only when started by hand
+trigger:
+  manual: true
+
+# Must be listed in models.yml.
+model: {{model}}
+
+# Pi thinking level for every run, one the model takes (models.yml). A run
+# started by hand can pick another.
+thinking: high
+
+# true: Pi also gets a shell (bash) inside the box.
+shell: true
+
+limits:
+  turns: 20 # at most 200
+  tokens_per_run: 300000 # at most 2000000
+  usd_per_month: 2 # all jobs together share the workspace's monthly budget
+  tool_calls: 20 # at most 1000; 200 when not set
+  tool_seconds: 60 # at most 300; 60 when not set
+
+# Names of directories under tools/. Tools are read-only. The four below are
+# the workspace's Kubernetes, GitHub Actions, log store and Slack tools.
+tools: [k8s-pods, gh-workflow-runs, logs-streams, slack-history]
+
+# kind is one of:
+#   file    the run's result is kept as a file; nothing else to set
+#   slack   also set channel: <a channel from channels.yml>
+#   pr      also set repos: [owner/name, ...] from repos.yml,
+#           paths: [globs the job may change], max_changed_lines: <number>
+output:
+  kind: file
+
+# shadow runs deliver nowhere public. live needs SHADOW_RUNS.md with 4 run
+# links and code owner approval.
+mode: shadow
