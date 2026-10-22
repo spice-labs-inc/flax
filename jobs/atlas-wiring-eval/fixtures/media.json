@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "wiring-eval.txt",
+      "sha256": "bbc78fc11069aece62ea7aae96fe9ed2b77d34124094e35565a775cb5f8bb95c",
+      "bytes": 64,
+      "type": "text/plain"
+    }
+  ],
+  "hash": "cd2de396eb0a4975789e9bec4e401a12578aebea10a3835ef5e66047a6c83e22",
+  "data": {
+    "atlas": "0000000000000000000000000000000000000000",
+    "totals": {
+      "model": "anthropic/claude-sonnet-4-5",
+      "docs": 1,
+      "failed": 0,
+      "agree": 2,
+      "extra": 0,
+      "missing": 0,
+      "precision": 100,
+      "recall": 100
+    }
+  }
+}

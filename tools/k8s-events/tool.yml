@@ -1,0 +1,44 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: k8s-events
+
+description: Lists recent Kubernetes events in one cluster (dev, staging, prod or shared-services), newest first, such as failed scheduling, image pull errors, probe failures and reconcile results. Returns at most 200 events.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [cluster]
+  properties:
+    cluster:
+      type: string
+      description: The cluster to read.
+      enum: [dev, staging, prod, shared-services]
+    namespace:
+      type: string
+      description: Only events in this namespace.
+      maxLength: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    object_name:
+      type: string
+      description: Only events about the object with this name, such as a pod.
+      maxLength: 253
+      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+    warnings_only:
+      type: boolean
+      description: Only events of type Warning.
+    limit:
+      type: integer
+      description: The most events to return, 100 when not given.
+      minimum: 1
+      maximum: 200
+
+upstream:
+  server: kubernetes
+  operations: [events_list]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

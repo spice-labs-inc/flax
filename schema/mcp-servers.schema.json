@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agents-kit.dev/schema/mcp-servers.schema.json",
+  "title": "Pinned MCP server binaries",
+  "description": "The contents of mcp-servers.yml: the exact release and checksum of each MCP server binary the tools server starts. The runner downloads them with flax agents fetch-servers and refuses any file whose sha256 differs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kubernetes-mcp-server", "github-mcp-server"],
+  "properties": {
+    "kubernetes-mcp-server": { "$ref": "#/$defs/server" },
+    "github-mcp-server": { "$ref": "#/$defs/server" }
+  },
+  "$defs": {
+    "server": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "version", "platforms"],
+      "properties": {
+        "repository": {
+          "description": "The GitHub repository, as owner/name, whose release holds the binary.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}$"
+        },
+        "version": {
+          "description": "The exact release, without the leading v of its tag.",
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "platforms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["linux-amd64", "linux-arm64"],
+          "properties": {
+            "linux-amd64": { "$ref": "#/$defs/asset" },
+            "linux-arm64": { "$ref": "#/$defs/asset" }
+          }
+        }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset", "sha256"],
+      "properties": {
+        "asset": {
+          "description": "The release asset's file name: the binary itself, or a .tar.gz holding it.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,200}$"
+        },
+        "sha256": {
+          "description": "The sha256 of the asset as downloaded.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "binary": {
+          "description": "For a .tar.gz asset, the path of the binary inside it.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,200}$"
+        }
+      }
+    }
+  }
+}

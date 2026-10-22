@@ -1,0 +1,191 @@
+{
+  "generatedAt": "2026-10-05T16:00:00.000Z",
+  "sinceIso": "2026-09-28T16:00:00.000Z",
+  "windowDays": 7,
+  "rules": {
+    "repos": ["notes-co/agents"],
+    "paths": ["src/media/scenarios/*/scenario.ts"],
+    "max_changed_lines": 120
+  },
+  "repos": {
+    "notes-co/agents": "a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9",
+    "notes-co/web": "2d05e36ebf594b22a696c722510726bf2e703a92",
+    "notes-co/api": "c3d4e5f60718293a4b5c6d7e8f90123456789012"
+  },
+  "pages": [
+    {
+      "repo": "notes-co/agents",
+      "path": "src/media/scenarios/overview/scenario.ts",
+      "commit": "a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9",
+      "lines": [
+        "import { defineScenario } from \"../../scenario.ts\";",
+        "",
+        "export default defineScenario({",
+        "  id: \"overview\",",
+        "  title: \"The inbox\",",
+        "  elevenVoice: \"d9wH2zCLy5Ed2HfnvIVK\",",
+        "  youtube: {",
+        "    title: \"The inbox, in one minute\",",
+        "    description: \"What to read next, ranked.\",",
+        "    tags: [\"Notes\", \"inbox\"],",
+        "  },",
+        "  scenes: [",
+        "    {",
+        "      id: \"read-next\",",
+        "      chapter: \"What to read next\",",
+        "      narration:",
+        "        \"What to read next ranks every note by how many people are waiting on it.\",",
+        "      prepare: [",
+        "        {",
+        "          kind: \"goto\",",
+        "          url: \"/app/{project}/inbox\",",
+        "          waitFor: \"[data-testid=inbox-masthead]\",",
+        "        },",
+        "      ],",
+        "      steps: [",
+        "        { kind: \"highlight\", selector: \"[data-testid=rank-row]\", ms: 2200 },",
+        "      ],",
+        "    },",
+        "  ],",
+        "});"
+      ]
+    },
+    {
+      "repo": "notes-co/agents",
+      "path": "src/media/scenarios/smoke/scenario.ts",
+      "commit": "a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9",
+      "lines": [
+        "import { defineScenario } from \"../../scenario.ts\";",
+        "",
+        "export default defineScenario({",
+        "  id: \"smoke\",",
+        "  title: \"Smoke\",",
+        "  scenes: [",
+        "    {",
+        "      id: \"notebooks\",",
+        "      narration: \"The notebooks page lists every notebook.\",",
+        "      steps: [{ kind: \"goto\", url: \"/app/{project}/notebooks\" }],",
+        "    },",
+        "  ],",
+        "});"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "kind": "commit",
+      "repo": "notes-co/web",
+      "commit": "b2c3d4e5f60718293a4b5c6d7e8f901234567890",
+      "date": "2026-10-04T20:00:00Z",
+      "title": "Inbox: rename the ranked rows to notes (#560)",
+      "files": [
+        {
+          "path": "src/lib/inbox/RankList.svelte",
+          "status": "modified"
+        }
+      ],
+      "excerpt": [
+        {
+          "path": "src/lib/inbox/RankList.svelte",
+          "removed": ["  <li data-testid=\"rank-row\">{note.title}</li>"],
+          "added": ["  <li data-testid=\"note-row\">{note.title}</li>"]
+        }
+      ]
+    },
+    {
+      "kind": "commit",
+      "repo": "notes-co/api",
+      "commit": "c3d4e5f60718293a4b5c6d7e8f90123456789012",
+      "date": "2026-10-04T00:00:00Z",
+      "title": "Bump a dependency (#280)",
+      "files": [
+        {
+          "path": "pom.xml",
+          "status": "modified"
+        }
+      ],
+      "excerpt": [
+        {
+          "path": "pom.xml",
+          "removed": ["    <spring.version>3.5.1</spring.version>"],
+          "added": ["    <spring.version>3.5.2</spring.version>"]
+        }
+      ]
+    }
+  ],
+  "uiSource": {
+    "repo": "notes-co/web",
+    "commit": "2d05e36ebf594b22a696c722510726bf2e703a92",
+    "files": [
+      {
+        "path": "src/lib/nav/Menu.svelte",
+        "lines": [
+          "<nav class=\"menu\" aria-label=\"More\">",
+          "  <a href={resolve(\"/app/[project_uuid=uuid]/notebooks\", { project_uuid })}>Notebooks</a>",
+          "</nav>",
+          ""
+        ]
+      },
+      {
+        "path": "src/lib/nav/TopBar.svelte",
+        "lines": [
+          "<nav class=\"views\" aria-label=\"Views\">",
+          "  <span class=\"view-label\">Inbox</span>",
+          "</nav>"
+        ]
+      }
+    ],
+    "routes": [
+      "/app",
+      "/app/[project_uuid=uuid]/inbox",
+      "/app/[project_uuid=uuid]/notebooks"
+    ]
+  },
+  "leads": [
+    {
+      "repo": "notes-co/agents",
+      "path": "src/media/scenarios/overview/scenario.ts",
+      "names": [
+        {
+          "name": "rank-row",
+          "pull_request": "notes-co/web#560"
+        }
+      ]
+    }
+  ],
+  "pagesLeftOut": {
+    "overCaps": [],
+    "scrubbed": [],
+    "unreadable": []
+  },
+  "signals": {
+    "releases": [
+      {
+        "repo": "web",
+        "tag": "v1.4.5",
+        "name": "v1.4.5",
+        "publishedAt": "2026-10-05T06:00:00Z",
+        "url": "https://github.com/notes-co/web/releases/tag/v1.4.5"
+      }
+    ]
+  },
+  "coverage": {
+    "mergedPullRequests": 4,
+    "codePullRequestsRead": 2,
+    "diffsCut": [],
+    "pullRequestsWithRemovedNames": 1,
+    "scenarios": 2,
+    "scenariosRead": 2,
+    "scenariosWithLeads": 1,
+    "scenariosGiven": 2,
+    "leadSources": 1,
+    "productSources": 1,
+    "productChangesNotCitable": 0,
+    "productChangesLeftOut": 0
+  },
+  "collection": {
+    "toolCalls": 26,
+    "failedCalls": 0,
+    "failures": []
+  }
+}

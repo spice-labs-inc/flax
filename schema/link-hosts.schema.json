@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agents-kit.dev/schema/link-hosts.schema.json",
+  "title": "Link hosts",
+  "description": "The contents of link-hosts.yml: the hosts a line added by a proposed documentation change may link to, and how long a new link's query string may be.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["max_query_length", "long_query_hosts", "hosts"],
+  "properties": {
+    "max_query_length": {
+      "description": "The longest query string (the text after ?) a new link may carry, unless its host is in long_query_hosts.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 256
+    },
+    "long_query_hosts": {
+      "description": "Exact host names whose new links may carry a query string of any length.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+      }
+    },
+    "hosts": {
+      "description": "A host name, a host name under *. (any host below it, not the name itself), or a host name and a path (github.com/notes-co: that path and everything under it, case ignored). Lower case, no scheme, port or trailing dot; a wildcard names at least two labels.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(\\*\\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}(/[A-Za-z0-9._-]+)*$"
+      }
+    }
+  }
+}

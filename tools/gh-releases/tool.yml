@@ -1,0 +1,36 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-releases
+
+description: Lists the newest releases of one notes-co repository (tag, name, link, publish time, prerelease and draft flags), at most 20; or, with latest, returns only the latest release, notes included.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    latest:
+      type: boolean
+      description: Return only the latest release.
+    per_page:
+      type: integer
+      description: When listing, how many releases, 5 when not given.
+      minimum: 1
+      maximum: 20
+
+# Read methods only, in notes-co. The list leaves out release notes.
+upstream:
+  server: github
+  operations: [list_releases, get_latest_release]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 32768

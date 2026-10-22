@@ -1,0 +1,48 @@
+name: Check agents
+
+# Copied to the repository's .github/workflows by the monorepo (paths filter
+# packages/agents/**): the kit's own check, run against its fixture
+# workspace at packages/agents/test/fixtures/workspace. Not generated into
+# workspaces. The fixture's dist/ is never committed (the kit repository
+# commits no workspace's dist), so there is no dist step here.
+
+on:
+  pull_request:
+    paths: ["packages/agents/**", "pnpm-lock.yaml"]
+  push:
+    branches: [main]
+    paths: ["packages/agents/**", "pnpm-lock.yaml"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -C packages/agents exec playwright install --with-deps chromium
+      - name: Check the fixture workspace
+        run: pnpm -C packages/agents exec node bin/flax-agents.mjs check --workspace test/fixtures/workspace
+      - name: Generate the fixture workspace
+        run: pnpm -C packages/agents exec node bin/flax-agents.mjs generate --workspace test/fixtures/workspace
+      # Generated files the fixture commits must be what the generator writes now.
+      - name: Keep the fixture's generated files current
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code --stat -- packages/agents/test/fixtures/workspace; then
+            echo "::error::the fixture workspace's generated files are stale; run node bin/flax-agents.mjs generate --workspace test/fixtures/workspace and commit the result"
+            exit 1
+          fi
+      - run: pnpm -C packages/agents typecheck
+      - run: pnpm -C packages/agents test

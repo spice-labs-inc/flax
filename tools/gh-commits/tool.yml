@@ -1,0 +1,33 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-commits
+
+description: Lists the newest commits on main of one notes-co repository, newest first, with each commit's sha, link, message, author and dates; at most 50. Compare with gh-releases to see what is not released yet.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    per_page:
+      type: integer
+      description: How many commits, 30 when not given.
+      minimum: 1
+      maximum: 50
+
+# main only, at most 50, no other filter.
+upstream:
+  server: github
+  operations: [list_commits]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536
