@@ -1,0 +1,109 @@
+name: Network refusal check
+
+# Copied to the repository's .github/workflows by the monorepo (paths filter
+# packages/agents/**): the kit's own network refusal check, run against its
+# fixture workspace at packages/agents/test/fixtures/workspace. Not
+# generated into workspaces.
+#
+# Starts the pinned box as a job run does (the pinned sandbox release's lbx
+# with --no-network, the same data directory rules and lbx command line) and
+# runs a probe in it instead of Pi. The probe tries to reach each Kubernetes
+# API the fixture's flax.yml names (host and port read from the
+# kubeconfig secret of that name; the box gets host names and addresses,
+# never a credential; a cluster whose secret is not set is reported as not
+# checked), the GitHub and Slack APIs, the OpenObserve hosts and one public
+# host: DNS lookups and direct connections. Every attempt must fail, every
+# connection with no route, and the box must have no address besides
+# loopback. Prints PASS or FAIL per target and fails otherwise.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: net-refusal
+  cancel-in-progress: false
+
+env:
+  BOX_REPO: spice-labs-inc/lbx
+  LBX_BINARY: lbx-x86_64-unknown-linux-musl
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+
+      - name: Read the pinned box
+        id: box
+        working-directory: packages/agents
+        run: |
+          set -euo pipefail
+          node -e '
+            const { parse } = require("yaml");
+            const box = parse(require("node:fs").readFileSync("test/fixtures/workspace/box.yml", "utf8"));
+            if (box.pinned !== true) { console.error("box.yml is not pinned"); process.exit(1); }
+            for (const key of ["box_release", "box_commit", "lbx_sha256", "image"]) {
+              if (typeof box[key] !== "string" || box[key] === "") { console.error("box.yml has no " + key); process.exit(1); }
+              console.log(key + "=" + box[key]);
+            }
+          ' | tee -a "$GITHUB_OUTPUT"
+
+      # The same checks job workflows make before a run: the release names
+      # box_commit, and the binary is the one lbx_sha256 pins.
+      - name: Download and verify the pinned release binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOX_RELEASE: ${{ steps.box.outputs.box_release }}
+          BOX_COMMIT: ${{ steps.box.outputs.box_commit }}
+          LBX_SHA256: ${{ steps.box.outputs.lbx_sha256 }}
+        run: |
+          set -euo pipefail
+          body="$(gh release view "$BOX_RELEASE" --repo "$BOX_REPO" --json body --jq .body | tr -d '\r')"
+          commits="$(printf '%s\n' "$body" | sed -n 's/^- Commit: `\{0,1\}\([0-9a-f]\{40\}\)`\{0,1\} *$/\1/p')"
+          if [ "$commits" != "$BOX_COMMIT" ]; then
+            echo "::error::$BOX_REPO release $BOX_RELEASE names commit '${commits:-none}', but box.yml pins box_commit $BOX_COMMIT; refusing to run"
+            exit 1
+          fi
+          dir="$RUNNER_TEMP/lbx-release"
+          rm -rf "$dir"
+          mkdir -p "$dir/bin"
+          gh release download "$BOX_RELEASE" --repo "$BOX_REPO" --dir "$dir" \
+            --pattern "$LBX_BINARY" --pattern "$LBX_BINARY.sha256"
+          (cd "$dir" && sha256sum -c "$LBX_BINARY.sha256")
+          if [ "$(sha256sum "$dir/$LBX_BINARY" | cut -d' ' -f1)" != "$LBX_SHA256" ]; then
+            echo "::error::$LBX_BINARY of $BOX_RELEASE does not have the sha256 box.yml pins as lbx_sha256"
+            exit 1
+          fi
+          install -m 0755 "$dir/$LBX_BINARY" "$dir/bin/lbx"
+          echo "$dir/bin" >> "$GITHUB_PATH"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Pull the pinned image
+        env:
+          BOX_IMAGE: ${{ steps.box.outputs.image }}
+        run: docker pull "$BOX_IMAGE"
+
+      # Each cluster in the fixture's flax.yml names the secret holding
+      # its kubeconfig; pass each here as NAME: ${{ secrets.NAME }} to have
+      # that API probed. None is set in the kit repository.
+      - name: Try to reach every target from inside the box
+        run: pnpm -C packages/agents exec node bin/flax-agents.mjs net-check --workspace test/fixtures/workspace

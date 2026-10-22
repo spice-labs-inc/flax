@@ -1,0 +1,15 @@
+# A no-model job, started by hand once per candidate model, that re-extracts
+# the wiring of a sample of atlas docs with that model through the media
+# model socket and compares its edges with the cached answers the map uses.
+# The comparison stays in the run's report; nothing is delivered.
+description: Re-extracts the wiring of sampled atlas docs with a candidate model and compares its edges with the cached answers the map uses, doc by doc.
+fields:
+  atlasRepo:
+    description: The name, under the workspace's GitHub owner, of the repository holding the atlas and its map generator.
+    example: atlas
+  evalScript:
+    description: The wiring evaluation script, relative to the atlas checkout, run with node --experimental-strip-types; it takes --socket, --model, --sample and --json.
+    example: viz/src/wiring-eval.ts
+  wiringModel:
+    description: The first candidate model id, as models.yml lists it; a run started by hand picks another with the media_model input.
+    example: anthropic/claude-sonnet-4-5

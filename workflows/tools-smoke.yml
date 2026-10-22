@@ -1,0 +1,51 @@
+name: Tools smoke test
+
+# Copied to the repository's .github/workflows by the monorepo (paths filter
+# packages/agents/**): the kit's own tools smoke test, run against its
+# fixture workspace at packages/agents/test/fixtures/workspace. Not
+# generated into workspaces.
+#
+# Starts each upstream behind the tools exactly as a run will: the pinned MCP
+# server binaries from the fixture's mcp-servers.yml (checksums checked),
+# kubernetes-mcp-server per cluster in the fixture's flax.yml,
+# github-mcp-server with a read-only installation token, OpenObserve's REST
+# API through the in-process port-forward, and the Slack adapter. It makes
+# read-only calls only (each tool list and one trivial read per upstream),
+# prints tool names, counts and PASS or FAIL per upstream, never results or
+# secret values, and fails if any upstream fails. The secrets are the
+# repository's; an upstream whose secret is not set fails its check.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tools-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      # Each cluster in the fixture's flax.yml names the secret holding
+      # its kubeconfig; add each here as NAME: ${{ secrets.NAME }}.
+      - name: Start each upstream and read one thing from it
+        env:
+          AGENTS_READER_APP_ID: ${{ secrets.AGENTS_READER_APP_ID }}
+          AGENTS_READER_PRIVATE_KEY: ${{ secrets.AGENTS_READER_PRIVATE_KEY }}
+          OPENOBSERVE_CI_AUTH: ${{ secrets.OPENOBSERVE_CI_AUTH }}
+          SLACK_AGENTS_BOT_TOKEN: ${{ secrets.SLACK_AGENTS_BOT_TOKEN }}
+        run: pnpm -C packages/agents exec node bin/flax-agents.mjs tools-smoke --workspace test/fixtures/workspace

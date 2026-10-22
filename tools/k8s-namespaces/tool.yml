@@ -1,0 +1,33 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: k8s-namespaces
+
+description: Lists the namespaces of one Kubernetes cluster (dev, staging, prod or shared-services) with only each one's name, phase (Active or Terminating), creation time and, for a namespace being deleted, the time its deletion started. Optionally only the namespaces in one phase. Nothing else about a namespace is returned.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [cluster]
+  properties:
+    cluster:
+      type: string
+      description: The cluster to read.
+      enum: [dev, staging, prod, shared-services]
+    phase:
+      type: string
+      description: Only namespaces in this phase, for example Terminating.
+      enum: [Active, Terminating]
+
+# Read in the tools server with the cluster's kubeconfig (GET
+# /api/v1/namespaces), not through kubernetes-mcp-server, whose table has no
+# deletion time; only the four fields leave the upstream.
+upstream:
+  server: kubernetes
+  operations: [namespaces_list]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536

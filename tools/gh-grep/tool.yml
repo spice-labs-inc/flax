@@ -1,0 +1,56 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-grep
+
+description: Searches the text files of one notes-co repository at one commit (its full 40-character sha) for a regular expression, as git grep does, and returns matching lines as path:line:text after a first line that counts them. pattern is a JavaScript regular expression matched line by line, without back references, lookarounds or a repeated group that itself repeats; with fixed_string it is plain text, the way to search for a log message as it was logged. path_glob limits the files (* within a directory, ** across directories; without a / it matches the file name anywhere). Binary files and files over 1 MiB are skipped, long lines are cut around the match, and at most max_matches lines come back (100 when not given, at most 200).
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo, sha, pattern]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    sha:
+      type: string
+      description: The commit's full 40-character sha.
+      maxLength: 40
+      pattern: "^[0-9a-f]{40}$"
+    pattern:
+      type: string
+      description: The regular expression, or with fixed_string the plain text, to find.
+      minLength: 1
+      maxLength: 200
+    fixed_string:
+      type: boolean
+      description: Match pattern as plain text rather than a regular expression.
+    ignore_case:
+      type: boolean
+      description: Ignore the difference between upper and lower case.
+    path_glob:
+      type: string
+      description: Only files whose path matches, for example src/**/*.rs or *.java.
+      maxLength: 200
+      pattern: "^[A-Za-z0-9._/*?=+()@\\[\\]-]+$"
+    max_matches:
+      type: integer
+      description: The most matching lines to return, 100 when not given.
+      minimum: 1
+      maximum: 200
+
+# Served by the tools server with the run's read-only token: one download
+# of the commit's tarball (GET repos/notes-co/{repo}/tarball/{sha},
+# then codeload.github.com), kept on the runner for the run, searched there.
+upstream:
+  server: github
+  operations: [commit_grep]
+
+# untrusted: a full sha can name any commit GitHub serves for the
+# repository, a fork's pull request commit among them, so the lines can
+# carry text anyone can write.
+source: untrusted
+
+result_max_bytes: 65536

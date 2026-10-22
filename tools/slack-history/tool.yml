@@ -1,0 +1,44 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: slack-history
+
+description: Reads recent messages, newest first, from one of the Slack alert and vendor status channels listed for reading in channels.yml (such as alerts-prod or alerts-github), from at most the last 24 hours and at most 100 messages; or, given a thread ts, the replies in that thread.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [channel]
+  properties:
+    channel:
+      type: string
+      description: The channel name without the #, such as alerts-prod, or its channel id.
+      maxLength: 80
+      pattern: "^[A-Za-z0-9_-]+$"
+    thread_ts:
+      type: string
+      description: The ts of a message that starts a thread, to read its replies.
+      maxLength: 20
+      pattern: "^[0-9]{9,11}\\.[0-9]{6}$"
+    hours:
+      type: integer
+      description: How many hours back to read, 24 when not given.
+      minimum: 1
+      maximum: 24
+    limit:
+      type: integer
+      description: The most messages to return, 50 when not given.
+      minimum: 1
+      maximum: 100
+
+# Channels come from the read list in channels.yml; the Slack adapter checks
+# them again.
+upstream:
+  server: slack
+  operations: [conversations.history, conversations.replies]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

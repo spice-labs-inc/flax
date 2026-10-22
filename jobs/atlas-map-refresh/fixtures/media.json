@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "data/report.json",
+      "sha256": "50d37b3004bd0eae35cbc8973d578a3ee9ffcf94d60efc6db02f722e843b1639",
+      "bytes": 81,
+      "type": "application/json"
+    },
+    {
+      "path": "wiring/notes-api.0123456789abcdef.json",
+      "sha256": "e92c4b2944df15ed3084fbc9733f63045773c21cdb5f16e4461451456cded7a2",
+      "bytes": 29,
+      "type": "application/json"
+    }
+  ],
+  "hash": "e5db040025a17b857def4e17b8839abca51653477fff0ab6f4f451e663cbafff",
+  "data": {
+    "atlas": "c81659f0000000000000000000000000000000aa",
+    "summary": {
+      "before": {
+        "nodes": 304,
+        "edges": 1020,
+        "steps": 107
+      },
+      "after": {
+        "nodes": 305,
+        "edges": 1024,
+        "steps": 107
+      },
+      "reextracted": ["notes-api"],
+      "waiting": [],
+      "noWiring": [],
+      "advisoriesAsOf": "2026-10-07"
+    },
+    "pr": {
+      "pages": [
+        {
+          "repo": "{{github}}/{{atlasRepo}}",
+          "path": "viz/package.json",
+          "commit": "c81659f0000000000000000000000000000000aa",
+          "lines": ["{", "  \"name\": \"atlas-viz\"", "}"]
+        }
+      ],
+      "answer": {
+        "pages": [],
+        "media": [
+          {
+            "repo": "{{github}}/{{atlasRepo}}",
+            "path": "viz/cache/wiring/wiring/notes-api.0123456789abcdef.json",
+            "file": "wiring/notes-api.0123456789abcdef.json"
+          },
+          {
+            "repo": "{{github}}/{{atlasRepo}}",
+            "path": "viz/data/report.json",
+            "file": "data/report.json"
+          }
+        ]
+      },
+      "notes": ["wiring extracted again for notes-api (their sections changed)"]
+    }
+  }
+}

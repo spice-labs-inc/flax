@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pods", "workflow_run", "log_streams", "alert"],
+  "properties": {
+    "pods": { "$ref": "#/$defs/answer" },
+    "workflow_run": { "$ref": "#/$defs/answer" },
+    "log_streams": { "$ref": "#/$defs/answer" },
+    "alert": { "$ref": "#/$defs/answer" }
+  },
+  "$defs": {
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answer", "tool", "quote"],
+      "properties": {
+        "answer": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "tool": {
+          "type": "string",
+          "enum": [
+            "k8s-pods",
+            "gh-workflow-runs",
+            "logs-streams",
+            "slack-history"
+          ]
+        },
+        "quote": { "type": "string", "minLength": 6, "maxLength": 500 }
+      }
+    }
+  }
+}

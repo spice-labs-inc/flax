@@ -1,0 +1,39 @@
+# A no-model check job that runs a scenario library (@flax/scenarios) against
+# one environment a run, keeps every run's results as a workflow artifact,
+# and alerts when a check starts or stops failing. media.ts installs the
+# scenario library checkout, waits for the product to answer, runs the
+# scenarios with fixtures and, where allowed, the GitHub Action scenarios,
+# and writes every scenario as a check into media.json.
+description: Runs the scenario library's checks against one environment, keeps the results as a workflow artifact, and says which checks started or stopped failing.
+fields:
+  scenariosRepo:
+    description: The name, under the workspace's GitHub owner, of the repository holding the scenario library (a workspace with flax.yml and @flax/scenarios).
+    example: scenarios
+  probeUrl:
+    description: A URL that answers once the product is up in an environment, with <env> standing for the environment id; the run waits for it before starting.
+    example: https://api.<env>.notes-co.example/healthz
+  explorerUrl:
+    description: The explorer the scenario run pushes its progress to; it needs EXPLORER_INGEST_TOKEN in media.secrets to push anything.
+    example: https://explorer.notes-co.example
+  fixtureEnvironments:
+    description: A JSON list of the environment ids where the scenario library may create fixture organizations.
+    example: '["test", "live"]'
+  dispatchEnvironments:
+    description: A JSON list of the environment ids where the GitHub Action scenarios may start workflow runs in scenariosRepo.
+    example: '["test"]'
+  workers:
+    description: A JSON object of environment id to how many fixture scenarios run at once there, one fixture organization each; an environment not listed gets one.
+    example: '{"test": 3, "live": 3}'
+  setup:
+    description: A YAML flow list of the setup steps the runner installs before the run, from the kit's (packages, chromium, java, ghcr) and the workspace's setup_steps, such as the product's CLI.
+    example: '[packages, chromium, java]'
+  alertChannel:
+    description: The channel, without the #, told when a check starts or stops failing; it must be in the post list of channels.yml.
+    example: alerts-checks
+  network:
+    description: The media stage's network, public, or the name of a network join in flax.yml when the environments are reached over a private network.
+    example: public
+notes:
+  - The private job's core scenarios downloaded a private sample repository at a pinned commit (media.read_repos) and built its jars with Maven, keeping the jars and the Maven repository between runs with media.cache keyed by the file that pins the commit. Both keys are dropped; a scenario library that builds a sample project adds them back.
+  - The private job's media.secrets held a mailbox user and app password for sign-up scenarios besides the explorer token. The template keeps only EXPLORER_INGEST_TOKEN; add the library's own secrets to media.secrets.
+  - The dispatch token reaches the scenario run under SCENARIOS_DISPATCH_TOKEN (SCENARIOS_DISPATCH_ENV in media.ts); change the name to what the scenario library's GitHub Action scenarios read.
