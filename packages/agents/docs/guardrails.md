@@ -485,9 +485,10 @@ repository itself.
 
 ## Runs are fenced in
 
-- **Rule:** each run gets a fresh run directory under `RUNNER_TEMP` (or
-  `--scratch`). Its data directory, the only thing mounted into the box, is
-  owned by the runner user, mode 0700, and neither the home directory nor
+- **Rule:** each run gets a fresh run directory under `--scratch`, else
+  `RUNNER_TEMP`, else the system temp directory, the first outside the home
+  directory (on a GitHub-hosted runner `RUNNER_TEMP` is inside it). Its data
+  directory, the only thing mounted into the box, is owned by the runner user, mode 0700, and neither the home directory nor
   inside or above it; it holds only the prompt, the input and the schema
   before the run. The box has no network at all (see the next rule). Files
   the box wrote are read without following

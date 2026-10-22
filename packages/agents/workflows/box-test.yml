@@ -115,7 +115,15 @@ jobs:
           BOX_IMAGE: ${{ steps.box.outputs.image }}
         run: |
           set -euo pipefail
-          smoke="$(mktemp -d "$RUNNER_TEMP/agent-smoke.XXXXXX")"
+          # The same layout run-job uses: private directories outside the
+          # home directory, with the data directory apart from the
+          # configuration and lbx's state. lbx refuses a data directory
+          # inside the home directory, and on a GitHub-hosted runner
+          # RUNNER_TEMP is inside it, so the system temp directory takes
+          # over there.
+          base="$RUNNER_TEMP"
+          case "$base/" in "$HOME"/*) base="${TMPDIR:-/tmp}" ;; esac
+          smoke="$(mktemp -d "$base/agent-smoke.XXXXXX")"
           chmod 0700 "$smoke"
           mkdir -m 0700 "$smoke/data" "$smoke/lbx" "$smoke/state"
           printf 'image.docker=%s\n' "$BOX_IMAGE" > "$smoke/lbx/config"

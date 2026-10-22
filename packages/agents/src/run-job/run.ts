@@ -7,7 +7,6 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   COLLECT_DIR,
@@ -20,11 +19,7 @@ import {
   MODEL_SOCKET,
   TOOLS_SOCKET,
 } from "../../images/agent/pi-mcp-mailbox/src/sockets.ts";
-import {
-  modelKeyEnv,
-  gatewayModelName,
-  piModel,
-} from "../lib/gateway.ts";
+import { modelKeyEnv, gatewayModelName, piModel } from "../lib/gateway.ts";
 import { collectToolLimits, toolLimits, type BranchKey } from "../lib/job.ts";
 import { isBranchKey } from "../deliver/writer.ts";
 import {
@@ -65,6 +60,7 @@ import { checkCitations } from "./evidence.ts";
 import {
   createRunDirs,
   currentIdentity,
+  scratchBase,
   writeDataFiles,
   type Identity,
 } from "./data-dir.ts";
@@ -536,7 +532,9 @@ export async function runJob(options: RunOptions): Promise<RunResult> {
       );
     client = new GatewayClient({
       gateway,
-      ...(loaded.job.gatewayCa === undefined ? {} : { ca: loaded.job.gatewayCa }),
+      ...(loaded.job.gatewayCa === undefined
+        ? {}
+        : { ca: loaded.job.gatewayCa }),
       issuerKey,
       ...(options.gateway?.baseUrl === undefined
         ? {}
@@ -670,19 +668,12 @@ export async function runJob(options: RunOptions): Promise<RunResult> {
   }
 
   // c. Run directory and inputs.
-  const base =
-    options.scratch || env.RUNNER_TEMP || (stub ? tmpdir() : undefined);
-  if (base === undefined)
-    return fail(
-      "set RUNNER_TEMP or pass --scratch <dir> for the run directory",
-    );
+  const who = options.identity ?? currentIdentity();
+  const chosen = scratchBase(options.scratch, env, who);
+  if ("error" in chosen) return fail(chosen.error);
   let dirs;
   try {
-    dirs = createRunDirs(
-      base,
-      config.name,
-      options.identity ?? currentIdentity(),
-    );
+    dirs = createRunDirs(chosen.base, config.name, who);
   } catch (err) {
     return fail((err as Error).message);
   }
@@ -978,7 +969,9 @@ export async function runJob(options: RunOptions): Promise<RunResult> {
         const token = await createInstallationToken({
           appId: env[READER_APP_ID_ENV] ?? "",
           privateKey: env[READER_PRIVATE_KEY_ENV] ?? "",
-          repositories: [workspace().repo.slice(workspace().repo.indexOf("/") + 1)],
+          repositories: [
+            workspace().repo.slice(workspace().repo.indexOf("/") + 1),
+          ],
         });
         report.addSecrets([token.token]);
         try {

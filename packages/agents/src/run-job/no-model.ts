@@ -1,12 +1,6 @@
-import {
-  appendFileSync,
-  chmodSync,
-  existsSync,
-  lstatSync,
-  mkdtempSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { appendFileSync, chmodSync, mkdtempSync } from "node:fs";
+import { join } from "node:path";
+import { scratchBase } from "./data-dir.ts";
 import {
   openGithubWriter,
   WRITER_SECRET_ENV,
@@ -311,15 +305,9 @@ export async function runNoModelJob(
       );
   }
 
-  const base =
-    options.scratch || env.RUNNER_TEMP || (stub ? tmpdir() : undefined);
-  if (base === undefined)
-    return fail(
-      "set RUNNER_TEMP or pass --scratch <dir> for the run directory",
-    );
-  if (!isAbsolute(base) || !existsSync(base) || !lstatSync(base).isDirectory())
-    return fail(`scratch directory ${base} must be an existing absolute path`);
-  const root = mkdtempSync(join(base, `job-${config.name}-`));
+  const chosen = scratchBase(options.scratch, env);
+  if ("error" in chosen) return fail(chosen.error);
+  const root = mkdtempSync(join(chosen.base, `job-${config.name}-`));
   chmodSync(root, 0o700);
   // The media key's budget must fit the job's month and the shared month before anything starts.
   let client: GatewayClient | undefined;
@@ -712,15 +700,9 @@ async function runUnlistOnly(
         `${absent.join(", ")} ${absent.length === 1 ? "is" : "are"} not set; unlisting replaced videos needs ${absent.length === 1 ? "it" : "them"}`,
       );
   }
-  const base =
-    options.scratch || env.RUNNER_TEMP || (stub ? tmpdir() : undefined);
-  if (base === undefined)
-    return fail(
-      "set RUNNER_TEMP or pass --scratch <dir> for the run directory",
-    );
-  if (!isAbsolute(base) || !existsSync(base) || !lstatSync(base).isDirectory())
-    return fail(`scratch directory ${base} must be an existing absolute path`);
-  const root = mkdtempSync(join(base, `job-${config.name}-`));
+  const chosen = scratchBase(options.scratch, env);
+  if ("error" in chosen) return fail(chosen.error);
+  const root = mkdtempSync(join(chosen.base, `job-${config.name}-`));
   chmodSync(root, 0o700);
   const report = new ReportWriter(
     options.out ?? join(root, "report"),

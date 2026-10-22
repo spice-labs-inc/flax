@@ -459,8 +459,9 @@ real run would use), `timings.json`, `summary.md`, `input.json`,
 tools socket with no upstreams behind it, so it needs no tool credentials either,
 and writes `tools.json` (with no calls). A job with `render.ts` also gets
 `slack.json` and `slack.md`. The run directory goes under
-`--scratch <dir>`, `RUNNER_TEMP`, or the system temp directory, and must
-not be inside the home directory. `pnpm test` stub-runs every job the same
+`--scratch <dir>`, else `RUNNER_TEMP`, else the system temp directory,
+the first of those outside the home directory (on a GitHub-hosted runner
+`RUNNER_TEMP` is inside it). `pnpm test` stub-runs every job the same
 way.
 
 ## 6. Open a pull request

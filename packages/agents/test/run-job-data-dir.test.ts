@@ -15,6 +15,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import {
   createRunDirs,
   dataDirProblem,
+  scratchBase,
   writeDataFiles,
   type Identity,
 } from "../src/run-job/data-dir.ts";
@@ -150,5 +151,45 @@ describe("run directories", () => {
     expect(
       dataDirProblem(dirs.data, { uid, home: "/nonexistent-home" }),
     ).toBeUndefined();
+  });
+});
+
+describe("scratch base", () => {
+  it("takes --scratch when it is outside the home directory", () => {
+    const root = scratch();
+    const who: Identity = { uid, home: privateDir(join(root, "home")) };
+    const dir = privateDir(join(root, "scratch"));
+    expect(scratchBase(dir, { RUNNER_TEMP: who.home }, who)).toEqual({
+      base: dir,
+    });
+    expect(scratchBase(join(who.home, "x"), {}, who)).toEqual({
+      error: `scratch directory ${join(who.home, "x")} does not exist`,
+    });
+    expect(scratchBase(privateDir(join(who.home, "x")), {}, who)).toEqual({
+      error: `scratch directory ${join(who.home, "x")} is inside the home directory`,
+    });
+  });
+
+  it("prefers RUNNER_TEMP and falls back to the system temp directory when RUNNER_TEMP is inside the home directory", () => {
+    const root = scratch();
+    const who: Identity = { uid, home: privateDir(join(root, "home")) };
+    const runnerTemp = privateDir(join(root, "runner-temp"));
+    expect(scratchBase(undefined, { RUNNER_TEMP: runnerTemp }, who)).toEqual({
+      base: runnerTemp,
+    });
+    // A GitHub-hosted runner: RUNNER_TEMP under the home directory.
+    const inside = privateDir(join(who.home, "work", "_temp"));
+    expect(scratchBase(undefined, { RUNNER_TEMP: inside }, who)).toEqual({
+      base: tmpdir(),
+    });
+    expect(scratchBase(undefined, {}, who)).toEqual({ base: tmpdir() });
+  });
+
+  it("fails when nothing lies outside the home directory", () => {
+    const who: Identity = { uid, home: "/" };
+    const result = scratchBase(undefined, { RUNNER_TEMP: tmpdir() }, who);
+    expect("error" in result && result.error).toContain(
+      "pass --scratch <dir> with a directory outside the home directory",
+    );
   });
 });

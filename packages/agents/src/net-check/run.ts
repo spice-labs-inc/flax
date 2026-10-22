@@ -34,7 +34,7 @@ const MAX_RESULT_BYTES = 1024 * 1024;
 export interface NetCheckOptions {
   root: string;
   env: NodeJS.ProcessEnv;
-  /** Where the run directory goes, outside the home directory: RUNNER_TEMP on a runner. */
+  /** Where the run directory goes, outside the home directory (see scratchBase). */
   scratch: string;
   lbx?: string;
   launcher?: Launcher;

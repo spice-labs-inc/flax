@@ -32,7 +32,13 @@ import {
 import { runJob, type RunOptions } from "../src/run-job/run.ts";
 import { TEST_ISSUER_KEY, testGateway } from "./fake-gateway.ts";
 import { writeFakeLbx } from "./fake-lbx.ts";
-import { BOX, FIXTURE_WORKSPACE, jobFiles, makeRepo, type RepoSpec } from "./helpers.ts";
+import {
+  BOX,
+  FIXTURE_WORKSPACE,
+  jobFiles,
+  makeRepo,
+  type RepoSpec,
+} from "./helpers.ts";
 
 // Built at runtime so no key-shaped literal sits in the source.
 const SECRET = ["gateway", "issuer", "key", "9f8e7d6c5b4a"].join("-");
@@ -175,7 +181,14 @@ describe("flax agents run-job --stub", () => {
   it("exits 2 with usage on bad arguments", () => {
     const cli = spawnSync(
       process.execPath,
-      [join(KIT_ROOT, "bin", "flax-agents.mjs"), "run-job", "hello", "extra", "--workspace", FIXTURE_WORKSPACE],
+      [
+        join(KIT_ROOT, "bin", "flax-agents.mjs"),
+        "run-job",
+        "hello",
+        "extra",
+        "--workspace",
+        FIXTURE_WORKSPACE,
+      ],
       { cwd: scratch(), encoding: "utf8" },
     );
     expect(cli.status).toBe(2);
@@ -198,8 +211,7 @@ describe("flax agents run-job refusals", () => {
   it("refuses live mode for a job that neither opens pull requests nor posts to Slack", async () => {
     const links = Array.from(
       { length: 10 },
-      (_, i) =>
-        `- https://github.com/notes-co/agents/actions/runs/${i + 1}`,
+      (_, i) => `- https://github.com/notes-co/agents/actions/runs/${i + 1}`,
     ).join("\n");
     const root = await repo({
       jobs: {
@@ -234,12 +246,15 @@ describe("flax agents run-job refusals", () => {
     expect((await runJob(options(root, { env: {} }))).messages).toEqual([
       "LLM_GATEWAY_ISSUER_KEY is not set; the model gateway needs it to issue the run's key",
     ]);
+    // A home directory that holds everything: no run directory fits outside it.
     const { scratch: _unused, ...noScratch } = await realOptions(root, {
       lbx: writeFakeLbx(scratch()),
+      identity: { uid: process.getuid!(), home: "/" },
     });
-    expect((await runJob(noScratch)).messages).toEqual([
-      "set RUNNER_TEMP or pass --scratch <dir> for the run directory",
-    ]);
+    const [message] = (await runJob(noScratch)).messages;
+    expect(message).toContain(
+      "pass --scratch <dir> with a directory outside the home directory",
+    );
   });
 
   it("refuses when the month's spend plus the worst case of one run passes the limit", async () => {

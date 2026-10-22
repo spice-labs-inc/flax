@@ -5,9 +5,10 @@ import {
   mkdirSync,
   mkdtempSync,
   realpathSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, sep } from "node:path";
 import { DATA_FILES } from "./argv.ts";
 
@@ -111,4 +112,43 @@ export function writeDataFiles(dir: string, files: DataFiles): void {
   write(DATA_FILES.input, `${JSON.stringify(files.input, null, 2)}\n`);
   write(DATA_FILES.schema, `${JSON.stringify(files.schema, null, 2)}\n`);
   privateDir(join(dir, DATA_FILES.sessions));
+}
+
+/**
+ * Where run directories go: `--scratch` when given, else RUNNER_TEMP, else
+ * the system temp directory, the first that exists outside the home
+ * directory. On a GitHub-hosted runner RUNNER_TEMP is inside the home
+ * directory, so the system temp directory takes over there.
+ */
+export function scratchBase(
+  explicit: string | undefined,
+  env: Record<string, string | undefined>,
+  who: Identity = currentIdentity(),
+): { base: string } | { error: string } {
+  if (explicit !== undefined) {
+    const problem = baseProblem(explicit, who);
+    return problem === undefined
+      ? { base: explicit }
+      : { error: `scratch directory ${explicit} ${problem}` };
+  }
+  const tried: string[] = [];
+  for (const candidate of [env.RUNNER_TEMP, tmpdir()]) {
+    if (!candidate) continue;
+    const problem = baseProblem(candidate, who);
+    if (problem === undefined) return { base: candidate };
+    tried.push(`${candidate} ${problem}`);
+  }
+  return {
+    error: `no directory for the run directory: ${tried.join("; ")}; pass --scratch <dir> with a directory outside the home directory`,
+  };
+}
+
+function baseProblem(dir: string, who: Identity): string | undefined {
+  if (!isAbsolute(dir)) return "is not an absolute path";
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return "does not exist";
+  const real = resolved(dir);
+  const home = resolved(who.home);
+  if (real === home || within(real, home))
+    return "is inside the home directory";
+  return undefined;
 }

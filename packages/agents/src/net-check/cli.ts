@@ -2,6 +2,7 @@ import { takeWorkspaceFlag, workspaceRoot } from "../lib/workspace.ts";
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { loadBox } from "../lib/box.ts";
+import { scratchBase } from "../run-job/data-dir.ts";
 import { runNetCheck } from "./run.ts";
 
 const usage = "usage: flax agents net-check [--box-outputs]";
@@ -34,14 +35,16 @@ if (values["box-outputs"]) {
   process.exit(0);
 }
 
-const scratch = process.env.RUNNER_TEMP;
-if (scratch === undefined || scratch === "") {
-  console.error(
-    "set RUNNER_TEMP to a directory outside the home directory for the run",
-  );
+const scratch = scratchBase(undefined, process.env);
+if ("error" in scratch) {
+  console.error(scratch.error);
   process.exit(2);
 }
-const result = await runNetCheck({ root, env: process.env, scratch });
+const result = await runNetCheck({
+  root,
+  env: process.env,
+  scratch: scratch.base,
+});
 process.stdout.write(result.text);
 const summary = process.env.GITHUB_STEP_SUMMARY;
 if (summary !== undefined && summary !== "")
