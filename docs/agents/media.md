@@ -1,0 +1,150 @@
+# Media: narrated videos from record runs
+
+The agents package carries a small media kit that a job's `media.ts` uses to make videos: text to speech with word timing (`src/media/tts.ts`), captions (`captions.ts`), the media manifest (`manifest.ts`), and a renderer that turns a scenario record run into a narrated video (`render.ts`). The kit is generic. Your look and sound (fonts, colors, cards, music, voices) and your stand-in rules live in your workspace and are passed in; flax ships none of them.
+
+## What the renderer reads
+
+A record run is one directory per recorded scenario, as the scenario recorder writes it:
+
+```
+open-a-note/
+  video.webm              the raw recording (absent when the scenario never opened a page)
+  timeline.json           every step with its times, status, flags and actions
+  screens/<step>.png      the frame at each step's end
+  terminal/<step>.json    the command a step ran (any others in more), with its output, times, display and preface
+  terminal/<step>.cast    the same as an asciicast v2 recording
+  open-a-note.video.yml   a copy of the sidecar
+```
+
+Times in `timeline.json` are milliseconds from the raw video's first frame. The timeline says whether the run passed (`status`), which steps are hidden and highlighted, and the recording's `scale`: video pixels per viewport CSS pixel. A step's actions are what the recorder did during it (`click`, `type`, `goto`, `point`, `highlight`), each with a time and, for the ones on an element, its box in video pixels. Background steps are listed with index 0 and are never filmed.
+
+The sidecar beside a feature file says how a scenario becomes a video. It is `<feature>.video.yml`, or `<feature>.<id>.video.yml` when a feature has several recorded scenarios; the copy in the record directory is matched to the timeline by `scenario`. The fields the renderer reads:
+
+```yaml
+scenario: "Open a note from the list"
+id: open-a-note
+title: "Open a note"
+voice: narrator                  # passed to your voice chooser
+pace: { typeMsPerChar: 50 }      # terminal typing speed, and the pauses after a command and at the end
+intro:                           # a card before the first filmed step
+  chapter: Introduction
+  heading: "Open a note"
+  items: ["Find the note", { label: "Read it", icon: book }]
+  text: "Here is how to find a note and read it."   # spoken over the card
+narration:
+  - at: "When I open the notes list"   # the step's text with its keyword as written, or its 1-based index
+    text: "Open the notes list and pick the note you wrote this morning."
+  - at: "And I sync my notes"
+    text: "Sync your notes from the terminal first."
+  - at: "Then I see the note's text"
+    text: "The note opens with everything you wrote."
+chapters:
+  - { at: "When I open the notes list", title: "Find the note" }
+highlight: then                  # then | none | a list of steps
+hide: [1]                        # default: every Given
+terminal:                        # one override, or a list of them
+  at: "And I sync my notes"
+  display: "notes sync"          # the command line shown in place of the one that ran
+  preface: ["export NOTES_TOKEN=nt_0000"]   # typed before it; stand-ins apply
+poster: { at: 3, title: "Open a note", kicker: "How-to" }
+outro:
+  chapter: "Next steps"
+  heading: "docs.notes-co.example"
+  sub: "Get started"
+  text: "Every command is in the quick start."
+publish: { playlist: tutorials }  # passed through to media.json untouched
+```
+
+A step named by text matches its keyword as written in the feature (`And`, `But` included) and its text; when the keyword differs, a text that only one step has still matches. Text references survive inserted steps, so they are the better choice.
+
+## What it makes
+
+`renderRecording` writes four files into `out`:
+
+- `video.mp4`: 2560 by 1440, H.264 and AAC, 30 frames a second. The recording is fitted into the picture above a caption band (160 pixels by default, `captionBand: 0` for none).
+- `captions.vtt`: the narration's words, the intro's and outro's included, grouped into readable cues.
+- `poster.png`: the poster step's screen (or its terminal scene's last frame) fitted into the frame; with a poster `title` or `kicker`, those over it; or what your `assets.poster` draws.
+- `media.json`: the manifest listing the three files, with `data` holding the id, title, description, scenario, duration, chapters (start seconds and title, the intro's and outro's included), the voice's name, the poster step and the sidecar's `publish` map.
+
+The result also carries the edit plan and, for each terminal scene, the plain text it shows.
+
+```ts
+import { renderRecording } from "@flax/agents/media/render";
+import { elevenLabsVoice } from "@flax/agents/media/tts";
+
+await renderRecording({
+  recordDir: "runs/2026-01-14/open-a-note",
+  tts: (voice) => elevenLabsVoice(voice ?? "narrator"),
+  out: process.env.FLAX_AGENTS_MEDIA_DIR!,
+  standIns: rulesByName[sidecar.standIns ?? "default"],
+  assets: {
+    css: brandCss, // @font-face rules and --media-* colors
+    background: "0x101828",
+    cardHtml: (card, kind) => brandCard(card, kind),
+    music: { file: "brand/music/bed.mp3" },
+  },
+  production: { zoom: true, callouts: [{ at: 3, text: "Your note" }] },
+});
+```
+
+A recording of a failed run is refused: when the timeline is marked failed or any step did not pass, nothing is rendered, so a video never shows a flow that the checks did not prove.
+
+## How the edit works
+
+The edit is pure arithmetic (`src/media/edit.ts`, `planEdit`), done before any encoding:
+
+1. Hidden steps are cut: Background steps, then what the recorder marked, else the sidecar's `hide` list, else every Given. Steps that ran back to back stay one stretch of the raw video; a cut falls only where a hidden step or a terminal scene was.
+2. A visible step that ran commands is a terminal scene (below) in place of its browser frames, as long as its replay.
+3. The visible steps fall into scenes. A scene starts at each step a narration block names (a block on a hidden step moves to the next visible one) and runs to the next one.
+4. Each block starts at its scene's start (plus `leadIn`, default 0). When the block and its `tail` (default 0.5 seconds) are longer than the scene, the scene's last frame holds until they are done. A scene longer than its narration plays at its own pace; `maxSpeed` (default 1) lets its browser frames play faster to fit.
+5. The intro and outro cards go before and after: each at least its `seconds` (default 3), longer when its narration needs it.
+
+Every length is a whole number of frames, so the narration, the captions, the chapters and the picture agree to the frame. Two blocks on one step, a block with no visible step at or after it, and a scenario with every step hidden are refused.
+
+Chapters start at their step's place in the output; the intro's chapter starts at 0 and the outro's at its card. Without a `poster` step, the poster is the last highlighted visible step, else the last visible step.
+
+## Terminal scenes
+
+A visible step with commands is drawn as a terminal by xterm in Chromium, frame by frame, so the scene is the same on every render:
+
+- From `terminal/<step>.json`: each command typed after a `$` prompt at the sidecar's `pace.typeMsPerChar` (default 60 ms), a pause (`afterActionMs`, default 600 ms), the command's recorded run time (at most 2 seconds), its output scrolled out, and the last prompt held for reading (`readMs`, default 1200 ms).
+- The sidecar's `terminal` override for the step: `display` shows another command line (a list replaces the step's commands in order), `preface` types lines before them, and `cast` replays an asciicast v2 file instead (relative to the record directory, absolute, or `recording:<edition>/<id>` from `FLAX_RECORDINGS_ROOT`).
+- Without a transcript, `terminal/<step>.cast` is replayed, idle gaps capped at 2 seconds, at the grid it was recorded at.
+
+Stand-ins (`standIns`) apply to every command, output and preface line shown, so an export line can show a placeholder in place of a real secret. `terminal` in the render options overrides the pace and the font size (18 layout pixels, 36 in the frame). The terminal's look reads `--media-terminal-backdrop`, `--media-terminal-bg`, `--media-terminal-bar`, `--media-terminal-text`, `--media-terminal-cursor` and `--media-mono-font` (see `TERMINAL_DEFAULTS` in `src/media/terminal.ts`).
+
+## Production options
+
+Each is off unless asked for, and each takes its look from `assets`:
+
+- Cards: the sidecar's `intro` and `outro` are drawn by `assets.cardHtml` when given, else by the plain `cardHtml` (heading, sub line, numbered items). `assets.titleCard` and `assets.endCard` can give an `image` or a whole `html` document instead, a minimum `seconds`, and `narration` for a card the sidecar does not describe.
+- `assets.music`: a music bed, looped to length, at -16 dB between phrases and ducked to -26 dB under the voice (`levels` changes both and the fades). The mix never peaks above 0.97.
+- `production.zoom`: the camera eases in to each box the recorder highlighted on a highlighted step, holds to the step's end, and eases back out (`maxZoom` default 2, `move` default 0.8 seconds).
+- `production.callouts`: a label pointing at a box during a step, the rest of the picture dimmed. The box is the one given (in viewport CSS pixels), else the step's last highlighted, pointed or clicked box.
+- `burnCaptions`: the cues drawn into the caption band as well as written to `captions.vtt`.
+
+Pictures drawn with Chromium (cards, the poster, callouts, burned captions, terminals) read `assets.css`: font faces and the custom properties `--media-font`, `--media-text`, `--media-band`, `--media-accent`, `--media-accent-text` and `--media-dim` (see `PAINT_DEFAULTS` in `src/media/paint.ts` for the neutral defaults).
+
+## Stand-ins
+
+A test run shows run-specific values: a generated account, a test address, an id. Stand-ins replace them with presentable text before anything is captured. A rule set is a list of literal `text` or regular expression `pattern` rules with what each match becomes, applied in order:
+
+```ts
+import { applyStandIns, standInText } from "@flax/agents/media/stand-ins";
+
+const rules = {
+  name: "default",
+  rules: [
+    { pattern: "run-[0-9a-f]{8}@test\\.notes-co\\.example", with: "sam@notes-co.example" },
+    { text: "Test Workspace", with: "Field Notes" },
+  ],
+};
+await applyStandIns(browserContext, rules); // every page, before it paints
+const transcript = standInText(rawOutput, rules); // terminal output, captions
+```
+
+`standInScript(rules)` is the page script itself, for a recorder that injects scripts its own way: it rewrites every text node and input value (never the focused input or a password) before the page paints and whenever the page changes, never touches attributes or the URL, and never applies a rule twice to the same text. `standInValue` applies the rules to every string in a JSON value, such as a terminal transcript. Rules are checked when compiled: a pattern that does not parse or matches empty text is refused.
+
+## Testing your own media code
+
+`@flax/agents/test/fake-recording` writes a record directory of solid-color steps with ffmpeg (with terminal transcripts for steps given commands), and `@flax/agents/test/fake-voice` is a voice that says each word as a sine tone with word timing, so a workspace can test its rendering without a browser run or a speech API.

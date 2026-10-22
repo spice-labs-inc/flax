@@ -64,6 +64,7 @@ Two ways to reach a model, chosen with `agents.provider.keyMode`:
 - `images/agent/Dockerfile`: the agent image (Pi, the kit's Pi plugin, an optional provider plugin) on the lbx entrypoint, built by this repository's publish workflow and pinned by digest in each workspace's `box.yml`.
 - `action.yml`: the composite action a model job workflow calls. It checks the job, pulls the image, downloads the lbx release binary the workspace pins (`box_release`), refuses it unless its sha256 is `lbx_sha256`, and runs the workspace's `dist/run-job.mjs`.
 - `workflows/`: the kit's own CI (check, rebuild-dist, publish-image, net-refusal, box-test, tools-smoke), run in this repository against the fixture workspace in `test/fixtures/workspace`.
+- `src/media/`: the media kit a job's `media.ts` imports as `@flax/agents/media/<name>`: text to speech with word timing, captions, the media manifest, and `renderRecording`, which turns a scenario record run into a narrated video with captions, chapters, a poster, terminal scenes, intro and outro cards and optional music, zoom and callouts, plus the stand-ins mechanism. See docs/agents/media.md in the flax repository.
 - `test/fake-*.ts`, `test/helpers.ts`: the fakes a workspace's own job tests import as `@flax/agents/test/<name>`.
 
 ## box.yml

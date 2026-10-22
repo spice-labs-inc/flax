@@ -2,3 +2,8 @@ packages:
   - packages/*
   - demo
   - demo/agents
+
+onlyBuiltDependencies:
+  # ffmpeg-static downloads its ffmpeg binary in its install script; the
+  # media renderer (packages/agents/src/media/render.ts) encodes with it.
+  - ffmpeg-static

@@ -38,6 +38,7 @@ The agents package:
 - [agents/runtime.md](agents/runtime.md): the sandbox, the agent image, sockets and networks.
 - [agents/gateway.md](agents/gateway.md): the reference gateway deployment and the static provider mode.
 - [agents/reference-jobs.md](agents/reference-jobs.md): the jobs that ship with the package.
+- [agents/media.md](agents/media.md): the media kit: narrated videos rendered from scenario record runs, production options and stand-ins.
 
 The atlas package:
 
