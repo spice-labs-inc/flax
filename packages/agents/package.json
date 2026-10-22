@@ -74,6 +74,7 @@
     "test/helpers.ts",
     "test/legacy-steps.ts",
     "test/fixtures/gateway-tls",
+    "test/fixtures/workspace",
     "tools",
     "workflows",
     "docs"
