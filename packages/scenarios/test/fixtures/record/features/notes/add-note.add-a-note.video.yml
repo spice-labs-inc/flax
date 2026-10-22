@@ -1,0 +1,27 @@
+scenario: Add a note
+id: add-a-note
+title: Adding a note
+viewport: { width: 800, height: 600, deviceScaleFactor: 1.5 }
+intro:
+  chapter: Introduction
+  heading: Adding a note
+  items:
+    - { label: Type a title, icon: pencil }
+    - Save it
+  text: This is how to add a note.
+narration:
+  - at: 2
+    text: Type a title for the note.
+  - at: Then the list shows "Weekly plan"
+    text: The note appears in the list.
+  - at: 5
+    text: The same notes are in the terminal.
+chapters:
+  - { at: 2, title: Add a note }
+poster: { at: 4, title: Adding a note, kicker: How-to }
+terminal:
+  at: When I list the notes from the terminal
+  display: notes list --all
+  preface: ["export NOTES_TOKEN=example-token"]
+standIns: demo
+publish: { tags: [notes] }

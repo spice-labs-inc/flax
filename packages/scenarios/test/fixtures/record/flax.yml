@@ -1,0 +1,15 @@
+# A one-surface workspace whose scenarios are recorded against a local page the test serves.
+org: example
+environments:
+  - { id: local, label: Local }
+scenarios:
+  name: notes-scenarios
+  envPrefix: NOTES_SCENARIOS
+  envs:
+    local:
+      fixtures: never
+  surfaces:
+    - { name: web, title: Web app }
+  recorder:
+    pace: { typeMsPerChar: 15, afterActionMs: 100, readMs: 250 }
+    highlightColor: "#d33"

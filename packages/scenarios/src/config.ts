@@ -12,6 +12,8 @@ import type {
   SurfaceConfig,
 } from "@flax/contract/config";
 import { isRecord } from "@flax/contract";
+import type { RecorderConfig } from "@flax/contract/config";
+import { DEFAULT_PACE, DEFAULT_VIEWPORT } from "./record/pace.ts";
 
 /** Names the workspace directory (the one holding flax.yml) when the command does not run in it. */
 export const WORKSPACE_VARIABLE = "FLAX_WORKSPACE";
@@ -188,7 +190,33 @@ export function fromWorkspace(ws: Workspace): ScenariosConfig {
       description: str(explorer["description"], ""),
     },
     tagLabels: rec(r["tagLabels"]),
-    recorder: { name: str(recorder["name"], name) },
+    recorder: recorderConfig(recorder, name),
+  };
+}
+
+/** The `recorder` key: defaults for browser recordings, each value that is missing or out of range taking the default. */
+function recorderConfig(
+  r: Record<string, unknown>,
+  name: string,
+): RecorderConfig {
+  const num = (v: unknown, d: number, min: number, max: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : d;
+  const pace = isRecord(r["pace"]) ? r["pace"] : {};
+  const viewport = isRecord(r["viewport"]) ? r["viewport"] : {};
+  const ms = (k: keyof RecorderConfig["pace"]) =>
+    num(pace[k], DEFAULT_PACE[k], 0, 60_000);
+  const px = (k: "width" | "height") =>
+    Math.round(num(viewport[k], DEFAULT_VIEWPORT[k], 200, 7680));
+  return {
+    name: str(r["name"], name),
+    pace: {
+      typeMsPerChar: ms("typeMsPerChar"),
+      afterActionMs: ms("afterActionMs"),
+      readMs: ms("readMs"),
+    },
+    viewport: { width: px("width"), height: px("height") },
+    scale: num(r["scale"], 1, 1, 4),
+    highlightColor: str(r["highlightColor"], "#2f6fed"),
   };
 }
 
@@ -251,6 +279,7 @@ export function envVariables(c = config()) {
     env: `${p}_ENV`,
     runId: `${p}_RUN_ID`,
     fixtures: `${p}_FIXTURES`,
+    record: `${p}_RECORD`,
   };
 }
 type Env = string;

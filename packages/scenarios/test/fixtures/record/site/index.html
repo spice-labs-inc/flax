@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Notes</title>
+    <style>
+      body {
+        font:
+          18px system-ui,
+          sans-serif;
+        margin: 40px;
+      }
+      input,
+      button {
+        font: inherit;
+        padding: 6px 10px;
+      }
+      ul {
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Notes</h1>
+    <input id="title" placeholder="Title" />
+    <button id="save">Save</button>
+    <ul id="notes"></ul>
+    <script>
+      document.getElementById("save").addEventListener("click", () => {
+        const title = document.getElementById("title");
+        const li = document.createElement("li");
+        li.textContent = title.value;
+        document.getElementById("notes").appendChild(li);
+        title.value = "";
+      });
+    </script>
+  </body>
+</html>

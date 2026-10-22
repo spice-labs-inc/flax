@@ -33,3 +33,13 @@ export {
 } from "./dataset/schema.ts";
 export * from "./dataset/load.ts";
 export * from "./dataset/journeys.ts";
+export * from "./record/sidecar.ts";
+export * from "./record/timeline.ts";
+export * from "./record/pace.ts";
+export {
+  planRecordings,
+  type PlannedRecording,
+  type RecordOptions,
+  type RecordPlan,
+} from "./record/plan.ts";
+export { plainMedia, type Media, type TerminalEntry } from "./record/media.ts";

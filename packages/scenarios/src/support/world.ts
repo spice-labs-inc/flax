@@ -8,6 +8,11 @@ import type { Env, SurfaceFile } from "../lib/types.ts";
 import type { Touch } from "@flax/contract";
 import { currentEnv, currentRunId } from "../run/env.ts";
 import { matchRoute } from "../run/routes.ts";
+import {
+  plainMedia,
+  type Media,
+  type SceneRecording,
+} from "../record/media.ts";
 
 const surfaces = new Map<string, SurfaceFile>();
 
@@ -34,9 +39,29 @@ export async function sharedBrowser(): Promise<Browser> {
   return browser;
 }
 
+const filming = new Map<number, Promise<Browser>>();
+
+/**
+ * The Chromium a record run films in, one per device scale factor. A screencast captures CSS
+ * pixels, so the scale is the browser's own (a launch flag) rather than the context's.
+ */
+async function filmingBrowser(scale: number): Promise<Browser> {
+  let b = filming.get(scale);
+  if (!b) {
+    const { chromium } = await import("playwright");
+    b = chromium.launch({
+      args: ["--hide-scrollbars", `--force-device-scale-factor=${scale}`],
+    });
+    filming.set(scale, b);
+  }
+  return b;
+}
+
 export async function closeSharedBrowser(): Promise<void> {
   if (browser) await (await browser).close();
   browser = undefined;
+  for (const b of filming.values()) await (await b).close();
+  filming.clear();
 }
 
 /**
@@ -72,14 +97,30 @@ export class ScenarioWorld extends World {
     this.touches.push(this.step === undefined ? t : { ...t, step: this.step });
   }
 
+  /**
+   * What steps tell a recording (the element they act on or check, the commands they run). In a
+   * scenario a record run films, the recording paces and draws them; anywhere else they only click and type.
+   */
+  get media(): Media {
+    return this.recording ?? plainMedia;
+  }
+
+  /** The recording of this scenario, set by the base hooks in a record run. */
+  recording: SceneRecording | undefined;
+
   /** A browser page in this scenario's own context; routes of every surface with a link host that it lands on are recorded. */
   async page(): Promise<Page> {
     if (!this.currentPage) {
-      this.context = await (
-        await sharedBrowser()
-      ).newContext({ viewport: { width: 1440, height: 900 } });
+      this.context = this.recording
+        ? await (
+            await filmingBrowser(this.recording.scale)
+          ).newContext({ viewport: this.recording.viewport })
+        : await (
+            await sharedBrowser()
+          ).newContext({ viewport: { width: 1440, height: 900 } });
       await markSynthetic(this.context, Object.values(this.hosts));
       this.currentPage = await this.context.newPage();
+      await this.recording?.attach(this.currentPage);
       const tracked = config()
         .surfaces.filter((s) => s.linkHost && this.hosts[s.linkHost])
         .map((s) => ({
@@ -111,6 +152,7 @@ export class ScenarioWorld extends World {
   }
 
   async closePage(): Promise<void> {
+    await this.recording?.detach();
     await this.context?.close().catch(() => undefined);
     this.context = undefined;
     this.currentPage = undefined;

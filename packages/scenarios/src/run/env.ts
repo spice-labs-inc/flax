@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { config, envVariables, fixtureEnvs } from "../config.ts";
+import type { RecordPlan } from "../record/plan.ts";
 import { ENVS, type Env } from "../lib/types.ts";
 
 /** The environment this run targets, as the runner set it. */
@@ -28,4 +30,15 @@ export function fixturesAllowed(): boolean {
 /** Which of a parallel run's workers this is ("0", "1", ...); undefined when the run is not parallel. */
 export function workerId(): string | undefined {
   return process.env["CUCUMBER_WORKER_ID"];
+}
+
+let plan: { file: string; plan: RecordPlan } | undefined;
+
+/** The plan of a `run --record` run, read once; undefined in any other run. */
+export function currentRecordPlan(): RecordPlan | undefined {
+  const file = process.env[envVariables().record];
+  if (!file) return undefined;
+  if (plan?.file !== file)
+    plan = { file, plan: JSON.parse(readFileSync(file, "utf8")) as RecordPlan };
+  return plan.plan;
 }

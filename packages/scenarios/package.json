@@ -11,6 +11,7 @@
   "type": "module",
   "exports": {
     "./package.json": "./package.json",
+    "./record/video-sidecar.schema.json": "./dist/record/video-sidecar.schema.json",
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
@@ -28,7 +29,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && cp src/run/strip-types-loader.mjs dist/run/",
+    "build": "tsc -p tsconfig.json && cp src/run/strip-types-loader.mjs dist/run/ && cp src/record/video-sidecar.schema.json dist/record/",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },

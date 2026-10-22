@@ -117,5 +117,16 @@ export interface ScenariosConfig {
   /** K22 */
   tagLabels: Record<string, string>;
   /** K24 */
-  recorder: { name: string };
+  recorder: RecorderConfig;
+}
+
+/** Defaults for browser recordings (`flax scenarios run --record`); a scenario's video sidecar overrides pace and viewport. */
+export interface RecorderConfig {
+  name: string;
+  pace: { typeMsPerChar: number; afterActionMs: number; readMs: number };
+  viewport: { width: number; height: number };
+  /** Device pixels per CSS pixel: the video, the screens and the timeline's boxes are the viewport times this. */
+  scale: number;
+  /** The highlight box and click ripple color. */
+  highlightColor: string;
 }

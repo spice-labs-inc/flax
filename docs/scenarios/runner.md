@@ -24,7 +24,7 @@ Beside the policy, tags on scenarios say what each one needs:
 - `@planned`: listed, never run.
 - `@local`: runs the product on this machine with no services; a scheduled run never picks it up (see [recorder.md](recorder.md)).
 
-`--dry-run` checks that every step is defined without running anything. `--tags` narrows a run to an expression.
+`--dry-run` checks that every step is defined without running anything. `--tags` narrows a run to an expression. `--record <dir>` runs only the scenarios that have a video sidecar, paced and filmed (see [recorder.md](recorder.md#browser-recordings)).
 
 ## Fixtures and writes
 

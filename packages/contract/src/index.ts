@@ -8,6 +8,7 @@ export type {
   EnvConfig,
   IslandSplit,
   KindNaming,
+  RecorderConfig,
   ScenariosConfig,
   SurfaceConfig,
 } from "./config.ts";

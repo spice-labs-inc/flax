@@ -9,6 +9,7 @@ Run in the workspace directory (the one holding `flax.yml`), or point `FLAX_WORK
 | command | does |
 |---|---|
 | `flax scenarios run --env <env> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--parallel <n>] [feature paths...]` | runs the scenarios against one environment with cucumber, writes `results/<env>/<run id>/` (`run.json`, `planned.json`, `messages.ndjson`), and, when `EXPLORER_URL` and `EXPLORER_INGEST_TOKEN` are set, pushes the run's progress to an explorer service as it goes |
+| `flax scenarios run --env <env> --record <dir> [--record-all] [--dry-run] [feature paths...]` | the same run limited to the scenarios with a video sidecar (`<name>.video.yml` or `<name>.<id>.video.yml` beside the feature; every selected scenario with `--record-all`), paced and filmed: `<dir>/<id>/` gets `video.webm`, `timeline.json`, a screen per step, terminal scenes and the sidecar; see [docs/scenarios/recorder.md](../../docs/scenarios/recorder.md#browser-recordings) |
 | `flax scenarios coverage [--results <dir>]` | the coverage map (`coverage-map.json`) and its report (`GAPS.md`) from the surface files and the latest run per environment |
 | `flax scenarios dataset` | validates `personas/*.yml`, `journeys/stations.yml` and `journeys/*.yml`, then resolves every journey's stations against the coverage map into `journeys.json` |
 
@@ -44,7 +45,7 @@ The runner registers its own module loader that type-strips `.ts` step and suppo
 
 ## The World and the hooks
 
-`@flax/scenarios/support/world` exports `ScenarioWorld`: `env`, `hosts` (the environment's hosts by key), `runId`, `touches` with `touch(item, need?)` and `record(touch)`, `page()` (one Chromium per run, a context per scenario, and every navigation on a surface with a `linkHost` recorded as a touch of its route), `byTestId(surface, id)` and `closePage()`. `@flax/scenarios/support/hooks` exports `installBaseHooks({ timeoutMs })`: the default timeout, parallel assignment by tag policy, the step index on every touch, the touches attachment after each scenario, and the shared browser's close.
+`@flax/scenarios/support/world` exports `ScenarioWorld`: `env`, `hosts` (the environment's hosts by key), `runId`, `touches` with `touch(item, need?)` and `record(touch)`, `page()` (one Chromium per run, a context per scenario, and every navigation on a surface with a `linkHost` recorded as a touch of its route), `byTestId(surface, id)`, `closePage()`, and `media` and `recording` (below). `@flax/scenarios/support/hooks` exports `installBaseHooks({ timeoutMs, recordInitScript })`: the default timeout, parallel assignment by tag policy, the step index on every touch, the touches attachment after each scenario, the shared browser's close, and in a record run the recording of each filmed scenario.
 
 A workspace subclasses the World and registers the subclass:
 
@@ -61,6 +62,8 @@ installBaseHooks({ timeoutMs: 10_000 });
 ```
 
 and adds its own hooks beside the base ones (an environment guard, fixture teardown). The private half of a product's World (its API client, fixture accounts, sign-in) stays in the workspace, in the subclass.
+
+Steps tell a recording what they act on through `this.media`: `click(locator)` and `type(locator, text)` act (paced, with a cursor, when the scenario is filmed), `pointAt(locator)`, `highlight(locator)` and `terminal({ command, output })` only matter when it is. `installBaseHooks({ recordInitScript })` hands a filmed page a script for every document, such as stand-in text. The sidecar schema is `@flax/scenarios/record/video-sidecar.schema.json`; its loader, the timeline types and the pacing are in `record/sidecar`, `record/timeline` and `record/pace`.
 
 Playwright is a peer dependency, loaded only when a scenario asks for a page: a workspace with no browser scenarios installs none.
 

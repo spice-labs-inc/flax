@@ -165,8 +165,13 @@ scenarios:
   tagLabels:
     "@admin": Admin only
     "@fixture": Creates a fixture account
+  # Defaults for browser recordings (run --record); a scenario's video sidecar overrides pace and viewport.
   recorder:
     name: notes
+    pace: { typeMsPerChar: 60, afterActionMs: 600, readMs: 1200 }
+    viewport: { width: 1440, height: 900 }
+    scale: 1
+    highlightColor: "#2f6fed"
 
 # The explorer: the living map of what the scenarios prove.
 explorer:
