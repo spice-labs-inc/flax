@@ -1,0 +1,74 @@
+# Job definition. Schema: schema/job.schema.json. Rules: docs/guardrails.md.
+# After editing, run pnpm generate and pnpm check.
+
+name: {{name}} # must equal the folder name
+
+# GitHub handle that gets failure alerts.
+owner: {{owner}}
+
+# One sentence on what this job does.
+purpose: Refreshes the atlas map data, extracts wiring for new and changed atlas docs, and opens one atlas pull request with the regenerated map.
+
+# Exactly one of:
+#   schedule: "0 13 * * *"   five-field cron, UTC
+#   after: other-job         runs when that job succeeds
+#   manual: true             runs only when started by hand
+# 12:00 UTC daily. A doc refresh job that reads the atlas is best scheduled
+# after this one, so it reads an atlas whose map pull request is already
+# open for review.
+trigger:
+  schedule: "0 12 * * *"
+
+# none: no model of its own. media.ts runs the atlas's refresh script,
+# which clones every documented repository beside the atlas, regenerates
+# the graph, and builds the pull request (media.json data.pr) from the
+# viz files that changed.
+model: none
+
+tools: []
+
+# network: public unless the refresh script reaches private services; then
+# the name of a network join in flax.yml. org_read: the clones of
+# every documented repository and the visibility stage read with a
+# contents-read token for all of them, which sources cannot list. model:
+# the generator's wiring extraction asks this socket, 2 calls at a time,
+# waiting out HTTP 429, and only for docs with no cached answer and docs
+# whose own sections changed, at most a few a run; every other doc keeps
+# its answer, so an atlas edit never re-rolls the whole map. A doc the
+# model gives up on is asked once of the fallback, which shares the key and
+# its budget; a doc the fallback fails too keeps its previous answer.
+# optional: once the month's budget is spent, the refresh still runs and
+# changed docs wait for next month.
+media:
+  network: {{network}}
+  secrets: []
+  timeout_minutes: 45
+  sources:
+    - {{github}}/{{atlasRepo}}
+  org_read: true
+  pr_paths:
+    [viz/data/*.json, viz/cache/wiring/wiring/*.json, viz/cache/flows/*.json]
+  model:
+    model: {{wiringModel}}
+    fallback: {{wiringFallbackModel}}
+    usd_per_run: 1
+    usd_per_month: 2
+    optional: true
+
+# The regenerated data and new cache answers go by media.pr_paths; no page
+# changes. untrusted_input: atlas docs are written by models and reviewed
+# before they land, and no model reads anything but those docs here.
+output:
+  kind: pr
+  repos: [{{github}}/{{atlasRepo}}]
+  paths: [viz/**]
+  max_changed_lines: 400
+  untrusted_input: report_only
+  # The refreshed map is generated data: a live run merges its own pull
+  # request when it only changes these; anything else stays open for review.
+  auto_merge:
+    paths: ["viz/data/**", "viz/cache/**"]
+
+# shadow runs deliver nowhere public. live needs SHADOW_RUNS.md with 4 run
+# links and code owner approval.
+mode: shadow

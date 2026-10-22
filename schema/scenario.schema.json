@@ -1,0 +1,854 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agents-kit.dev/schema/scenario.schema.json",
+  "title": "Video scenario",
+  "description": "One video as data: its scenes (the narration spoken over each and the steps the recorder performs), the fixture org it records against, its YouTube metadata and its production. The declarative form of src/media/scenario.ts Scenario, without the agent, scripted fix and edition runs, which only TypeScript scenarios have. Read with loadScenarioJson (src/media/scenario-json.ts).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "scenes"],
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "title": {
+      "$ref": "#/$defs/line"
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "fixture": {
+      "$ref": "#/$defs/fixture"
+    },
+    "youtube": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "description", "tags"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "$ref": "#/$defs/line"
+          }
+        },
+        "playlist": {
+          "$ref": "#/$defs/line"
+        }
+      }
+    },
+    "vars": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z0-9_]{1,64}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "baseUrl": {
+      "type": "string",
+      "pattern": "^https://",
+      "maxLength": 200
+    },
+    "elevenVoice": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "voiceSettings": {
+      "description": "ElevenLabs voice_settings for every line; the voice's own when left out.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "similarity_boost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "style": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "use_speaker_boost": {
+          "type": "boolean"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.7,
+          "maximum": 1.2
+        }
+      }
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 320,
+      "maximum": 3840
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 240,
+      "maximum": 2160
+    },
+    "zoom": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 3
+    },
+    "poster": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/line"
+        },
+        "kicker": {
+          "$ref": "#/$defs/line"
+        },
+        "scene": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "production": {
+      "$ref": "#/$defs/production"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "recap"],
+        "properties": {
+          "title": {
+            "$ref": "#/$defs/line"
+          },
+          "recap": {
+            "$ref": "#/$defs/line"
+          },
+          "scene": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {
+        "$ref": "#/$defs/scene"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "line": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^[^\\n]*$"
+    },
+    "selector": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "seconds": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 600
+    },
+    "box": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "survey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "jarDir"],
+      "properties": {
+        "subject": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,100}$"
+        },
+        "jarDir": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$",
+          "maxLength": 300
+        }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surveys"],
+      "properties": {
+        "orgName": {
+          "$ref": "#/$defs/line"
+        },
+        "projectName": {
+          "$ref": "#/$defs/line"
+        },
+        "passDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 90
+        },
+        "surveys": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/survey"
+          }
+        },
+        "later": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/survey"
+          }
+        },
+        "mcpConnection": {
+          "$ref": "#/$defs/line"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string"
+        }
+      },
+      "discriminator": {
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "url"],
+          "properties": {
+            "kind": {
+              "const": "goto"
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "waitFor": {
+              "$ref": "#/$defs/selector"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "selector"],
+          "properties": {
+            "kind": {
+              "const": "click"
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            },
+            "optional": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "selector"],
+          "properties": {
+            "kind": {
+              "const": "hover"
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "selector", "text"],
+          "properties": {
+            "kind": {
+              "const": "type"
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "y"],
+          "properties": {
+            "kind": {
+              "const": "scroll"
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 20000
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "selector"],
+          "properties": {
+            "kind": {
+              "const": "highlight"
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            },
+            "ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20000
+            },
+            "optional": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "selector"],
+          "properties": {
+            "kind": {
+              "const": "waitFor"
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "ms"],
+          "properties": {
+            "kind": {
+              "const": "wait"
+            },
+            "ms": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60000
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "heading"],
+          "properties": {
+            "kind": {
+              "const": "title"
+            },
+            "heading": {
+              "$ref": "#/$defs/line"
+            },
+            "sub": {
+              "type": "string",
+              "maxLength": 300
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "items"],
+          "properties": {
+            "kind": {
+              "const": "steps"
+            },
+            "heading": {
+              "$ref": "#/$defs/line"
+            },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label"],
+                "properties": {
+                  "label": {
+                    "$ref": "#/$defs/line"
+                  },
+                  "icon": {
+                    "enum": [
+                      "key",
+                      "download",
+                      "terminal",
+                      "magnifier",
+                      "chart",
+                      "check",
+                      "file",
+                      "flag"
+                    ]
+                  },
+                  "cue": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "title", "lines"],
+          "properties": {
+            "kind": {
+              "const": "change"
+            },
+            "title": {
+              "$ref": "#/$defs/line"
+            },
+            "badges": {
+              "type": "array",
+              "maxItems": 3,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              }
+            },
+            "command": {
+              "$ref": "#/$defs/line"
+            },
+            "lines": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "text"],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20
+                  },
+                  "text": {
+                    "$ref": "#/$defs/line"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "command"],
+          "properties": {
+            "kind": {
+              "const": "terminal"
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "output": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "liveOutput": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "capture": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "lineMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "cps": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "clear": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "cast"],
+          "properties": {
+            "kind": {
+              "const": "cast"
+            },
+            "cast": {
+              "description": "recording:<edition>/<id>[@shell=<shell>] reads a Survey release's recordings (NOTES_RECORDINGS_ROOT); docs:<path> reads the public-docs checkout (NOTES_DOCS_ROOT); any other path the scenario's directory.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "idleLimit": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "speed": {
+              "type": "number",
+              "minimum": 0.25,
+              "maximum": 8
+            }
+          }
+        }
+      ]
+    },
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "narration", "steps"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "narration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "prepare": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "steps": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "hold": {
+          "$ref": "#/$defs/seconds"
+        },
+        "chapter": {
+          "$ref": "#/$defs/line"
+        },
+        "focus": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "selector": {
+                "$ref": "#/$defs/selector"
+              },
+              "box": {
+                "$ref": "#/$defs/box"
+              },
+              "at": {
+                "$ref": "#/$defs/seconds"
+              },
+              "until": {
+                "$ref": "#/$defs/seconds"
+              },
+              "maxZoom": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 4
+              }
+            }
+          }
+        },
+        "callout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text"],
+          "properties": {
+            "text": {
+              "$ref": "#/$defs/line"
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            },
+            "box": {
+              "$ref": "#/$defs/box"
+            },
+            "at": {
+              "$ref": "#/$defs/seconds"
+            },
+            "until": {
+              "$ref": "#/$defs/seconds"
+            }
+          }
+        },
+        "lowerThird": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title"],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/line"
+            },
+            "sub": {
+              "$ref": "#/$defs/line"
+            },
+            "at": {
+              "$ref": "#/$defs/seconds"
+            },
+            "until": {
+              "$ref": "#/$defs/seconds"
+            }
+          }
+        },
+        "trim": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/seconds"
+            },
+            "end": {
+              "$ref": "#/$defs/seconds"
+            },
+            "picture": {
+              "$ref": "#/$defs/seconds"
+            }
+          }
+        },
+        "split": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["before"],
+          "properties": {
+            "before": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "labels": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/line"
+                },
+                {
+                  "$ref": "#/$defs/line"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      }
+    },
+    "production": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "intro": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["heading"],
+          "properties": {
+            "heading": {
+              "$ref": "#/$defs/line"
+            },
+            "kicker": {
+              "$ref": "#/$defs/line"
+            },
+            "date": {
+              "$ref": "#/$defs/line"
+            },
+            "narration": {
+              "$ref": "#/$defs/line"
+            },
+            "seconds": {
+              "$ref": "#/$defs/seconds"
+            }
+          }
+        },
+        "recap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["heading"],
+          "properties": {
+            "heading": {
+              "$ref": "#/$defs/line"
+            }
+          }
+        },
+        "outro": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["heading", "link"],
+          "properties": {
+            "heading": {
+              "$ref": "#/$defs/line"
+            },
+            "date": {
+              "$ref": "#/$defs/line"
+            },
+            "link": {
+              "$ref": "#/$defs/line"
+            },
+            "seconds": {
+              "$ref": "#/$defs/seconds"
+            }
+          }
+        },
+        "music": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "file": {
+              "description": "A file in src/media/brand/music.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+\\.mp3$"
+            },
+            "offset": {
+              "$ref": "#/$defs/seconds"
+            },
+            "levels": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "open": {
+                  "type": "number",
+                  "minimum": -60,
+                  "maximum": 6
+                },
+                "gap": {
+                  "type": "number",
+                  "minimum": -60,
+                  "maximum": 6
+                },
+                "speech": {
+                  "type": "number",
+                  "minimum": -60,
+                  "maximum": 6
+                }
+              }
+            }
+          }
+        },
+        "transition": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "fade",
+                "fadeblack",
+                "smoothleft",
+                "smoothright",
+                "slideleft",
+                "wipeleft",
+                "circleopen",
+                "dissolve"
+              ]
+            },
+            "seconds": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 3
+            }
+          }
+        },
+        "cursor": {
+          "const": "highlight"
+        },
+        "maxTail": {
+          "$ref": "#/$defs/seconds"
+        },
+        "hold": {
+          "$ref": "#/$defs/seconds"
+        },
+        "thumbnail": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title"],
+          "properties": {
+            "title": {
+              "$ref": "#/$defs/line"
+            },
+            "kicker": {
+              "$ref": "#/$defs/line"
+            },
+            "scene": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        }
+      }
+    }
+  }
+}

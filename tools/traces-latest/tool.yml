@@ -1,0 +1,44 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: traces-latest
+
+description: Lists the most recent traces in one OpenObserve trace stream within a time range of at most 24 hours, newest first, with each trace's id, services, span count and duration. Returns at most 50 traces.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [stream, start, end]
+  properties:
+    stream:
+      type: string
+      description: The trace stream, for example prod or ci.
+      maxLength: 200
+      pattern: "^[A-Za-z0-9_][A-Za-z0-9_:.-]*$"
+    start:
+      type: string
+      description: Start of the time range, RFC 3339, for example 2026-09-28T14:00:00Z.
+      maxLength: 40
+    end:
+      type: string
+      description: End of the time range, RFC 3339; at most 24 hours after start and not in the future.
+      maxLength: 40
+    filter:
+      type: string
+      description: Optional conditions on span fields, for example service_name='backend' AND http_status_code>=500.
+      maxLength: 1000
+    limit:
+      type: integer
+      description: The most traces to return, 20 when not given.
+      minimum: 1
+      maximum: 50
+
+upstream:
+  server: openobserve
+  operations: [GetLatestTraces]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 32768

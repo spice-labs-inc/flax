@@ -1,0 +1,39 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-merged-prs
+
+description: Lists the pull requests merged across every notes-co repository since a given day (UTC, at most 31 days back), most recently updated first, with number, title, author, link, repository and merge time. The search is fixed; it takes no query.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [since]
+  properties:
+    since:
+      type: string
+      description: The first day to include, as YYYY-MM-DD in UTC.
+      maxLength: 10
+      pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+    per_page:
+      type: integer
+      description: Results per page, 30 when not given.
+      minimum: 1
+      maximum: 100
+    page:
+      type: integer
+      description: The page, 1 when not given.
+      minimum: 1
+      maximum: 10
+
+# The query is fixed to org:notes-co is:pr is:merged merged:>=<day>;
+# the GitHub upstream refuses any other.
+upstream:
+  server: github
+  operations: [search_pull_requests]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536

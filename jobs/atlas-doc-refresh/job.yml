@@ -1,0 +1,101 @@
+# Job definition. Schema: schema/job.schema.json. Rules: docs/guardrails.md.
+# After editing, run pnpm generate and pnpm check.
+
+name: {{name}} # must equal the folder name
+
+# GitHub handle that gets failure alerts.
+owner: {{owner}}
+
+# One sentence on what this job does.
+purpose: Finds atlas repo docs whose repository moved past the commit they describe and proposes minimal, evidence-backed updates for up to 3 of them a run, for a person to review.
+
+# Exactly one of:
+#   schedule: "0 13 * * *"   five-field cron, UTC
+#   after: other-job         runs when that job succeeds
+#   manual: true             runs only when started by hand
+# 14:00 UTC every other day. If another job commits generated data to the
+# atlas (such as a map refresh), schedule this one after it, so the docs are
+# read at a commit nothing else writes to for the rest of the day.
+trigger:
+  schedule: "0 14 */2 * *"
+
+# Must be listed in models.yml. A run started by hand can pick another.
+# The second check runs on output.review_model, another family, so it does
+# not share the writer's blind spots.
+model: {{model}}
+
+# Pi thinking level for every run, one the model takes (models.yml). A run
+# started by hand can pick another.
+thinking: high
+
+# true: Pi also gets a shell (bash) inside the box.
+shell: true
+
+limits:
+  # A run of 3 docs can take dozens of model calls; a call the provider
+  # drops after minutes still counts as a turn.
+  turns: 100 # at most 200
+  # A run reserves tokens_per_run at the dearer price of its model and its
+  # second check model.
+  tokens_per_run: 2000000 # at most 2000000
+  usd_per_month: 15 # all jobs together share the workspace's monthly budget
+  collect_tool_calls: 400 # tool calls collect.ts may make per run, at most 1000
+
+# Names of directories under tools/. Tools are read-only.
+tools: [gh-file]
+collect_tools: [gh-commits, gh-file, gh-compare, gh-pull-requests]
+# The model's gh-file reads each repository at the commit the input's repos
+# gives: the head each doc is refreshed to (the commit its sources and the
+# second check's cited files are at), and the atlas commit its pages are at.
+pin_files: true
+
+# kind is one of:
+#   file    the run's result is kept as a file; nothing else to set
+#   slack   also set channel: <a channel from channels.yml>
+#   pr      also set repos: [owner/name, ...] from repos.yml,
+#           paths: [globs the job may change], max_changed_lines: <number>,
+#           untrusted_input: report_only or open_pr, and optionally
+#           frontmatter_keys, stamp_keys and review_team (the team asked
+#           to review each new pull request, with the people whose changes
+#           it cites)
+# The paths, line limit and keys must match collect.ts's RULES. In shadow
+# mode the run builds the pull request and keeps it in the report without
+# opening it.
+output:
+  kind: pr
+  attribution_check: true
+  repos: [{{github}}/{{atlasRepo}}]
+  paths:
+    [repos/*.md, repos/*/*.md, INDEX.md, ARCHITECTURE.md, GLOSSARY.md, GAPS.md]
+  max_changed_lines: 800
+  # A live run merges its own pull request when it only changes repo docs,
+  # after every check passed (schema, quotes, PR checker, attribution check,
+  # second check). A change to INDEX, ARCHITECTURE, GLOSSARY or GAPS stays
+  # open for review.
+  auto_merge:
+    paths: ["repos/*.md", "repos/*/*.md"]
+  # open_pr: collect.ts reads the open pull requests (gh-pull-requests,
+  # untrusted) only for the waiting rule; of them only the job's own open
+  # pull request (number, link, branch) reaches the input.
+  untrusted_input: open_pr
+  # used_by is left out: the atlas generates it from every depends_on.
+  frontmatter_keys:
+    [
+      repo,
+      language,
+      type,
+      status,
+      deploy,
+      depends_on,
+      artifacts,
+      default_branch,
+    ]
+  stamp_keys: [analyzed_commit]
+  review_team: {{reviewTeam}}
+  review_model:
+    model: {{reviewModel}}
+    thinking: high
+
+# shadow runs deliver nowhere public. live needs SHADOW_RUNS.md with 4 run
+# links and code owner approval.
+mode: shadow
