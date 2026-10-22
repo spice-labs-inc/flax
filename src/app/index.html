@@ -1,0 +1,140 @@
+<title>__TITLE__</title>
+<style>__CSS__</style>
+
+<div id="stage"><canvas id="gl"></canvas><canvas id="gl2" hidden></canvas></div>
+<div id="boxlabels"></div>
+<canvas id="fieldlabels" aria-hidden="true"></canvas>
+<div id="labels"></div>
+
+<div id="brand" class="hud">
+  <button type="button" id="full" aria-label="Toggle full screen" title="Full screen (F)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square"/></svg></button>
+  <h1>__TITLE__</h1>
+  <div class="sub"><span id="counts">loading</span></div>
+  <div class="sub stamp"><span id="stamp"></span></div>
+  <div id="mode">
+    <span class="tag" id="modetag">Exploring</span>
+    <button type="button" id="modeexit">Exit flow</button>
+  </div>
+</div>
+
+<div id="rail" class="hud">
+  <div class="group">
+    <h2>Find</h2>
+    <div id="searchwrap">
+      <input id="search" type="search" placeholder="__SEARCH__" autocomplete="off" spellcheck="false">
+    </div>
+    <div id="results"></div>
+  </div>
+
+  <div class="group">
+    <h2>Dimension</h2>
+    <div class="seg" id="dim">
+      <button type="button" data-d="3d" aria-pressed="true">3D map</button>
+      <button type="button" data-d="2d" aria-pressed="false">2D groups</button>
+    </div>
+    <div class="seg" id="shellwrap" hidden>
+      <button type="button" data-sh="on" aria-pressed="true">Show groups</button>
+      <button type="button" data-sh="off" aria-pressed="false">Hide groups</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <h2>Start here</h2>
+    <div id="views"></div>
+  </div>
+
+  <div class="group">
+    <h2>Guided flows</h2>
+    <div id="flowlist"></div>
+  </div>
+
+  <div class="group">
+    <h2>Connections</h2>
+    <div id="layers"></div>
+  </div>
+
+  <div class="group">
+    <h2>Planes</h2>
+    <div id="planes"></div>
+  </div>
+
+  <div class="group">
+    <h2>Severity</h2>
+    <div id="severities"></div>
+  </div>
+
+  <div class="group">
+    <h2>Node size</h2>
+    <div class="slider">
+      <input id="nodescale" type="range" min="0.4" max="2.6" step="0.05" value="1" aria-label="Node size scale">
+      <output id="nodescaleout">1.0×</output>
+    </div>
+  </div>
+
+  <div class="group">
+    <h2>Shapes</h2>
+    <div class="legend">
+      <span><i class="gl hex"></i>our service</span>
+      <span><i class="gl dot"></i>library</span>
+      <span><i class="gl sq"></i>datastore</span>
+      <span><i class="gl sqo"></i>machine</span>
+      <span><i class="gl dia"></i>queue</span>
+      <span><i class="gl ring"></i>third party</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <h2>Source</h2>
+    <div class="seg" id="visibility">
+      <button type="button" data-v="all" aria-pressed="true">All</button>
+      <button type="button" data-v="public" aria-pressed="false">Open source</button>
+      <button type="button" data-v="internal" aria-pressed="false">Internal</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <h2>Lifecycle</h2>
+    <div class="seg" id="status">
+      <button type="button" data-s="live" aria-pressed="true">Live</button>
+      <button type="button" data-s="all" aria-pressed="false">Include parked</button>
+    </div>
+  </div>
+</div>
+
+<div id="player" class="hud">
+  <div class="head">
+    <strong id="flowname"></strong>
+    <span class="sum" id="flowsum"></span>
+    <span class="progress" id="stepnum"></span>
+  </div>
+  <div id="track"></div>
+  <div id="step">
+    <div class="txt">
+      <div class="hop" id="stephop"></div>
+      <div class="why" id="stepwhy"></div>
+    </div>
+    <div class="ctl">
+      <button type="button" id="playpause">Pause</button>
+      <button type="button" id="prev">Back</button>
+      <button type="button" id="next">Next</button>
+      <button type="button" id="exit">Exit flow</button>
+    </div>
+  </div>
+</div>
+
+<div id="inspector" class="hud">
+  <header>
+    <div class="who">
+      <div class="eyebrow" id="ins-kind"></div>
+      <h2 id="ins-name"></h2>
+    </div>
+    <button type="button" id="close" aria-label="Close inspector">✕</button>
+  </header>
+  <div id="body"></div>
+</div>
+
+<div id="hint">drag to orbit · scroll to zoom · click a node to inspect</div>
+
+<script type="application/json" id="atlas-config">__CONFIG__</script>
+<script type="application/json" id="graph-data">__DATA__</script>
+<script>__JS__</script>
