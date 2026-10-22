@@ -220,6 +220,8 @@ describe("the runner bundles", () => {
     const runner = bundles.get(RUNNER_BUNDLE)!;
     // The job schema is compiled from the bundle, never read from the package directory.
     expect(runner).toContain("https://agents-kit.dev/schema/job.schema.json");
+    // So is the agent Dockerfile, which the agent-image check reads.
+    expect(runner).toContain("FROM ubuntu:24.04");
   }, 60_000);
 
   it("hand the runner every tool mapping before its command line starts", () => {

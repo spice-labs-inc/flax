@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AGENT_DOCKERFILE, KIT_ROOT } from "../lib/paths.ts";
+import { BUNDLED_AGENT_DOCKERFILE } from "../lib/bundled.ts";
 import { problem, type Problem } from "../lib/problem.ts";
 import {
   PI_EXTENSIONS_PREFIX,
@@ -404,7 +405,8 @@ export function agentImageProblems(text: string): Problem[] {
       ),
     );
   }
-  const copyEntrypoint = /^\s*COPY\s+(?:--\S+\s+)*entrypoint\.sh\s+\/entrypoint\.sh\s*$/i;
+  const copyEntrypoint =
+    /^\s*COPY\s+(?:--\S+\s+)*entrypoint\.sh\s+\/entrypoint\.sh\s*$/i;
   const entrypoint = /^\s*ENTRYPOINT\s+\["\/entrypoint\.sh"\]\s*$/i;
   if (
     !lines.some((l) => copyEntrypoint.test(l.text)) ||
@@ -436,7 +438,9 @@ export const agentImageCheck: Check = {
   id: "agent-image",
   title: `${AGENT_DOCKERFILE} pins exact versions`,
   run(repo) {
-    // The Dockerfile is the kit's, not the workspace's: the image is built from the package.
+    // The Dockerfile is the kit's, not the workspace's: the image is built from the package; a bundle carries its text.
+    if (BUNDLED_AGENT_DOCKERFILE !== undefined)
+      return agentImageProblems(BUNDLED_AGENT_DOCKERFILE);
     const path = join(KIT_ROOT, AGENT_DOCKERFILE);
     if (!existsSync(path)) return [problem(AGENT_DOCKERFILE, "is missing")];
     return agentImageProblems(readFileSync(path, "utf8"));

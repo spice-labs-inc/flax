@@ -11,6 +11,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { realpathSync } from "node:fs";
 import { build, type Metafile } from "esbuild";
 import {
+  AGENT_DOCKERFILE,
   BUNDLE_DIR,
   BUNDLE_MANIFEST,
   bundledJobScript,
@@ -182,10 +183,13 @@ export async function bundleOne(
     minifySyntax: true,
     banner: { js: BANNER },
     define: {
-      // The kit root, relative to the bundle: the agent Dockerfile and the job templates are read from the package at run
-      // time (after a workspace installs its packages); the schemas travel inside the bundle (src/lib/schemas.ts).
+      // The kit root, relative to the bundle: the job templates are read from the package at run time (after a workspace
+      // installs its packages); the schemas (src/lib/schemas.ts) and the agent Dockerfile travel inside the bundle.
       FLAX_AGENTS_BUNDLE_ROOT: JSON.stringify(
         `${relative(dirname(outfile), KIT_ROOT)}/`,
+      ),
+      FLAX_AGENTS_BUNDLED_AGENT_DOCKERFILE: JSON.stringify(
+        readFileSync(join(KIT_ROOT, AGENT_DOCKERFILE), "utf8"),
       ),
     },
     legalComments: "eof",
