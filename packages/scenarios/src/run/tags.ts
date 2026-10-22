@@ -10,7 +10,8 @@ import type { Env } from "../lib/types.ts";
  * Never planned scenarios, never local ones, never the tags the env's policy excludes (unless the scenario
  * carries one of the env's allowTags), fixture and workflow-dispatch scenarios only when asked, and a
  * scenario tagged with environments runs only there. A run for a cadence takes only the scenarios with its
- * tag; any other run leaves out every cadence's.
+ * tag; any other run leaves out every cadence's, except a record run, which films the scenarios its
+ * sidecars name whatever cadence checks them.
  */
 export function tagExpression(
   env: Env,
@@ -19,6 +20,7 @@ export function tagExpression(
   dispatch = false,
   cadence?: string,
   c: ScenariosConfig = config(),
+  record = false,
 ): string {
   const envTags = envNames(c)
     .map((e) => `not @env:${e}`)
@@ -29,7 +31,11 @@ export function tagExpression(
     "not @local",
     `((${envTags}) or @env:${env})`,
     ...policyClause(envConfig(env, c)),
-    ...(only ? [only.tag] : c.cadences.map((k) => `not ${k.tag}`)),
+    ...(only
+      ? [only.tag]
+      : record
+        ? []
+        : c.cadences.map((k) => `not ${k.tag}`)),
     ...(fixtures ? [] : ["not @fixture"]),
     ...(dispatch ? [] : ["not @dispatch"]),
     ...(extra ? [`(${extra})`] : []),

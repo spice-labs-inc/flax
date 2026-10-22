@@ -46,7 +46,7 @@ It does not cover a real Linux container under a desktop docker on Windows.
 
 ## Browser recordings
 
-The same scenarios that check a web app can film it. `flax scenarios run --env <env> --record <dir> [--record-all] [feature paths...]` runs the scenarios of the selection that have a video sidecar (every selected scenario with `--record-all`), one at a time, paced for a viewer, and writes a recording per scenario. The rest of the run is the ordinary one: the same steps, the same tag policy, the same results directory. With `--dry-run` it checks the sidecars against their scenarios and every step's definition, and writes nothing. A recording is made in a run that passes as much as in one that fails; a failed one is marked so, and a renderer refuses it.
+The same scenarios that check a web app can film it. `flax scenarios run --env <env> --record <dir> [--record-all] [feature paths...]` runs the scenarios of the selection that have a video sidecar (every selected scenario with `--record-all`), one at a time, paced for a viewer, and writes a recording per scenario. The rest of the run is the ordinary one: the same steps, the same tag policy (except that cadence tags leave nothing out), the same results directory. With `--dry-run` it checks the sidecars against their scenarios and every step's definition, and writes nothing. A recording is made in a run that passes as much as in one that fails; a failed one is marked so, and a renderer refuses it.
 
 ### The video sidecar
 

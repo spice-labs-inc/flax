@@ -47,6 +47,33 @@ describe("the tag expression", () => {
     );
   });
 
+  it("keeps every cadence's scenarios in a record run, which films what its sidecars name", () => {
+    expect(
+      tagExpression(
+        "test",
+        undefined,
+        true,
+        false,
+        undefined,
+        withCadences,
+        true,
+      ),
+    ).toBe(`not @planned and not @local and ${ENV_TAGS} and not @dispatch`);
+    expect(
+      tagExpression(
+        "test",
+        undefined,
+        true,
+        false,
+        "daily",
+        withCadences,
+        true,
+      ),
+    ).toBe(
+      `not @planned and not @local and ${ENV_TAGS} and @daily and not @dispatch`,
+    );
+  });
+
   it("takes only the cadence's scenarios in a run for it, still under the env policy", () => {
     expect(
       tagExpression("test", "@web", false, false, "daily", withCadences),

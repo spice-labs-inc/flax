@@ -38,7 +38,7 @@ scenarios:
 
 `tag` defaults to `@<name>` (`@weekly` above) and `envs` to every environment. Two cadences cannot share a tag, and a cadence tag cannot be one the runner already gives a meaning (`@planned`, `@local`, `@fixture`, `@dispatch`, `@serial`, `@env:<id>`).
 
-An ordinary run leaves out every scenario that carries a cadence tag. `flax scenarios run --env test --cadence daily` runs only the scenarios tagged `@daily`, still under the environment's policy: `@env:` tags, `excludeTags` and the fixture rules apply as they do to any run. On the test environment above the two runs select with
+An ordinary run leaves out every scenario that carries a cadence tag; a record run (`--record`) keeps them, since it films the scenarios its sidecars name whatever cadence checks them. `flax scenarios run --env test --cadence daily` runs only the scenarios tagged `@daily`, still under the environment's policy: `@env:` tags, `excludeTags` and the fixture rules apply as they do to any run. On the test environment above the two runs select with
 
 ```text
 ordinary:         not @planned and not @local and ((not @env:live and not @env:test) or @env:test) and not @daily and not @weekly and not @fixture and not @dispatch

@@ -171,6 +171,7 @@ export async function runScenarios(argv: string[]): Promise<number> {
         values.dispatch ?? false,
         cadence,
         kit,
+        record !== undefined,
       ),
       format: ["progress"],
       strict: true,
