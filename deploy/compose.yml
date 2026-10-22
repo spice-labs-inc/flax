@@ -1,0 +1,26 @@
+# The reference deployment: the page behind Caddy on 8080, the service beside it on 8081 (ingest and the live
+# layer are proxied by the Caddyfile). Build both from the workspace directory: `docker compose -f deploy/compose.yml build`.
+services:
+  site:
+    build: { context: .., dockerfile: deploy/Dockerfile, target: site }
+    ports: ["8080:8080"]
+    environment:
+      EXPLORER_SERVICE: service:8081
+    volumes:
+      - explorer-state:/srv:ro
+    depends_on: [service]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+  service:
+    build: { context: .., dockerfile: deploy/Dockerfile, target: service }
+    environment:
+      EXPLORER_INGEST_TOKEN: ${EXPLORER_INGEST_TOKEN:?the token scheduled runs push with}
+      # Optional: the GitHub reader app for the artifact fallback flax.yml names under explorer.results.
+      EXPLORER_GH_APP_ID: ${EXPLORER_GH_APP_ID:-}
+      EXPLORER_GH_APP_KEY: ${EXPLORER_GH_APP_KEY:-}
+    volumes:
+      - explorer-state:/srv
+    security_opt: [no-new-privileges:true]
+volumes:
+  explorer-state: {}

@@ -1,0 +1,54 @@
+/** The open pages' event streams: a snapshot on connect, then every event, and a comment every 25 seconds so idle proxies keep the stream. */
+export class Hub {
+    #clients = new Set();
+    #snapshot;
+    #max;
+    #heartbeat;
+    constructor(snapshot, heartbeatMs = 25_000, max = 500) {
+        this.#snapshot = snapshot;
+        this.#max = max;
+        this.#heartbeat = setInterval(() => {
+            for (const c of this.#clients)
+                c.write(": keep-alive\n\n");
+        }, heartbeatMs);
+        this.#heartbeat.unref();
+    }
+    get size() {
+        return this.#clients.size;
+    }
+    connect(req, res) {
+        if (this.#clients.size >= this.#max) {
+            res.writeHead(503, { "retry-after": "30" }).end();
+            return;
+        }
+        res.writeHead(200, {
+            "content-type": "text/event-stream; charset=utf-8",
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            connection: "keep-alive",
+        });
+        res.write("retry: 5000\n\n");
+        res.write(frame("snapshot", this.#snapshot()));
+        this.#clients.add(res);
+        const drop = () => this.#clients.delete(res);
+        req.on("close", drop);
+        res.on("error", drop);
+    }
+    send(event, data) {
+        if (this.#clients.size === 0)
+            return;
+        const f = frame(event, data);
+        for (const c of this.#clients)
+            c.write(f);
+    }
+    close() {
+        clearInterval(this.#heartbeat);
+        for (const c of this.#clients)
+            c.end();
+        this.#clients.clear();
+    }
+}
+function frame(event, data) {
+    return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+//# sourceMappingURL=hub.js.map
