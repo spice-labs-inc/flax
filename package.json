@@ -1,0 +1,47 @@
+{
+  "name": "@flax/atlas",
+  "version": "0.1.1",
+  "description": "An architecture atlas of your repositories, written for people and coding agents: page template, maintenance rules, budgets, generated tables, a wiring pipeline and a 3D map",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spice-labs-inc/flax",
+    "directory": "packages/atlas"
+  },
+  "homepage": "https://github.com/spice-labs-inc/flax/tree/main/packages/atlas#readme",
+  "bugs": "https://github.com/spice-labs-inc/flax/issues",
+  "keywords": [
+    "architecture",
+    "atlas",
+    "documentation",
+    "coding-agents",
+    "graph",
+    "3d"
+  ],
+  "type": "module",
+  "flax": "./dist/bin.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./config": "./dist/config.js",
+    "./markdown": "./dist/atlas/markdown.js",
+    "./yaml": "./dist/atlas/yaml.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src/app",
+    "prompts",
+    "templates",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.6"
+  },
+  "dependencies": {
+    "d3-force-3d": "^3.0.5",
+    "elkjs": "^0.12.0",
+    "esbuild": "^0.24.0",
+    "three": "^0.170.0",
+    "@flax/core": "git+https://github.com/spice-labs-inc/flax.git#core-v0.1.1"
+  }
+}
