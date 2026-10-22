@@ -1,0 +1,49 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: k8s-pod-log
+
+description: Returns the last lines of one pod's log in a Kubernetes cluster (dev, staging, prod or shared-services), at most 300 lines. Set previous to read the log of the container's last terminated run, which usually shows why it restarted.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [cluster, namespace, name]
+  properties:
+    cluster:
+      type: string
+      description: The cluster to read.
+      enum: [dev, staging, prod, shared-services]
+    namespace:
+      type: string
+      description: The pod's namespace.
+      maxLength: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    name:
+      type: string
+      description: The pod name.
+      maxLength: 253
+      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+    container:
+      type: string
+      description: The container, when the pod has more than one.
+      maxLength: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    previous:
+      type: boolean
+      description: Read the previous, terminated run of the container.
+    tail:
+      type: integer
+      description: How many lines from the end, 100 when not given.
+      minimum: 1
+      maximum: 300
+
+upstream:
+  server: kubernetes
+  operations: [pods_log]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536

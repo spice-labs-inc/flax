@@ -1,0 +1,35 @@
+{
+  "pages": [
+    {
+      "repo": "notes-co/agents",
+      "path": "src/media/scenarios/overview/scenario.ts",
+      "decision": "patch",
+      "reason": "The app renamed the ranked rows' test id from rank-row to note-row, so the highlight step would find nothing.",
+      "patch": "--- a/src/media/scenarios/overview/scenario.ts\n+++ b/src/media/scenarios/overview/scenario.ts\n@@ -23,7 +23,7 @@\n         },\n       ],\n       steps: [\n-        { kind: \"highlight\", selector: \"[data-testid=rank-row]\", ms: 2200 },\n+        { kind: \"highlight\", selector: \"[data-testid=note-row]\", ms: 2200 },\n       ],\n     },\n   ],\n",
+      "changes": [
+        {
+          "removed": [
+            "        { kind: \"highlight\", selector: \"[data-testid=rank-row]\", ms: 2200 },"
+          ],
+          "added": [
+            "        { kind: \"highlight\", selector: \"[data-testid=note-row]\", ms: 2200 },"
+          ],
+          "evidence": [
+            {
+              "repo": "notes-co/web",
+              "commit": "b2c3d4e5f60718293a4b5c6d7e8f901234567890",
+              "path": "src/lib/inbox/RankList.svelte"
+            }
+          ],
+          "why": "web#560 replaced data-testid rank-row with note-row on the ranked rows."
+        }
+      ]
+    },
+    {
+      "repo": "notes-co/agents",
+      "path": "src/media/scenarios/smoke/scenario.ts",
+      "decision": "no_change",
+      "reason": "No merged change touches the notebooks page this scenario opens."
+    }
+  ]
+}

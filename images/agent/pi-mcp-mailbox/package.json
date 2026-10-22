@@ -1,0 +1,15 @@
+{
+  "name": "pi-mcp-mailbox",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Pi extension that reaches the spice-agents tools server through the tools socket, and the runner's model socket through a loopback shim",
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./src/extension.ts"
+    ]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.2.0"
+  }
+}

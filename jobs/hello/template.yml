@@ -1,0 +1,7 @@
+# A model job that summarizes a short text: the smallest job the kit runs,
+# for proving a workspace end to end (box, gateway, schema check, report).
+description: Summarizes a short piece of text, to prove the job kit end to end.
+fields:
+  model:
+    description: The model id the job runs on, as models.yml lists it.
+    example: anthropic/claude-sonnet-4-5

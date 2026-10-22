@@ -1,0 +1,31 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: echo # must equal the folder name
+
+# What the model is told the tool does. Written here, never copied from an
+# upstream.
+description: Returns the text it is given, unchanged. A stand-in that tests the path from Pi to the tools server; it reads nothing.
+
+# JSON Schema for the arguments. Every value needs a limit.
+arguments:
+  type: object
+  additionalProperties: false
+  required: [text]
+  properties:
+    text:
+      type: string
+      description: The text to return.
+      maxLength: 1000
+
+# The system the tool reads from and the only operations it may call there.
+upstream:
+  server: builtin
+  operations: [echo]
+
+# Longest result the model gets, in bytes; longer results are cut.
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 4096

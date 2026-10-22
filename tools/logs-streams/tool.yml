@@ -1,0 +1,36 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: logs-streams
+
+description: Lists the log streams in OpenObserve, with each stream's name, type, stored size and the time of its newest record (doc_time_max, microseconds). The first result already holds the total count and the names of all matching streams (every log stream when no keyword is given), so calling it again with different keywords is unnecessary. Stream names look like env:namespace:service, for example prod:apps:backend. Given has_fields, it also says which of those fields each stream's schema has, such as level. Use it to find the stream to search with logs-search.
+
+arguments:
+  type: object
+  additionalProperties: false
+  properties:
+    keyword:
+      type: string
+      description: Only streams whose name contains this text.
+      maxLength: 100
+    has_fields:
+      type: array
+      description: Field names to look for in each stream's schema, such as level; at most 10.
+      minItems: 1
+      maxItems: 10
+      items:
+        type: string
+        maxLength: 100
+        pattern: "^[A-Za-z0-9_]+$"
+
+# Log streams only, in the default organization; of the schema, only which of
+# has_fields each stream has.
+upstream:
+  server: openobserve
+  operations: [StreamList]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 32768

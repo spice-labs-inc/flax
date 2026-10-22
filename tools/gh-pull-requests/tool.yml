@@ -1,0 +1,66 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: gh-pull-requests
+
+description: Lists pull requests in one notes-co repository, or, given a pull request number, reads the part of it that view names (its details, diff, changed files, commits, reviews, review comments, comments, commit status or check runs).
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [repo]
+  properties:
+    repo:
+      type: string
+      description: The repository name in notes-co, for example engine.
+      maxLength: 100
+      pattern: "^[A-Za-z0-9._-]+$"
+    number:
+      type: integer
+      description: A pull request number, to read that pull request.
+      minimum: 1
+      maximum: 100000000
+    view:
+      type: string
+      description: What to read of the pull request given by number, get (its details) when not given.
+      enum:
+        [
+          get,
+          get_diff,
+          get_status,
+          get_files,
+          get_commits,
+          get_reviews,
+          get_review_comments,
+          get_comments,
+          get_check_runs,
+        ]
+    state:
+      type: string
+      description: When listing, only pull requests in this state; open when not given.
+      enum: [open, closed, all]
+    base:
+      type: string
+      description: When listing, only pull requests into this branch.
+      maxLength: 250
+    per_page:
+      type: integer
+      description: Results per page, 20 when not given.
+      minimum: 1
+      maximum: 100
+    page:
+      type: integer
+      description: The page, 1 when not given.
+      minimum: 1
+      maximum: 10
+
+# Read methods only, in notes-co.
+upstream:
+  server: github
+  operations: [list_pull_requests, pull_request_read]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: untrusted
+
+result_max_bytes: 65536
