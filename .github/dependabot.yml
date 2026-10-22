@@ -21,3 +21,6 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # The agent image stays on an Ubuntu LTS release; the base image moves by hand.
+      - dependency-name: ubuntu

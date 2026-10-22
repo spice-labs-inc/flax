@@ -85,9 +85,9 @@ function step(steps: Record<string, any>[], name: string): Record<string, any> {
 
 /** The steps every kit workflow starts with: a checkout without credentials, pnpm, Node, install, build. */
 const SETUP = [
-  "actions/checkout@v5",
+  "actions/checkout@v7",
   "pnpm/action-setup@v6",
-  "actions/setup-node@v6",
+  "actions/setup-node@v7",
   "pnpm install --frozen-lockfile",
   "pnpm -r build",
 ];
