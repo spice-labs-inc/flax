@@ -25,6 +25,21 @@ export function scenarioFetch(
 }
 
 /**
+ * The hosts of the origins that are URLs. A hosts table may carry other
+ * strings beside its URLs (an environment id, a label); those are not sites.
+ */
+export function urlHosts(origins: (string | undefined)[]): Set<string> {
+  const hosts = new Set<string>();
+  for (const o of origins) {
+    if (o === undefined || !URL.canParse(o)) continue;
+    const url = new URL(o);
+    if (url.protocol === "http:" || url.protocol === "https:")
+      hosts.add(url.host);
+  }
+  return hosts;
+}
+
+/**
  * Marks a browser context's requests to our own sites synthetic. A route adds
  * the header rather than extraHTTPHeaders, which would also send it
  * cross-origin and fail third-party CORS preflights.
@@ -33,9 +48,7 @@ export async function markSynthetic(
   context: BrowserContext,
   origins: (string | undefined)[],
 ): Promise<void> {
-  const ours = new Set(
-    origins.filter((o) => o !== undefined).map((o) => new URL(o).host),
-  );
+  const ours = urlHosts(origins);
   await context.route(
     (url) => ours.has(url.host),
     (route) =>
