@@ -15,7 +15,14 @@ import { scenarioResults } from "./messages.ts";
 import { plannedScenarios } from "./planned.ts";
 import { cadenceProblem, tagExpression } from "./tags.ts";
 import type { RunResult } from "./results.ts";
-import { planRecordings, type RecordPlan } from "../record/plan.ts";
+import { wantedCaptures } from "../capture/capture.ts";
+import {
+  captureEntries,
+  captureManifest,
+  type CaptureScenario,
+} from "../capture/manifest.ts";
+import { featureKey, planRecordings, type RecordPlan } from "../record/plan.ts";
+import { featureScenarios } from "../record/steps.ts";
 import type { Timeline } from "../record/timeline.ts";
 
 /** The loader that runs TypeScript step files on a plain Node: see strip-types-loader.mjs. */
@@ -41,13 +48,14 @@ export async function runScenarios(argv: string[]): Promise<number> {
       parallel: { type: "string", default: "1" },
       record: { type: "string" },
       "record-all": { type: "boolean", default: false },
+      capture: { type: "string" },
     },
   });
 
   const env = ENVS.find((e) => e === values.env);
   if (!env) {
     console.error(
-      `usage: flax scenarios run --env <${ENVS.join("|")}> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--cadence <name>] [--parallel <n>] [--record <dir> [--record-all]] [feature paths...]`,
+      `usage: flax scenarios run --env <${ENVS.join("|")}> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--cadence <name>] [--parallel <n>] [--record <dir> [--record-all] | --capture <dir>] [feature paths...]`,
     );
     return 2;
   }
@@ -66,6 +74,11 @@ export async function runScenarios(argv: string[]): Promise<number> {
     console.error(
       "--record films one scenario at a time; leave out --parallel",
     );
+    return 2;
+  }
+
+  if (values.capture !== undefined && values.record !== undefined) {
+    console.error("--capture and --record are separate runs; give one");
     return 2;
   }
 
@@ -151,6 +164,40 @@ export async function runScenarios(argv: string[]): Promise<number> {
     record = { plan, file };
   }
 
+  let capture: { dir: string; scenarios: CaptureScenario[] } | undefined;
+  if (values.capture !== undefined) {
+    const tag = kit.capture.tag;
+    const scenarios: CaptureScenario[] = [];
+    for (const { uri, text } of sources)
+      for (const s of await featureScenarios(uri, text)) {
+        const wanted = wantedCaptures(s.tags, tag);
+        if (wanted)
+          scenarios.push({
+            uri: featureKey(uri),
+            line: s.line,
+            name: s.name,
+            ...wanted,
+          });
+      }
+    if (scenarios.length === 0) {
+      console.error(
+        `nothing to capture: no selected scenario is tagged ${tag} or ${tag}:<name>`,
+      );
+      return 2;
+    }
+    for (const s of scenarios)
+      console.error(
+        `to capture: ${s.all ? "every capture" : s.names.join(", ")} (${s.uri}:${s.line} ${s.name})`,
+      );
+    // Only the selected scenarios run, each by its line.
+    paths = scenarios.map((s) => `${s.uri}:${s.line}`);
+    capture = { dir: resolve(values.capture), scenarios };
+    if (!values["dry-run"]) {
+      await mkdir(capture.dir, { recursive: true });
+      process.env[variables.capture] = capture.dir;
+    }
+  }
+
   if (record && !values["dry-run"]) {
     await mkdir(record.plan.dir, { recursive: true });
     await writeFile(record.file, JSON.stringify(record.plan));
@@ -171,7 +218,7 @@ export async function runScenarios(argv: string[]): Promise<number> {
         values.dispatch ?? false,
         cadence,
         kit,
-        record !== undefined,
+        record !== undefined || capture !== undefined,
       ),
       format: ["progress"],
       strict: true,
@@ -251,6 +298,28 @@ export async function runScenarios(argv: string[]): Promise<number> {
     `${env}: ${run.scenarios.length} scenarios, ${count("passed")} passed, ${count("failed")} failed, ${planned.length} planned, ${Math.round((Date.parse(run.finishedAt) - startedAt.getTime()) / 60_000)} min${parallel > 1 ? ` with ${parallel} workers` : ""}; ${dir}`,
   );
   await live?.finish(run, planned);
+  if (capture) {
+    const manifest = captureManifest(
+      captureEntries(envelopes),
+      run.scenarios,
+      capture.scenarios,
+      {
+        env,
+        runId,
+        startedAt: run.startedAt,
+        finishedAt: run.finishedAt,
+      },
+    );
+    await writeFile(
+      join(capture.dir, "manifest.json"),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
+    for (const p of manifest.problems) console.error(`capture: ${p}`);
+    console.error(
+      `captures: ${manifest.captures.filter((c) => c.status === "passed").length} of ${manifest.captures.length} from passed scenarios, ${manifest.status}; ${join(capture.dir, "manifest.json")}`,
+    );
+    if (manifest.status !== "passed") return 1;
+  }
   return success ? 0 : 1;
 }
 

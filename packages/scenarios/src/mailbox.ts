@@ -71,7 +71,7 @@ export function findLink(
 
 /** Polls the mailbox until a message to `to` that arrived after `since` (and passes `match`) is there. */
 export function awaitMessage(query: MailQuery): Promise<MailMessage> {
-  return poll(query, `an email to ${query.to} arriving`);
+  return poll(query, "an email to the address arriving");
 }
 
 /** Polls the mailbox for an email to `to` holding a link that matches `pattern`, and returns the link. */
@@ -82,7 +82,7 @@ export async function awaitLink(
   const linkIn = (m: MailMessage) => findLink(pattern, m.text, m.html);
   const message = await poll(
     { ...rest, match: (m) => match(m) && linkIn(m) !== undefined },
-    `an email to ${query.to} with a link matching ${pattern} arriving`,
+    `an email to the address with a link matching ${pattern} arriving`,
   );
   return linkIn(message)!;
 }
@@ -110,15 +110,14 @@ async function poll(query: MailQuery, what: string): Promise<MailMessage> {
           for await (const source of client.sources(folder, to, since)) {
             const message = await parse(folder, source);
             if (match(message)) {
-              log(`mailbox: found an email to ${to} in ${folder}`);
+              log(`mailbox: found the email in ${folder}`);
               return { value: message, state: `found in ${folder}` };
             }
           }
       } finally {
         await client.close().catch(() => undefined);
       }
-      if (++polls % 6 === 0)
-        log(`mailbox: still waiting for an email to ${to}`);
+      if (++polls % 6 === 0) log("mailbox: still waiting for the email");
       return { state: `no match in ${folders.join(", ")}, poll ${polls}` };
     },
     pollMs,

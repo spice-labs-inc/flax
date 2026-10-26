@@ -25,6 +25,8 @@ export interface FeatureScenario {
   name: string;
   /** The scenario's line, or its example row's for a scenario outline. */
   line: number;
+  /** Its tags, the feature's and an outline example's included. */
+  tags: string[];
   steps: StepInfo[];
 }
 
@@ -110,6 +112,7 @@ export async function featureScenarios(
             feature: document.feature?.name ?? uri,
             name: e.pickle.name,
             line: e.pickle.location?.line ?? 0,
+            tags: e.pickle.tags.map((t) => t.name),
             steps: scenarioSteps(e.pickle, document),
           },
         ]

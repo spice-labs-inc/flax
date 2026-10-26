@@ -42,3 +42,8 @@ export function currentRecordPlan(): RecordPlan | undefined {
     plan = { file, plan: JSON.parse(readFileSync(file, "utf8")) as RecordPlan };
   return plan.plan;
 }
+
+/** The directory a `run --capture` run writes its screenshots to; undefined in any other run. */
+export function currentCaptureDir(): string | undefined {
+  return process.env[envVariables().capture] || undefined;
+}

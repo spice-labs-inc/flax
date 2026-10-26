@@ -177,6 +177,13 @@ scenarios:
     viewport: { width: 1440, height: 900 }
     scale: 1
     highlightColor: "#2f6fed"
+  # Screenshots (run --capture): the tag that selects a scenario (<tag>:<name> takes only that name) and the page they are taken in.
+  capture:
+    tag: "@capture"
+    viewport: { width: 1440, height: 900 }
+    scale: 2
+    colorScheme: light
+    locale: en-US
 
 # The explorer: the living map of what the scenarios prove.
 explorer:

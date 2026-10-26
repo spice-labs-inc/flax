@@ -10,6 +10,7 @@ Run in the workspace directory (the one holding `flax.yml`), or point `FLAX_WORK
 |---|---|
 | `flax scenarios run --env <env> [--tags <expression>] [--out <dir>] [--dry-run] [--fixtures] [--dispatch] [--cadence <name>] [--parallel <n>] [feature paths...]` | runs the scenarios against one environment with cucumber (with `--cadence`, only the scenarios on that cadence; without it, none of them), writes `results/<env>/<run id>/` (`run.json`, `planned.json`, `messages.ndjson`), and, when `EXPLORER_URL` and `EXPLORER_INGEST_TOKEN` are set, pushes the run's progress to an explorer service as it goes |
 | `flax scenarios run --env <env> --record <dir> [--record-all] [--dry-run] [feature paths...]` | the same run limited to the scenarios with a video sidecar (`<name>.video.yml` or `<name>.<id>.video.yml` beside the feature; every selected scenario with `--record-all`), paced and filmed: `<dir>/<id>/` gets `video.webm`, `timeline.json`, a screen per step, terminal scenes and the sidecar; see [docs/scenarios/recorder.md](../../docs/scenarios/recorder.md#browser-recordings) |
+| `flax scenarios run --env <env> --capture <dir> [--dry-run] [feature paths...]` | the same run limited to the scenarios tagged `@capture` (or `@capture:<name>`, which takes only that name), cadence ones included: each screenshot their steps ask for through `media.capture` goes to `<dir>/<name>.png`, and `<dir>/manifest.json` lists them with the scenario, step, page, size and visible text of each; see [docs/scenarios/recorder.md](../../docs/scenarios/recorder.md#screenshots) |
 | `flax scenarios coverage [--results <dir>]` | the coverage map (`coverage-map.json`) and its report (`GAPS.md`) from the surface files and the latest run per environment |
 | `flax scenarios dataset` | validates `personas/*.yml`, `journeys/stations.yml` and `journeys/*.yml`, then resolves every journey's stations against the coverage map into `journeys.json` |
 
@@ -38,7 +39,7 @@ Every path above is a default; the `paths` key of the `scenarios:` section renam
 - `textRules`: regular expressions the dataset's prose must not match, with the message to give.
 - `http`: the user agent and the synthetic-client header every scenario request carries, so the product can tell checks from customers.
 - `cucumber`: `imports` (globs of support and step files), `features`, `stripTypes` and `loaders` (below).
-- `versionProbe`, `touchesMediaType`, `envPrefix`, `timezone`, `tagLabels`, `recorder`, `matchers`, `personaRequiredFields`.
+- `versionProbe`, `touchesMediaType`, `envPrefix`, `timezone`, `tagLabels`, `recorder`, `capture`, `matchers`, `personaRequiredFields`.
 
 ## Step files run on plain Node
 
@@ -46,7 +47,7 @@ The runner registers its own module loader that type-strips `.ts` step and suppo
 
 ## The World and the hooks
 
-`@flax/scenarios/support/world` exports `ScenarioWorld`: `env`, `hosts` (the environment's hosts by key), `runId`, `touches` with `touch(item, need?)` and `record(touch)`, `page()` (one Chromium per run, a context per scenario, and every navigation on a surface with a `linkHost` recorded as a touch of its route), `byTestId(surface, id)`, `closePage()`, and `media` and `recording` (below). `@flax/scenarios/support/hooks` exports `installBaseHooks({ timeoutMs, recordInitScript })`: the default timeout, parallel assignment by tag policy, the step index on every touch, the touches attachment after each scenario, the shared browser's close, and in a record run the recording of each filmed scenario.
+`@flax/scenarios/support/world` exports `ScenarioWorld`: `env`, `hosts` (the environment's hosts by key), `runId`, `touches` with `touch(item, need?)` and `record(touch)`, `page()` (one Chromium per run, a context per scenario, and every navigation on a surface with a `linkHost` recorded as a touch of its route), `byTestId(surface, id)`, `closePage()`, and `media` and `recording` (below). `@flax/scenarios/support/hooks` exports `installBaseHooks({ timeoutMs, recordInitScript, captureInitScript, captureRewrite })`: the default timeout, parallel assignment by tag policy, the step index on every touch, the touches attachment after each scenario, the shared browser's close, in a record run the recording of each filmed scenario, and in a capture run the screenshots of each selected one.
 
 A workspace subclasses the World and registers the subclass:
 
@@ -64,7 +65,7 @@ installBaseHooks({ timeoutMs: 10_000 });
 
 and adds its own hooks beside the base ones (an environment guard, fixture teardown). The private half of a product's World (its API client, fixture accounts, sign-in) stays in the workspace, in the subclass.
 
-Steps tell a recording what they act on through `this.media`: `click(locator)` and `type(locator, text)` act (paced, with a cursor, when the scenario is filmed), `pointAt(locator)`, `highlight(locator)` and `terminal({ command, output })` only matter when it is. `installBaseHooks({ recordInitScript })` hands a filmed page a script for every document, such as stand-in text. The sidecar schema is `@flax/scenarios/record/video-sidecar.schema.json`; its loader, the timeline types and the pacing are in `record/sidecar`, `record/timeline` and `record/pace`.
+Steps tell a recording what they act on through `this.media`: `click(locator)` and `type(locator, text)` act (paced, with a cursor, when the scenario is filmed), `pointAt(locator)`, `highlight(locator)` and `terminal({ command, output })` only matter when it is, and `capture(name, { target?, fullPage?, clip?, style?, mask?, keepPointer?, text? })` only in a capture run. `installBaseHooks({ recordInitScript })` hands a filmed page a script for every document, such as stand-in text; in a capture run `captureRewrite` gives the stand-ins, applied only for the moment of each capture so the steps never read them, and `captureInitScript` a script for every document. The sidecar schema is `@flax/scenarios/record/video-sidecar.schema.json`; its loader, the timeline types and the pacing are in `record/sidecar`, `record/timeline` and `record/pace`, and the capture entry and manifest types in `capture/capture` and `capture/manifest`.
 
 Playwright is a peer dependency, loaded only when a scenario asks for a page: a workspace with no browser scenarios installs none.
 
@@ -88,7 +89,7 @@ const link = await awaitLink({ mailbox, to, since, pattern: /https:\/\/app\.exam
 
 - `Mailbox`: `{ host, port?, user, password, secure? }`; `port` defaults to 993 and `secure` (TLS from the start) to true.
 - `plusAddress(user, tag)`: `user+tag@domain`, so each run's emails are told apart in one mailbox.
-- `awaitMessage({ mailbox, to, since, folders?, timeoutMs?, pollMs?, match?, log? })`: polls until an email to `to` that arrived after `since` and passes `match` is there, newest first, and returns `{ folder, subject, date, text, html }`. Each poll opens a fresh connection and searches `folders` in order (default `INBOX`, `Junk`, `Spam`; a folder the mailbox lacks is skipped, and a provider with another spam folder name is given it). The defaults are 5 minutes and 5 seconds; past the timeout it throws, naming the address.
+- `awaitMessage({ mailbox, to, since, folders?, timeoutMs?, pollMs?, match?, log? })`: polls until an email to `to` that arrived after `since` and passes `match` is there, newest first, and returns `{ folder, subject, date, text, html }`. Each poll opens a fresh connection and searches `folders` in order (default `INBOX`, `Junk`, `Spam`; a folder the mailbox lacks is skipped, and a provider with another spam folder name is given it). The defaults are 5 minutes and 5 seconds; past the timeout it throws. Neither its log lines nor its errors name the address.
 - `awaitLink({ ...the same, pattern })`: the first match of `pattern` in the first such email whose text or HTML has one, with `&amp;` undone. `findLink(pattern, text, html?)` is the same extraction on its own.
 - `connect`: how a poll opens the mailbox (`connectImap` by default); tests pass a fake `MailClient`.
 

@@ -7,7 +7,8 @@
   "exports": {
     ".": "./dist/index.js",
     "./workspace": "./dist/workspace.js",
-    "./http": "./dist/http.js"
+    "./http": "./dist/http.js",
+    "./page-text": "./dist/page-text.js"
   },
   "files": [
     "dist"

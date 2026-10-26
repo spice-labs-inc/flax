@@ -134,6 +134,8 @@ export interface ScenariosConfig {
   tagLabels: Record<string, string>;
   /** K24 */
   recorder: RecorderConfig;
+  /** Screenshots taken by `flax scenarios run --capture`. */
+  capture: CaptureConfig;
   /** Slower schedules, in flax.yml order; ordinary runs leave their scenarios out. */
   cadences: CadenceConfig[];
 }
@@ -158,6 +160,19 @@ export interface UsageConfig {
   requestSurfaces: string[];
   /** A usage history file (relative to the workspace) the data build reads when no service delivered one, such as a demo's. */
   history?: string;
+}
+
+/** How `flax scenarios run --capture` selects scenarios and sets up the page its screenshots are taken in. */
+export interface CaptureConfig {
+  /** The tag that selects a scenario for capture runs; `<tag>:<name>` selects it and limits it to that capture. */
+  tag: string;
+  viewport: { width: number; height: number };
+  /** Device pixels per CSS pixel: a screenshot is the viewport (or element) times this. */
+  scale: number;
+  colorScheme: "light" | "dark";
+  locale: string;
+  /** An IANA time zone for the page; empty for the machine's own. */
+  timezone: string;
 }
 
 /** Defaults for browser recordings (`flax scenarios run --record`); a scenario's video sidecar overrides pace and viewport. */

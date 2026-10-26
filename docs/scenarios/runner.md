@@ -49,7 +49,7 @@ A cadence the workspace does not name is an error, and so is a cadence run in an
 
 A cadence run speaks only for its cadence's scenarios, and an ordinary run never for them. Where the coverage map, the explorer and its Now view look at an environment's newest run, they take its newest ordinary run and its newest run of each cadence together, and a scenario's result is its newest from whichever run selected it. A cadence's proof grows old by that cadence's own gap between runs. The explorer counts a cadence scenario as running in every environment its cadence runs in; where it is not reached yet, the explorer says it is left for that cadence's run, and in an environment the cadence leaves out it says the scenario runs only where the cadence does.
 
-`--dry-run` checks that every step is defined without running anything. `--tags` narrows a run to an expression. `--record <dir>` runs only the scenarios that have a video sidecar, paced and filmed (see [recorder.md](recorder.md#browser-recordings)).
+`--dry-run` checks that every step is defined without running anything. `--tags` narrows a run to an expression. `--record <dir>` runs only the scenarios that have a video sidecar, paced and filmed (see [recorder.md](recorder.md#browser-recordings)). `--capture <dir>` runs only the scenarios tagged for screenshots and writes the screenshots their steps ask for, with a manifest (see [recorder.md](recorder.md#screenshots)).
 
 ## Fixtures and writes
 

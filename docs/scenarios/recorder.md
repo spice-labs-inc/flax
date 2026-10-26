@@ -1,6 +1,6 @@
 # The recorder
 
-Scenarios tagged `@local` run a command-line product on this machine, in a real shell, with no services, and the same scenario can be recorded as a terminal cast a manual embeds. Scenarios that drive a web app can be filmed the same way, for a video. The test and the recording are one file, so they cannot drift apart. This page describes how local scenarios run, what a recording contains, how the recordings are checked on another operating system, and the browser record mode.
+Scenarios tagged `@local` run a command-line product on this machine, in a real shell, with no services, and the same scenario can be recorded as a terminal cast a manual embeds. Scenarios that drive a web app can be filmed the same way, for a video, and can supply a manual's screenshots. The test and the recording are one file, so they cannot drift apart. This page describes how local scenarios run, what a recording contains, how the recordings are checked on another operating system, the browser record mode and capture runs.
 
 ## Local scenarios
 
@@ -195,6 +195,102 @@ The device scale factor is the filming browser's own (a launch flag): a screenca
 ### flax.yml
 
 The `recorder:` key of the `scenarios:` section holds the defaults every sidecar starts from: `pace` (`typeMsPerChar` 60, `afterActionMs` 600, `readMs` 1200), `viewport` (1440 by 900), `scale` (1, up to 4) and `highlightColor` (`#2f6fed`).
+
+## Screenshots
+
+A manual's screenshots go stale the same way its terminal examples do. A capture run takes them from the scenarios that check those screens, so a flow that stops working fails its check before a stale picture is published. `flax scenarios run --env <env> --capture <dir> [feature paths...]` runs the scenarios of the selection that carry the capture tag (`@capture` by default), and each screenshot their steps ask for is written to `<dir>`. The rest is an ordinary run: the same steps and assertions, the same results directory, the environment's tag policy. Cadence tags do not keep a scenario out of a capture run (a heavy scenario that reaches a screen can still supply it); `--cadence <name>` narrows the run to one cadence's scenarios. With `--dry-run` it lists the scenarios it would run and writes nothing. `--capture` and `--record` are separate runs.
+
+### Asking for a screenshot
+
+A step asks for a screenshot by name through `this.media`:
+
+```ts
+Then(
+  "the list shows {string}",
+  async function (this: ScenarioWorld, title: string) {
+    const page = await this.page();
+    await page.locator("#notes li").filter({ hasText: title }).waitFor();
+    await this.media.capture("notes-page");
+    await this.media.capture("notes-list", { target: page.locator("#notes") });
+  },
+);
+```
+
+Outside a capture run, or in a scenario its tags do not select for that name, `capture` does nothing, so the step runs the same everywhere. A name is letters, digits, dots, dashes and underscores; it is the file name.
+
+| option        | does                                                                                               |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `target`      | a locator: the screenshot is that element at its own size; the viewport by default                 |
+| `fullPage`    | the whole scrollable page                                                                          |
+| `clip`        | a region `{ x, y, width, height }` in CSS pixels                                                   |
+| `style`       | a stylesheet applied while the screenshot is taken, to hide something that changes from run to run |
+| `mask`        | locators painted over with a box                                                                   |
+| `keepPointer` | leaves the mouse where it is; by default it moves to the top left corner so no hover state shows   |
+| `text`        | `false` leaves the entry's `text` null                                                             |
+
+Before it shoots, the capture waits for the network to go quiet (up to 30 seconds) and the fonts to load, finishes animations and hides the text caret. Each scenario's page is opened with the capture settings (below), with reduced motion and, in a browser of its own, no scrollbars.
+
+### Which scenario takes which
+
+The capture tag on a scenario takes every screenshot its steps ask for. `@capture:<name>` takes only that name, and a scenario may carry several; use it when a step that asks for a screenshot is shared by more than one tagged scenario, so each name comes from one place. A run fails when a name is taken twice, when a scenario tagged `@capture:<name>` passes without taking it, and when a selected scenario fails or never runs.
+
+### Stand-ins
+
+Run-specific values (a generated account name, a test address, an id, today's date) would make every screenshot differ from the last. The steps of a capture run are still checks, though, and a check that reads a stand-in instead of the real value fails. So a capture run applies stand-ins only for the moment of each capture: the workspace hands the base hooks the source of a page function `(text) => string`, which is applied to every text node and field value of the page just before the screenshot and its text are taken, and undone right after.
+
+```ts
+installBaseHooks({
+  captureRewrite: (scenario, world) =>
+    `(text) => text.replace(/run-[0-9a-f]{8}@example\.com/g, "alex@example.com")`,
+});
+```
+
+It is given the scenario (`name`, `uri`, `tags`) and its World; the function's source must use nothing from outside its own body. `captureInitScript` adds a script to every document of a captured scenario's page before its first load, for what must start with the page, such as noting the ids the page's own requests return so the rewrite can replace them; it runs while the steps check the page, so it must leave what they read alone. A step or hook can also call `this.capturing?.addRewrite(source)` and `this.capturing?.addInitScript(script)`; the latter also runs in the document already open.
+
+### What a capture run writes
+
+Into `<dir>`, for each capture, `<name>.png` at the viewport (or element, page or clip) times the scale factor, and then `manifest.json`. Each entry's `text` is what the capture shows: every visible line inside the captured area, a table row's cells joined by `|`, in sections by heading. `formatPageText` from `@flax/core/page-text` writes it as text, `## <heading>` lines with the lines under them indented.
+
+```json
+{
+  "env": "local",
+  "runId": "local-20260101T000000Z",
+  "startedAt": "2026-01-01T00:00:00.000Z",
+  "finishedAt": "2026-01-01T00:01:00.000Z",
+  "status": "passed",
+  "captures": [
+    {
+      "name": "notes-list",
+      "file": "notes-list.png",
+      "text": [{ "heading": "", "lines": ["Weekly plan"] }],
+      "scenario": "Add a note",
+      "feature": "features/notes/notes.feature",
+      "line": 7,
+      "status": "passed",
+      "step": {
+        "index": 3,
+        "keyword": "Then",
+        "text": "the list shows \"Weekly plan\""
+      },
+      "url": "http://127.0.0.1:4173/",
+      "target": "element",
+      "locator": "locator('#notes')",
+      "viewport": { "width": 800, "height": 600 },
+      "deviceScaleFactor": 1.5,
+      "width": 627,
+      "height": 41,
+      "capturedAt": "2026-01-01T00:00:31.250Z"
+    }
+  ],
+  "problems": []
+}
+```
+
+`captures` holds one entry per name, in name order, each with its scenario's status; take only the passed ones. `status` is passed only when every selected scenario passed, took what its tags name and shared no name; `problems` says why it is not. The manifest lists this run's captures only: files an earlier run left in `<dir>` are not in it. A failed capture run also exits non-zero, like a failed check run.
+
+### flax.yml
+
+The `capture:` key of the `scenarios:` section: `tag` (default `@capture`), `viewport` (1440 by 900), `scale` (2, up to 4), `colorScheme` (`light` or `dark`, default `light`), `locale` (`en-US`) and `timezone` (an IANA zone; the machine's own when left out).
 
 ## Why this shape
 

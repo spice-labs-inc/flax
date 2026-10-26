@@ -10,8 +10,8 @@ import type { Env } from "../lib/types.ts";
  * Never planned scenarios, never local ones, never the tags the env's policy excludes (unless the scenario
  * carries one of the env's allowTags), fixture and workflow-dispatch scenarios only when asked, and a
  * scenario tagged with environments runs only there. A run for a cadence takes only the scenarios with its
- * tag; any other run leaves out every cadence's, except a record run, which films the scenarios its
- * sidecars name whatever cadence checks them.
+ * tag; any other run leaves out every cadence's, except a record or capture run, which films or captures the
+ * scenarios it selects whatever cadence checks them.
  */
 export function tagExpression(
   env: Env,

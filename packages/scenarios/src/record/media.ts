@@ -2,6 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CDPSession, Locator, Page } from "playwright";
 import { cursorPath, settleMs, type Point, type Viewport } from "./pace.ts";
+import type { CaptureOptions } from "../capture/capture.ts";
 import type { PlannedRecording, RecordOptions } from "./plan.ts";
 import type { StepInfo } from "./steps.ts";
 import {
@@ -26,13 +27,16 @@ export interface TerminalEntry {
 }
 
 /**
- * What steps tell a recording about what they do. Outside a recorded scenario `pointAt`,
- * `highlight` and `terminal` do nothing and `click` and `type` act at once (a click, a fill),
- * so a step written against it runs the same in every run.
+ * What steps tell a recording about what they do, and the screenshots they offer a capture run.
+ * Outside a recorded scenario `pointAt`, `highlight` and `terminal` do nothing and `click` and
+ * `type` act at once (a click, a fill); outside a captured one `capture` does nothing. A step
+ * written against it runs the same in every run.
  */
 export interface Media {
   /** True while this scenario is being recorded. */
   readonly recording: boolean;
+  /** True while this scenario runs in a capture run. */
+  readonly capturing: boolean;
   /** Moves the cursor to the element. */
   pointAt(target: Locator): Promise<void>;
   /** In a step the sidecar highlights: moves the cursor to the element and draws a box around it until the step ends. */
@@ -43,16 +47,20 @@ export interface Media {
   type(target: Locator, text: string): Promise<void>;
   /** Keeps a command's transcript for the step running now. */
   terminal(entry: TerminalEntry): void;
+  /** In a capture run, when the scenario's tags ask for it: a screenshot of the page as `<name>.png`, its text and a manifest entry. */
+  capture(name: string, options?: CaptureOptions): Promise<void>;
 }
 
 /** The media of a scenario that is not being recorded. */
 export const plainMedia: Media = {
   recording: false,
+  capturing: false,
   pointAt: async () => undefined,
   highlight: async () => undefined,
   click: (target) => target.click(),
   type: (target, text) => target.fill(text),
   terminal: () => undefined,
+  capture: async () => undefined,
 };
 
 const sleep = (ms: number) =>
@@ -120,6 +128,7 @@ const highlightScript = (box: Box, color: string) => `(() => {
  */
 export class SceneRecording implements Media {
   readonly recording = true;
+  readonly capturing = false;
   readonly out: string;
   private readonly hidden: Set<number>;
   private readonly highlighted: Set<number>;
@@ -286,7 +295,7 @@ export class SceneRecording implements Media {
     if (page && step && !step.background) {
       const file = `screens/${step.index}.png`;
       try {
-        await writeFile(join(this.out, file), await this.capture(page));
+        await writeFile(join(this.out, file), await this.screenAt(page));
         this.events.push({ type: "screen", step: id, file });
       } catch (e) {
         this.log(
@@ -360,7 +369,7 @@ export class SceneRecording implements Media {
   }
 
   /** The viewport at the video's pixels: Playwright's own screenshot would be at CSS pixels, the scale being the browser's. */
-  private async capture(page: Page): Promise<Buffer> {
+  private async screenAt(page: Page): Promise<Buffer> {
     this.cdp ??= await page.context().newCDPSession(page);
     const { data } = await this.cdp.send("Page.captureScreenshot", {
       format: "png",
@@ -468,6 +477,9 @@ export class SceneRecording implements Media {
     await sleep(this.planned.sidecar.pace.afterActionMs);
     this.actedLast = true;
   }
+
+  /** A recording takes no captures; a capture run is a run of its own. */
+  async capture(): Promise<void> {}
 
   terminal(entry: TerminalEntry): void {
     if (!this.current) return;

@@ -15,7 +15,7 @@ import type {
   UsageConfig,
 } from "@flax/contract/config";
 import { isRecord } from "@flax/contract";
-import type { RecorderConfig } from "@flax/contract/config";
+import type { CaptureConfig, RecorderConfig } from "@flax/contract/config";
 import { DEFAULT_PACE, DEFAULT_VIEWPORT } from "./record/pace.ts";
 
 /** Names the workspace directory (the one holding flax.yml) when the command does not run in it. */
@@ -119,6 +119,7 @@ export function fromWorkspace(ws: Workspace): ScenariosConfig {
   const probe = isRecord(r["versionProbe"]) ? r["versionProbe"] : undefined;
   const matchers = isRecord(r["matchers"]) ? r["matchers"] : {};
   const recorder = isRecord(r["recorder"]) ? r["recorder"] : {};
+  const capture = isRecord(r["capture"]) ? r["capture"] : {};
   const name = str(r["name"], `${ws.org}-scenarios`);
   return {
     workspaceDir: ws.dir,
@@ -217,6 +218,7 @@ export function fromWorkspace(ws: Workspace): ScenariosConfig {
     ),
     tagLabels: rec(r["tagLabels"]),
     recorder: recorderConfig(recorder, name),
+    capture: captureConfig(capture),
     cadences: cadencesConfig(
       r["cadences"],
       envs.map((e) => e.name),
@@ -321,6 +323,30 @@ function recorderConfig(
   };
 }
 
+const CAPTURE_TAG = /^@[A-Za-z0-9_-]+$/;
+
+/** The `capture` key: how capture runs select scenarios and set up their page, each value that is missing or out of range taking the default. */
+function captureConfig(r: Record<string, unknown>): CaptureConfig {
+  const num = (v: unknown, d: number, min: number, max: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : d;
+  const viewport = isRecord(r["viewport"]) ? r["viewport"] : {};
+  const px = (k: "width" | "height") =>
+    Math.round(num(viewport[k], DEFAULT_VIEWPORT[k], 200, 7680));
+  const tag = str(r["tag"], "@capture");
+  if (!CAPTURE_TAG.test(tag))
+    throw new Error(
+      `flax.yml: scenarios.capture.tag must be one tag such as @capture, not ${JSON.stringify(tag)}`,
+    );
+  return {
+    tag,
+    viewport: { width: px("width"), height: px("height") },
+    scale: num(r["scale"], 2, 1, 4),
+    colorScheme: r["colorScheme"] === "dark" ? "dark" : "light",
+    locale: str(r["locale"], "en-US"),
+    timezone: str(r["timezone"], ""),
+  };
+}
+
 /** The configuration a flax.yml text gives, for tests and tools that hold the file in memory. */
 export function parseConfig(text: string, dir = "."): ScenariosConfig {
   return fromWorkspace(parseWorkspace(text, dir));
@@ -381,6 +407,7 @@ export function envVariables(c = config()) {
     runId: `${p}_RUN_ID`,
     fixtures: `${p}_FIXTURES`,
     record: `${p}_RECORD`,
+    capture: `${p}_CAPTURE`,
   };
 }
 type Env = string;

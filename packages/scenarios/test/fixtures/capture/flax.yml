@@ -1,0 +1,17 @@
+# A one-surface workspace whose scenarios take screenshots of a local page the test serves.
+org: example
+environments:
+  - { id: local, label: Local }
+scenarios:
+  name: notes-scenarios
+  envPrefix: NOTES_SCENARIOS
+  envs:
+    local:
+      fixtures: never
+  surfaces:
+    - { name: web, title: Web app }
+  cadences:
+    daily: {}
+  capture:
+    viewport: { width: 800, height: 600 }
+    scale: 1.5

@@ -52,7 +52,7 @@ The scenarios package:
 - [scenarios/library.md](scenarios/library.md): one Gherkin library across surfaces and environments.
 - [scenarios/personas.md](scenarios/personas.md): the persona and journey dataset.
 - [scenarios/runner.md](scenarios/runner.md): environments, tags, fixtures, results and the live push.
-- [scenarios/recorder.md](scenarios/recorder.md): terminal recordings that are also tests.
+- [scenarios/recorder.md](scenarios/recorder.md): terminal recordings, browser recordings and screenshots that are also tests.
 
 The explorer:
 

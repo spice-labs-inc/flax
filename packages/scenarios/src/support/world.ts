@@ -8,6 +8,7 @@ import type { Env, SurfaceFile } from "../lib/types.ts";
 import type { Touch } from "@flax/contract";
 import { currentEnv, currentRunId } from "../run/env.ts";
 import { matchRoute } from "../run/routes.ts";
+import type { SceneCapture } from "../capture/capture.ts";
 import {
   plainMedia,
   type Media,
@@ -57,9 +58,22 @@ async function filmingBrowser(scale: number): Promise<Browser> {
   return b;
 }
 
+let stills: Promise<Browser> | undefined;
+
+/** The Chromium a capture run takes its screenshots in: the shared one's settings, with scrollbars hidden. */
+async function stillsBrowser(): Promise<Browser> {
+  if (!stills) {
+    const { chromium } = await import("playwright");
+    stills = chromium.launch({ args: ["--hide-scrollbars"] });
+  }
+  return stills;
+}
+
 export async function closeSharedBrowser(): Promise<void> {
   if (browser) await (await browser).close();
   browser = undefined;
+  if (stills) await (await stills).close();
+  stills = undefined;
   for (const b of filming.values()) await (await b).close();
   filming.clear();
 }
@@ -102,11 +116,14 @@ export class ScenarioWorld extends World {
    * scenario a record run films, the recording paces and draws them; anywhere else they only click and type.
    */
   get media(): Media {
-    return this.recording ?? plainMedia;
+    return this.recording ?? this.capturing ?? plainMedia;
   }
 
   /** The recording of this scenario, set by the base hooks in a record run. */
   recording: SceneRecording | undefined;
+
+  /** This scenario's screenshots, set by the base hooks in a capture run for a scenario its tags select. */
+  capturing: SceneCapture | undefined;
 
   /** A browser page in this scenario's own context; routes of every surface with a link host that it lands on are recorded. */
   async page(): Promise<Page> {
@@ -115,12 +132,17 @@ export class ScenarioWorld extends World {
         ? await (
             await filmingBrowser(this.recording.scale)
           ).newContext({ viewport: this.recording.viewport })
-        : await (
-            await sharedBrowser()
-          ).newContext({ viewport: { width: 1440, height: 900 } });
+        : this.capturing
+          ? await (
+              await stillsBrowser()
+            ).newContext(this.capturing.contextOptions())
+          : await (
+              await sharedBrowser()
+            ).newContext({ viewport: { width: 1440, height: 900 } });
       await markSynthetic(this.context, Object.values(this.hosts));
       this.currentPage = await this.context.newPage();
       await this.recording?.attach(this.currentPage);
+      await this.capturing?.attach(this.currentPage);
       const tracked = config()
         .surfaces.filter((s) => s.linkHost && this.hosts[s.linkHost])
         .map((s) => ({
@@ -153,6 +175,7 @@ export class ScenarioWorld extends World {
 
   async closePage(): Promise<void> {
     await this.recording?.detach();
+    this.capturing?.detach();
     await this.context?.close().catch(() => undefined);
     this.context = undefined;
     this.currentPage = undefined;

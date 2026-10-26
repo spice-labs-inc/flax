@@ -217,7 +217,8 @@ describe("waiting for an email", () => {
     });
     expect(message.folder).toBe("Junk");
     expect(message.text).toBe("join");
-    expect(lines).toEqual([`mailbox: found an email to ${TO} in Junk`]);
+    expect(lines).toEqual(["mailbox: found the email in Junk"]);
+    expect(lines.join("\n")).not.toContain(TO);
   });
 
   it("polls with a fresh connection until the message arrives", async () => {
@@ -256,7 +257,7 @@ describe("waiting for an email", () => {
         connect: server.connect,
       }),
     ).rejects.toThrow(
-      `an email to ${TO} arriving did not happen within 0 s (last seen: no match in INBOX, Spam, poll 1)`,
+      "an email to the address arriving did not happen within 0 s (last seen: no match in INBOX, Spam, poll 1)",
     );
     expect(server.closed).toBe(1);
   });
@@ -317,7 +318,7 @@ describe("waiting for a link", () => {
         connect: server.connect,
       }),
     ).rejects.toThrow(
-      `an email to ${TO} with a link matching ${LINK} arriving did not happen`,
+      `an email to the address with a link matching ${LINK} arriving did not happen`,
     );
   });
 });
