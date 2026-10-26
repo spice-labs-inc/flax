@@ -223,6 +223,7 @@ describe("generated files", () => {
       "box-repository": "spice-labs-inc/lbx",
       "box-release": BOX.box_release,
       "box-sha256": BOX.lbx_sha256,
+      "provider-plugin": "pi-provider-acme",
       args: '--out "$RUNNER_TEMP/job-output"',
     });
     expect(runStep.env).toEqual({

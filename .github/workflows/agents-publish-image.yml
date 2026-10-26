@@ -11,8 +11,10 @@ name: Publish image
 #   - downloads the release binary and its checksum file and verifies them;
 #   - takes entrypoint.sh from the release's tagged source;
 #   - builds and pushes the image from packages/agents/images/agent/Dockerfile
-#     with that entrypoint: Pi and the provider plugin at the versions pinned
-#     there, and the pi-mcp-mailbox plugin bundled from this commit by
+#     with that entrypoint: Pi at the version pinned there, no provider plugin
+#     (a workspace whose flax.yml names one builds its own image with the
+#     PI_PROVIDER_PACKAGE and PI_PROVIDER_VERSION build arguments), and the
+#     pi-mcp-mailbox plugin bundled from this commit by
 #     `flax-agents bundle-pi-plugin`, and nothing else;
 #   - starts the pushed image with the release's own `lbx --run` (no network,
 #     fresh data directory) and runs `pi --version` in it, which proves the

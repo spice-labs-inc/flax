@@ -30,6 +30,7 @@
   "files": [
     "dist",
     "src/app",
+    "src/model",
     "prompts",
     "templates",
     "README.md"
