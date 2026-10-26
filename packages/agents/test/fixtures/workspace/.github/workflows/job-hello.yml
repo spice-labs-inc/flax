@@ -58,6 +58,7 @@ jobs:
           box-repository: spice-labs-inc/lbx
           box-release: v0.2.0
           box-sha256: c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70c3d9f2a6b1e84f70
+          provider-plugin: pi-provider-acme
           args: --model "$RUN_MODEL" --thinking "$RUN_THINKING" --out "$RUNNER_TEMP/job-output"
         env:
           LLM_GATEWAY_ISSUER_KEY: ${{ secrets.LLM_GATEWAY_ISSUER_KEY }}

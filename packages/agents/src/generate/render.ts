@@ -240,9 +240,9 @@ const REASON_DISPATCH_INPUT = {
  * run-job refuses.
  */
 export function targetEnvExpression(envs: EnvSchedules): string {
-  const crons = checkEnvs().filter((e) => envs[e] !== undefined).map(
-    (e) => `(github.event.schedule == '${envs[e]}' && '${e}')`,
-  );
+  const crons = checkEnvs()
+    .filter((e) => envs[e] !== undefined)
+    .map((e) => `(github.event.schedule == '${envs[e]}' && '${e}')`);
   return `inputs.${ENV_INPUT} || ${crons.join(" || ")} || ''`;
 }
 
@@ -466,7 +466,9 @@ export function joinsNetwork(network: string | undefined): boolean {
 function networkJoin(network: string): Record<string, unknown>[] {
   const join = workspace().networkJoins[network];
   if (join === undefined)
-    throw new Error(`network "${network}" is not in flax.yml agents.networkJoins`);
+    throw new Error(
+      `network "${network}" is not in flax.yml agents.networkJoins`,
+    );
   return join.join.map((s) => ({ ...s }));
 }
 
@@ -872,9 +874,14 @@ function steps(
         "box-repository": boxRepository(),
         "box-release": box.box_release,
         "box-sha256": box.lbx_sha256,
+        ...(workspace().provider.plugin === undefined
+          ? {}
+          : { "provider-plugin": workspace().provider.plugin }),
         ...(workspace().sandbox.tokenSecret === undefined
           ? {}
-          : { "box-token": `\${{ secrets.${workspace().sandbox.tokenSecret} }}` }),
+          : {
+              "box-token": `\${{ secrets.${workspace().sandbox.tokenSecret} }}`,
+            }),
         args: `${modelFlag} --out "$RUNNER_TEMP/${REPORT_DIR}"${revise ? REVISE_FLAG : ""}${collectFlags}${job.ledger === true ? LEDGER_FLAGS : ""}`.trim(),
       },
       // The gateway issuer key, the tool credentials and the media secrets stay with the runner process; the box gets none.

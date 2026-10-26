@@ -21,9 +21,14 @@ const commands = {
   "bundle-pi-plugin": "src/pi-plugin/cli.ts",
 };
 const [cmd, ...rest] = process.argv.slice(2);
+// --workspace <dir> reaches every command as FLAX_WORKSPACE and is taken out
+// of the arguments: a command with its own subcommands or a positional
+// argument (box-release, bundle-pi-plugin) would read it as one.
 const at = rest.indexOf("--workspace");
-if (at >= 0 && rest[at + 1] !== undefined)
+if (at >= 0 && rest[at + 1] !== undefined) {
   process.env.FLAX_WORKSPACE = rest[at + 1];
+  rest.splice(at, 2);
+}
 const entry = commands[cmd];
 if (!entry) {
   console.error(

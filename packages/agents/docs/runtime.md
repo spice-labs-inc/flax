@@ -339,88 +339,100 @@ otherwise. Run it after changing `box.yml`.
 
 ## The pinned box
 
-There are two box images:
+Jobs run in the agent image: Pi, the kit's Pi plugin (`pi-mcp-mailbox`:
+the model shim and the tools over the tools socket) and, when the
+workspace names one, a Pi provider plugin, on Ubuntu 24.04 with Node, and
+nothing else. Every job runs on a fresh runner VM that pulls the image, so
+a small one saves minutes on every run. The image is built from
+[`images/agent/Dockerfile`](../images/agent/Dockerfile) on the sandbox
+(lbx) release's `entrypoint.sh` and behaves like lbx's full developer image
+under `lbx --run`: the same in-box user, home layout and `/data`
+directory. Jobs never run in the full image, and `box.yml` accepts only an
+agent image.
 
-- **lbx**, lbx's full image, is for developers: Rust,
-  Java, Maven, docker and several agents, about 9 GB. lbx builds
-  it; jobs never run in it, and `box.yml` accepts only the agent image.
-- **lbx-agent** is for jobs: Pi, the Acme provider plugin and
-  the agents Pi plugin (`pi-mcp-mailbox`: the model shim and the
-  tools over the tools socket) on Ubuntu 24.04 with Node, and nothing else.
-  Every job runs on a fresh runner VM that pulls the image, so a small one
-  saves minutes on every run. It is built here from
-  [`images/agent/Dockerfile`](../images/agent/Dockerfile) and behaves like the
-  full image under `lbx --run`: the same `claude` user, home layout,
-  `/data` directory and lbx `entrypoint.sh`.
+Two kinds of agent image exist:
 
-The workflow "Publish box image" (Actions tab) takes a lbx
-release tag `vX.Y.Z` (`box_release`). lbx's release workflow
-starts it with each new release (its `docs/releasing.md`); it can also be
-started by hand. On the agents pool it:
+- **The kit's image**, `ghcr.io/<owner>/flax-agent`, published by this
+  repository's "Publish image" workflow (`workflows/publish-image.yml`). It
+  carries no provider plugin: it is for a workspace whose `agents.provider`
+  has no `plugin` and uses Pi's own provider of that name.
+- **A workspace's own image**, for a workspace whose
+  `agents.provider.plugin` names a Pi provider plugin (the Acme workspace:
+  `pi-provider-acme`). The workspace builds it from the kit's Dockerfile
+  (`node_modules/@flax/agents/images/agent/Dockerfile`) with the build
+  arguments `PI_PROVIDER_PACKAGE` and `PI_PROVIDER_VERSION`, which install
+  the plugin under `/opt/pi-extensions`, the directory the job runner names
+  with `--extension`, and check the installed version. Its publish workflow
+  is a copy of the kit's with those two arguments, pushing to the
+  repository `agents.agentImage` names.
 
-1. refuses a `box_release` that is not `vX.Y.Z`, then checks out
-   lbx at that tag;
+The kit action refuses a run when the pinned image's
+`io.flax.agent-image.provider-plugin` label is not the plugin `flax.yml`
+names, before the sandbox starts, so a workspace cannot pin the kit's image
+by mistake and have every model call fail inside the box.
+
+"Publish image" takes a sandbox (lbx) release tag `vX.Y.Z` (`box_release`)
+and is started by hand. On a hosted runner it:
+
+1. refuses a `box_release` that is not `vX.Y.Z`;
 2. reads the release notes block lbx's release workflow wrote
-   (`flax agents box-release resolve`, `src/box-release/release.ts`): the commit
-   must be the one the tag checks out;
-3. bundles the Pi plugin with `flax agents bundle-pi-plugin`, builds the
-   agent image with it and the release's `entrypoint.sh`, and pushes it as
-   `ghcr.io/notes-co/lbx-agent:<release>-<agents commit>`
-   (the commit shortened to 12 characters);
-4. starts the pushed agent image with the release's `lbx --run` (no
-   network, a fresh data directory) and runs `pi --version`, which must
-   exit 0. No model is called;
-5. writes `box.yml` for the release (`flax agents box-release pin`), runs
-   `flax agents generate` and opens a pull request from `box-release/<release>`
-   titled "Box release `<release>`", with the release notes and the image
-   table (Node, Pi and plugin versions, the Pi plugin's sha256) in its
-   body. The pull request targets the branch the workflow ran on.
+   (`flax agents box-release resolve`, `src/box-release/release.ts`): the
+   commit must be the one the tag names, and the launcher's `.sha256` asset
+   gives `lbx_sha256`;
+3. downloads the launcher and verifies it, and takes `entrypoint.sh` from
+   the release's tagged source;
+4. bundles the Pi plugin with `flax agents bundle-pi-plugin`, builds the
+   agent image with it and the entrypoint, and pushes it as
+   `<image>:<release>` and `<image>:<release>-<kit commit>` (the commit
+   shortened to 12 characters);
+5. starts the pushed image with the release's `lbx --run` (no network, a
+   fresh data directory) and runs `pi --version`, which must print the
+   pinned version. No model is called;
+6. prints the four values a workspace pins in `box.yml` (`box_release`,
+   `box_commit`, `lbx_sha256`, `image`) as the job summary. A workspace
+   writes them with `flax agents box-release pin --release <tag> --commit
+<sha> --sha256 <hex> --image <ref>`, runs `flax agents generate` and
+   opens a pull request; a workspace's own publish workflow may do that
+   itself.
 
-`box.yml` pins every job to one box: the lbx release
-(`box_release`), the commit it names (`box_commit`, whose `lbx` launches
-the run) and the agent image (`image`), by digest. Jobs move to a new box only when a person merges the pull request.
-Every job workflow checks out lbx at `box_commit` and, before
-running, refuses the job unless the `box_release` tag still names
-`box_commit` (the "Check the box release tag" step; the Network refusal
-check does the same). Until the first publish, `box.yml` holds
-placeholders with `pinned: false`: `flax agents check` warns and real runs are
-refused. Only a lbx release whose lbx has `--socket-dir` and
-`--no-network` can run jobs ([Socket transport](#socket-transport)).
+`box.yml` pins every job to one box: the lbx release (`box_release`), the
+commit it names (`box_commit`), the launcher's checksum (`lbx_sha256`) and
+the agent image (`image`), by digest. Jobs move to a new box only when a
+person merges that pull request. The kit action downloads the release's
+launcher before every run and refuses the job unless its checksum is
+`lbx_sha256`. Until the first publish, `box.yml` holds placeholders with
+`pinned: false`: `flax agents check` warns and real runs are refused.
 
 ### Updating Pi, the plugins or Node
 
 The agent image installs exact versions, set as build arguments at the top
-of `images/agent/Dockerfile`: `PI_VERSION`, `PI_PROVIDER_ACME_VERSION`,
-`PI_MCP_MAILBOX_VERSION`, `NODE_VERSION` and the Node tarball checksums
-`NODE_SHA256_AMD64` and `NODE_SHA256_ARM64` (from
-`https://nodejs.org/dist/v<version>/SHASUMS256.txt`). `flax agents check` refuses
-a tag such as `latest` or a range. To update:
+of `images/agent/Dockerfile`: `PI_VERSION`, `PI_MCP_MAILBOX_VERSION`,
+`NODE_VERSION` and the Node tarball checksums `NODE_SHA256_AMD64` and
+`NODE_SHA256_ARM64` (from
+`https://nodejs.org/dist/v<version>/SHASUMS256.txt`); `PI_PROVIDER_PACKAGE`
+and `PI_PROVIDER_VERSION` are empty here and set by a workspace's own
+build. `flax agents check` refuses a tag such as `latest` or a range. To
+update:
 
-1. On a branch, change the version. The newest versions are shown by
-   `npm view @earendil-works/pi-coding-agent version` and
-   `npm view pi-provider-acme version`. The Pi plugin is built from
-   this repository: change its code, then its version in
+1. On a branch, change the version. The newest Pi is shown by
+   `npm view @earendil-works/pi-coding-agent version`. The Pi plugin is
+   built from this repository: change its code, then its version in
    `images/agent/pi-mcp-mailbox/package.json`, `CLIENT_VERSION` in its
    `src/extension.ts` and `PI_MCP_MAILBOX_VERSION`, all to the same value
    (`pnpm test` checks they agree).
-2. Run "Publish box image" on that branch ("Use workflow from"), with the
-   `box_release` that `box.yml` pins. The build
-   fails if Pi or a plugin is not the pinned version or not owned by root,
-   if the Pi plugin is not the bundle the workflow made or does not
-   load, or if `pi --help` no longer lists a flag the job runner passes
-   (`src/run-job/argv.ts`); the smoke run fails if the image no longer
-   starts under `lbx --run`.
-3. The run opens a pull request from `box-release/<release>` into that
-   branch with the new `box.yml`. Merge it there, then open the branch's
-   pull request. Jobs use the new versions once that is merged. The run
-   reuses the branch `box-release/<release>`, so let an open release pull
-   request for the same release merge first.
+2. Run "Publish image" on that branch ("Use workflow from"), with the
+   `box_release` the workspaces pin. The build fails if Pi or a plugin is
+   not the pinned version or not owned by root, if the Pi plugin is not the
+   bundle the workflow made or does not load, or if `pi --help` no longer
+   lists a flag the job runner passes (`src/run-job/argv.ts`); the smoke
+   run fails if the image no longer starts under `lbx --run`.
+3. Each workspace pins the printed values and merges its pull request; a
+   workspace with its own image rebuilds that from the new kit release
+   first.
 
-A new lbx release (a changed `entrypoint.sh` or `lbx`)
-needs nothing here: lbx's release workflow starts "Publish box
-image" with the new tag, and the pull request it opens moves jobs to the
-release once merged. A lbx commit without a release cannot be
-pinned.
+A new lbx release (a changed `entrypoint.sh` or launcher) is taken the same
+way: run "Publish image" with the new tag and pin the values it prints. An
+lbx commit without a release cannot be pinned.
 
 ## Test lbx on the agents pool
 

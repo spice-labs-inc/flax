@@ -25,9 +25,9 @@ The outcome of a run is the status file lbx writes on the host (`status=<exited|
 
 ## The agent image
 
-Two images exist. The full lbx image is for developers: languages, build tools, several agents, many gigabytes; jobs never run in it. The agent image is for jobs: the coding agent, the model provider plugin and the package's own plugin (the model shim and the tools client) on a plain Ubuntu base with Node, and nothing else. Every job runs on a fresh runner that pulls the image, so a small one saves minutes on every run. It behaves like the full image under `lbx --run`: the same in-box user (`agent`), home layout, `/data` directory and entrypoint.
+Two images exist. The full lbx image is for developers: languages, build tools, several agents, many gigabytes; jobs never run in it. The agent image is for jobs: the coding agent, the package's own plugin (the model shim and the tools client) and, when the workspace names one, a model provider plugin, on a plain Ubuntu base with Node, and nothing else. The image this repository publishes carries no provider plugin; a workspace that names one builds its own image from the same definition with two build arguments (the package and its version) and pins that, and the action refuses a pinned image whose provider plugin label is not the plugin the workspace names. Every job runs on a fresh runner that pulls the image, so a small one saves minutes on every run. It behaves like the full image under `lbx --run`: the same in-box user (`agent`), home layout, `/data` directory and entrypoint.
 
-The image's definition pins exact versions of Node (with checksums), the coding agent and both plugins; the check refuses a tag or a range. The build verifies the installed versions, that every flag the runner passes to the agent still exists, that the plugins are owned by root in a directory the box user cannot change, and that the plugin loads. A publish workflow builds the image for a given lbx release, runs it once under `lbx --run` with no network, and opens a pull request that pins the new digest, release and commit in the workspace. Jobs move to a new box only when a person merges that pull request.
+The image's definition pins exact versions of Node (with checksums), the coding agent and both plugins; the check refuses a tag or a range. The build verifies the installed versions, that every flag the runner passes to the agent still exists, that the plugins are owned by root in a directory the box user cannot change, and that the plugin loads. A publish workflow builds the image for a given lbx release, runs it once under `lbx --run` with no network, and prints the digest, release, commit and launcher checksum a workspace pins; the workspace writes them with the package's pin command and opens a pull request. Jobs move to a new box only when a person merges that pull request.
 
 The pin lives in the workspace: the lbx release tag, the commit it names (whose `lbx` launches the run), and the agent image by digest. With placeholders and `pinned: false`, checks warn and real runs are refused, so a workspace can be set up before its first publish without any job running on an unknown box.
 
@@ -46,5 +46,3 @@ The box has none. The runner reaches the gateway and the upstreams through the r
 ## To confirm against the package
 
 - The reusable action's exact inputs.
-- Whether the agent image is built by the flax repository and pinned by digest in workspaces (the decision taken), and under which registry name.
-- The coding agent and provider plugin the public image ships.

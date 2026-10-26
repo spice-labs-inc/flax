@@ -28,6 +28,10 @@ inputs:
     description: A token for a private sandbox repository; empty for a public one.
     required: false
     default: ""
+  provider-plugin:
+    description: The Pi provider plugin flax.yml names (agents.provider.plugin); the pinned image must carry it. Empty when the workspace uses Pi's own provider.
+    required: false
+    default: ""
   node-version:
     description: The Node version the runner bundle runs on.
     required: false
@@ -53,6 +57,25 @@ runs:
       env:
         BOX_IMAGE: ${{ inputs.box-image }}
       run: docker pull "$BOX_IMAGE"
+    # The kit's own image ships no provider plugin; a workspace that names one
+    # must pin an image built with it, or every model call fails in the box.
+    - name: Check the image carries the provider plugin
+      if: ${{ inputs.provider-plugin != '' }}
+      shell: bash
+      env:
+        BOX_IMAGE: ${{ inputs.box-image }}
+        PROVIDER_PLUGIN: ${{ inputs.provider-plugin }}
+      run: |
+        set -euo pipefail
+        label() {
+          docker image inspect --format "{{index .Config.Labels \"io.flax.agent-image.$1\"}}" "$BOX_IMAGE"
+        }
+        plugin="$(label provider-plugin)"
+        if [ "$plugin" != "$PROVIDER_PLUGIN" ]; then
+          echo "::error::the pinned agent image carries the provider plugin '${plugin:-none}', but flax.yml agents.provider.plugin names $PROVIDER_PLUGIN; the kit's own image has no provider plugin, so build the workspace's image from the kit's Dockerfile with PI_PROVIDER_PACKAGE=$PROVIDER_PLUGIN and pin that in box.yml"
+          exit 1
+        fi
+        echo "agent image provider plugin: $plugin $(label provider-plugin-version)"
     - name: Download the sandbox (lbx) release binary
       shell: bash
       env:

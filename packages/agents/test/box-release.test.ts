@@ -34,7 +34,7 @@ const COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const OTHER_COMMIT = "fedcba9876543210fedcba9876543210fedcba98";
 const TAG = "v0.1.0";
 /** What the fake release attaches as its launcher binary: a script that answers --help. */
-const BINARY = "#!/bin/sh\n[ \"$1\" = --help ] && echo usage\nexit 0\n";
+const BINARY = '#!/bin/sh\n[ "$1" = --help ] && echo usage\nexit 0\n';
 const SHA256 = createHash("sha256").update(BINARY).digest("hex");
 /** The release's .sha256 asset, as sha256sum writes it. */
 const SHA256_FILE = `${SHA256}  ${LBX_BINARY}\n`;
@@ -123,11 +123,7 @@ describe("the release notes block", () => {
   });
 
   it.each<[string, string, RegExp]>([
-    [
-      "no block",
-      "## What's Changed\n",
-      /no <!-- llm-in-a-box release: begin/,
-    ],
+    ["no block", "## What's Changed\n", /no <!-- llm-in-a-box release: begin/],
     [
       "a block with no end line",
       `${NOTES_BEGIN}\n- Commit: \`${COMMIT}\`\n- Binary: ${LBX_BINARY}\n`,
@@ -180,7 +176,11 @@ describe("the release's .sha256 file", () => {
   });
 
   it("refuses a file that names no sum for the binary", () => {
-    for (const text of ["", `${"ab".repeat(32)}  other\n`, `abc  ${LBX_BINARY}\n`]) {
+    for (const text of [
+      "",
+      `${"ab".repeat(32)}  other\n`,
+      `abc  ${LBX_BINARY}\n`,
+    ]) {
       const result = parseSha256File(text, LBX_BINARY);
       expect(result.ok).toBe(false);
       expect(!result.ok && result.error).toMatch(/names no sha256 for/);
@@ -237,7 +237,12 @@ describe("resolving a release", () => {
       await resolveRelease({ tag: TAG, checkoutCommit: COMMIT, exec }),
     ).toEqual({
       ok: true,
-      value: { commit: COMMIT, binary: LBX_BINARY, sha256: SHA256, notes: notes() },
+      value: {
+        commit: COMMIT,
+        binary: LBX_BINARY,
+        sha256: SHA256,
+        notes: notes(),
+      },
     });
     expect(calls).toEqual([VIEW_CALL, DOWNLOAD_CALL]);
   });
@@ -369,7 +374,11 @@ function ghCalls(dir: string): string {
 }
 
 /** Runs flax agents box-release with the fake gh first on PATH. */
-function boxRelease(cwd: string, args: string[], fake: { notes?: string } = {}) {
+function boxRelease(
+  cwd: string,
+  args: string[],
+  fake: { notes?: string } = {},
+) {
   const bin = fakeGh(cwd, fake);
   const result = spawnSync(
     join(KIT_ROOT, "node_modules", ".bin", "tsx"),
@@ -527,7 +536,13 @@ describe("flax agents box-release", () => {
 
   it("pin needs every value", () => {
     const dir = makeRepo({ box: null });
-    const result = boxRelease(dir, ["pin", "--release", TAG, "--commit", COMMIT]);
+    const result = boxRelease(dir, [
+      "pin",
+      "--release",
+      TAG,
+      "--commit",
+      COMMIT,
+    ]);
     expect(result.status).toBe(2);
     expect(result.stderr).toMatch(/missing --sha256, --image/);
     expect(existsSync(join(dir, "box.yml"))).toBe(false);
@@ -610,7 +625,8 @@ describe("the Publish image workflow", () => {
     const first = workflow().jobs.publish.steps[0];
     expect(first.name).toBe("Check the release tag");
     const accepts = (tag: string) =>
-      runStep(first.run, tempDir("publish-"), { BOX_RELEASE: tag }).status === 0;
+      runStep(first.run, tempDir("publish-"), { BOX_RELEASE: tag }).status ===
+      0;
     for (const tag of ["v0.0.0", "v0.1.0", "v10.20.30"])
       expect(accepts(tag)).toBe(true);
     for (const tag of [
@@ -661,19 +677,26 @@ describe("the Publish image workflow", () => {
         "",
       ].join("\n"),
     );
-    const other = runStep(read.run, tempDir("publish-"), env, { tagged: OTHER_COMMIT });
+    const other = runStep(read.run, tempDir("publish-"), env, {
+      tagged: OTHER_COMMIT,
+    });
     expect(other.status).toBe(1);
     expect(other.stdout).toContain(
       `::error::the release notes name commit ${COMMIT}, but tag ${TAG} names ${OTHER_COMMIT}`,
     );
-    const none = runStep(read.run, tempDir("publish-"), env, { notes: "## What's Changed\n" });
+    const none = runStep(read.run, tempDir("publish-"), env, {
+      notes: "## What's Changed\n",
+    });
     expect(none.status).toBe(1);
     expect(none.stdout).toContain("need exactly one '- Commit: <40 hex>' line");
     expect(none.outputs).toBe("");
   });
 
   it("downloads the release binary with its checksum file, verifies and runs it", () => {
-    const step = byName(workflow().jobs.publish.steps, "Download and verify the release binary");
+    const step = byName(
+      workflow().jobs.publish.steps,
+      "Download and verify the release binary",
+    );
     expect(step.id).toBe("binary");
     expect(step.env).toEqual({ GH_TOKEN: "${{ github.token }}" });
     const dir = tempDir("publish-");
@@ -694,13 +717,17 @@ describe("the Publish image workflow", () => {
 
   it("builds from the tagged entrypoint, smoke runs the image with no network, and pins nothing", () => {
     const text = kitWorkflowText("publish-image.yml");
-    expect(text).not.toMatch(/relay|RELAY|box_ref|net-policy|create-pull-request|box-release pin/);
+    expect(text).not.toMatch(
+      /relay|RELAY|box_ref|net-policy|create-pull-request|box-release pin/,
+    );
     const job = workflow().jobs.publish;
     expect(job.permissions).toEqual({ contents: "read", packages: "write" });
     const steps: Record<string, any>[] = job.steps;
     const source = byName(steps, "Take entrypoint.sh from the tagged source");
     expect(source.env.COMMIT).toBe("${{ steps.release.outputs.commit }}");
-    expect(source.run).toContain('gh api "repos/$BOX_REPO/tarball/$BOX_RELEASE"');
+    expect(source.run).toContain(
+      'gh api "repos/$BOX_REPO/tarball/$BOX_RELEASE"',
+    );
     const build = byName(steps, "Build and push the agent image");
     expect(build.id).toBe("build");
     expect(build.env).toEqual({
@@ -745,7 +772,9 @@ describe("the Publish image workflow", () => {
       "Summary",
     ];
     for (let i = 1; i < order.length; i++)
-      expect(names.indexOf(order[i]!)).toBeGreaterThan(names.indexOf(order[i - 1]!));
+      expect(names.indexOf(order[i]!)).toBeGreaterThan(
+        names.indexOf(order[i - 1]!),
+      );
   });
 });
 
@@ -776,7 +805,10 @@ describe.each(["box-test.yml", "net-refusal.yml"])(
     });
 
     it("downloads the pinned release binary, checks the notes name box_commit and the binary has lbx_sha256, and puts it on PATH", () => {
-      const step = byName(steps(), "Download and verify the pinned release binary");
+      const step = byName(
+        steps(),
+        "Download and verify the pinned release binary",
+      );
       expect(step.env).toEqual({
         GH_TOKEN: "${{ github.token }}",
         BOX_RELEASE: "${{ steps.box.outputs.box_release }}",
@@ -794,7 +826,9 @@ describe.each(["box-test.yml", "net-refusal.yml"])(
       const good = runStep(step.run, dir, env);
       expect(good.stderr).toBe("");
       expect(good.status).toBe(0);
-      expect(good.githubPath).toBe(`${join(dir, "runner-temp", "lbx-release", "bin")}\n`);
+      expect(good.githubPath).toBe(
+        `${join(dir, "runner-temp", "lbx-release", "bin")}\n`,
+      );
       expect(good.calls).toContain(
         `gh release download ${TAG} --repo ${boxRepository()} --dir ${join(dir, "runner-temp", "lbx-release")} --pattern ${LBX_BINARY} --pattern ${LBX_BINARY}.sha256`,
       );
@@ -822,20 +856,29 @@ describe.each(["box-test.yml", "net-refusal.yml"])(
       const names = steps().map((s) => s.name ?? s.uses ?? s.run);
       const pull = byName(steps(), "Pull the pinned image");
       expect(pull.env.BOX_IMAGE).toBe("${{ steps.box.outputs.image }}");
-      expect(names.indexOf("Download and verify the pinned release binary")).toBeLessThan(
-        names.indexOf("Log in to ghcr.io"),
+      expect(
+        names.indexOf("Download and verify the pinned release binary"),
+      ).toBeLessThan(names.indexOf("Log in to ghcr.io"));
+      expect(names.indexOf("Log in to ghcr.io")).toBeLessThan(
+        names.indexOf("Pull the pinned image"),
       );
-      expect(names.indexOf("Log in to ghcr.io")).toBeLessThan(names.indexOf("Pull the pinned image"));
-      const fixtureRun = steps().find((s) => typeof s.run === "string" && s.run.includes("--workspace test/fixtures/workspace"))!;
+      const fixtureRun = steps().find(
+        (s) =>
+          typeof s.run === "string" &&
+          s.run.includes("--workspace test/fixtures/workspace"),
+      )!;
       expect(fixtureRun).toBeDefined();
-      expect(names.indexOf("Pull the pinned image")).toBeLessThan(names.indexOf(fixtureRun.name));
+      expect(names.indexOf("Pull the pinned image")).toBeLessThan(
+        names.indexOf(fixtureRun.name),
+      );
     });
   },
 );
 
 describe("the Box test workflow", () => {
   it("runs the hello job as a stub and smoke runs the pinned image with no network", () => {
-    const steps: Record<string, any>[] = kitWorkflow("box-test.yml").jobs.test.steps;
+    const steps: Record<string, any>[] =
+      kitWorkflow("box-test.yml").jobs.test.steps;
     expect(byName(steps, "Run the hello job as a stub").run).toBe(
       "pnpm -C packages/agents exec node bin/flax-agents.mjs run-job hello --stub --workspace test/fixtures/workspace",
     );
@@ -845,7 +888,9 @@ describe("the Box test workflow", () => {
     expect(smoke.run).toContain("lbx --run --runtime docker");
     const pull = byName(steps, "Pull the pinned image");
     expect(pull.run).toContain("io.flax.agent-image.box-commit");
-    expect(kitWorkflowText("box-test.yml")).not.toMatch(/relay|RELAY|git -C box|refs\/tags/);
+    expect(kitWorkflowText("box-test.yml")).not.toMatch(
+      /relay|RELAY|git -C box|refs\/tags/,
+    );
   });
 });
 
@@ -864,13 +909,69 @@ describe("the kit action", () => {
       "box-token",
       "job",
       "node-version",
+      "provider-plugin",
       "workspace",
     ]);
-    for (const name of ["job", "box-image", "box-repository", "box-release", "box-sha256"])
+    for (const name of [
+      "job",
+      "box-image",
+      "box-repository",
+      "box-release",
+      "box-sha256",
+    ])
       expect(inputs[name].required, name).toBe(true);
     expect(inputs["box-token"].default).toBe("");
+    expect(inputs["provider-plugin"].default).toBe("");
     expect(inputs.workspace.default).toBe(".");
     expect(action().runs.using).toBe("composite");
+  });
+
+  it("refuses a pinned image whose provider plugin label is not the plugin the workspace names", () => {
+    const step = byName(
+      action().runs.steps,
+      "Check the image carries the provider plugin",
+    );
+    // A docker that answers the two label reads from the environment.
+    const withLabels = (plugin: string, version: string) => {
+      const dir = tempDir("action-");
+      const bin = join(dir, "fake-bin");
+      mkdirSync(bin, { recursive: true });
+      writeFileSync(
+        join(bin, "docker"),
+        [
+          "#!/bin/sh",
+          'case "$*" in',
+          '  *provider-plugin-version*) printf "%s\\n" "$FAKE_PLUGIN_VERSION" ;;',
+          '  *provider-plugin*) printf "%s\\n" "$FAKE_PLUGIN" ;;',
+          "  *) exit 1 ;;",
+          "esac",
+          "",
+        ].join("\n"),
+        { mode: 0o755 },
+      );
+      return runStep(step.run, dir, {
+        BOX_IMAGE: "ghcr.io/notes-co/flax-agent@sha256:" + "ab".repeat(32),
+        PROVIDER_PLUGIN: "pi-provider-acme",
+        FAKE_PLUGIN: plugin,
+        FAKE_PLUGIN_VERSION: version,
+      });
+    };
+    const good = withLabels("pi-provider-acme", "1.2.3");
+    expect(good.stderr).toBe("");
+    expect(good.status).toBe(0);
+    expect(good.stdout).toBe(
+      "agent image provider plugin: pi-provider-acme 1.2.3\n",
+    );
+    const none = withLabels("", "");
+    expect(none.status).toBe(1);
+    expect(none.stdout).toContain(
+      "::error::the pinned agent image carries the provider plugin 'none', but flax.yml agents.provider.plugin names pi-provider-acme; the kit's own image has no provider plugin",
+    );
+    const other = withLabels("pi-provider-other", "0.1.0");
+    expect(other.status).toBe(1);
+    expect(other.stdout).toContain(
+      "carries the provider plugin 'pi-provider-other'",
+    );
   });
 
   it("checks the job first, then verifies the release binary against lbx_sha256 before putting it on PATH and running", () => {
@@ -881,12 +982,20 @@ describe("the kit action", () => {
       "Check the job and the pinned box",
       "Log in to ghcr.io",
       "Pull the pinned box image",
+      "Check the image carries the provider plugin",
       "Download the sandbox (lbx) release binary",
       "Run the job",
     ]);
+    const plugin = byName(steps, "Check the image carries the provider plugin");
+    expect(plugin.if).toBe("${{ inputs.provider-plugin != '' }}");
+    expect(plugin.env).toEqual({
+      BOX_IMAGE: "${{ inputs.box-image }}",
+      PROVIDER_PLUGIN: "${{ inputs.provider-plugin }}",
+    });
     const download = byName(steps, "Download the sandbox (lbx) release binary");
     expect(download.env).toEqual({
-      GH_TOKEN: "${{ inputs.box-token != '' && inputs.box-token || github.token }}",
+      GH_TOKEN:
+        "${{ inputs.box-token != '' && inputs.box-token || github.token }}",
       BOX_REPOSITORY: "${{ inputs.box-repository }}",
       BOX_RELEASE: "${{ inputs.box-release }}",
       BOX_SHA256: "${{ inputs.box-sha256 }}",
@@ -919,7 +1028,9 @@ describe("the kit action", () => {
       BOX_RELEASE: "main",
     });
     expect(badTag.status).toBe(1);
-    expect(badTag.stdout).toContain("::error::box_release main is not a release tag vX.Y.Z");
+    expect(badTag.stdout).toContain(
+      "::error::box_release main is not a release tag vX.Y.Z",
+    );
     expect(badTag.calls).toBe("");
     const run = byName(steps, "Run the job");
     expect(run.run).toBe(
