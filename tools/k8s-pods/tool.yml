@@ -1,0 +1,40 @@
+# Tool definition. Schema: schema/tool.schema.json. Rules: docs/adding-a-tool.md.
+
+name: k8s-pods
+
+description: Lists the pods of one Kubernetes cluster (dev, staging, prod or shared-services) as a table with status, restarts, age and node, or, given a pod name and namespace, returns that pod in full, including container states and the reason for its last restart. Secrets are never readable.
+
+arguments:
+  type: object
+  additionalProperties: false
+  required: [cluster]
+  properties:
+    cluster:
+      type: string
+      description: The cluster to read.
+      enum: [dev, staging, prod, shared-services]
+    namespace:
+      type: string
+      description: Only pods in this namespace; required with name.
+      maxLength: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    name:
+      type: string
+      description: A pod name, to get that one pod in full.
+      maxLength: 253
+      pattern: "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$"
+    label_selector:
+      type: string
+      description: Only pods matching this label selector, for example app=backend. Not used with name.
+      maxLength: 500
+
+upstream:
+  server: kubernetes
+  operations: [pods_list, pods_get]
+
+# trusted: only text a person reviewed or our own systems wrote. untrusted:
+# text anyone can write (pull request and issue bodies, Slack messages, log
+# lines, web pages).
+source: trusted
+
+result_max_bytes: 65536

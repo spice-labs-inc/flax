@@ -1,0 +1,29 @@
+# The hosts a line added by a proposed documentation change may link to.
+# The PR checker refuses a new link or bare URL to any other host, unless
+# the page being changed already links to that host. Adding a host here
+# widens where agent-written text can point readers, so it needs a code
+# owner's review. Schema: schema/link-hosts.schema.json. Rules:
+# docs/guardrails.md.
+
+# A new link whose query string is longer than this is refused: a query is
+# the easiest place to smuggle data out.
+max_query_length: 64
+
+# Search and filter links on GitHub run long, and only GitHub sees them.
+long_query_hosts:
+  - github.com
+
+# host, *.host (any host below it), or host/path (that path and below).
+hosts:
+  - github.com/notes-co
+  # GitHub Packages Maven registry, where the organization publishes its Maven packages.
+  - maven.pkg.github.com/notes-co
+  - docs.notes-co.example
+  - docs.notes-labs.dev
+  - api.notes-co.example
+  - notes-co.example
+  - "*.notes-co.example"
+  - notes-labs.dev
+  - "*.notes-labs.dev"
+  - sample-site.org
+  - www.sample-site.org

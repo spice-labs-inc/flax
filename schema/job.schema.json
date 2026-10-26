@@ -1,0 +1,843 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agents-kit.dev/schema/job.schema.json",
+  "title": "Scheduled AI job",
+  "description": "The contents of jobs/<name>/job.yml. Rules that need more than one file (allowlists, the folder name, trigger cycles, the monthly budget) are enforced by flax agents check.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "owner",
+    "purpose",
+    "trigger",
+    "model",
+    "tools",
+    "output",
+    "mode"
+  ],
+  "properties": {
+    "name": {
+      "description": "Must equal the job's folder name.",
+      "$ref": "#/$defs/jobName"
+    },
+    "owner": {
+      "description": "GitHub handle that receives failure alerts.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]{1,39}$",
+      "not": { "const": "CHANGE-ME" }
+    },
+    "purpose": {
+      "description": "One sentence on what the job does.",
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 200,
+      "pattern": "^[^\\n]+$"
+    },
+    "trigger": {
+      "description": "Exactly one of schedule, after, manual or envs.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "schedule": {
+          "description": "Five-field cron expression, evaluated in UTC.",
+          "type": "string",
+          "format": "cron"
+        },
+        "after": {
+          "description": "Run after this other job succeeds.",
+          "$ref": "#/$defs/jobName"
+        },
+        "manual": {
+          "description": "Run only when started by hand.",
+          "const": true
+        },
+        "envs": {
+          "description": "Only for output kind results: the environments the job checks, each on its own five-field cron (UTC); every run checks one environment. A run started by hand names the environment.",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[a-z][a-z0-9-]{0,30}$": { "type": "string", "format": "cron" }
+          }
+        }
+      }
+    },
+    "model": {
+      "description": "A model id listed in models.yml, or none: the job runs no model (no box, no thinking level, no limits, no gateway key but a media.model one for its media stage) and the kit builds its answer; none is only for output kind youtube, output kind results, output kind file, or output kind pr with media.pr_paths, and youtube and results take only none.",
+      "type": "string",
+      "pattern": "^(none|[a-z0-9][a-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*)$"
+    },
+    "thinking": {
+      "description": "Pi thinking level for every run; required unless model is none, which takes no level. A model with a thinking list in models.yml takes only those levels.",
+      "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]
+    },
+    "models": {
+      "description": "The models collect.ts may choose between for a run, each with the thinking level it runs at. collect.ts names its choice in the input's top-level model (and why in model_reason); model and thinking are the default and must be one of these. Not with model none. None when not set: every run uses model.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["model", "thinking"],
+        "properties": {
+          "model": {
+            "description": "A model id listed in models.yml.",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$"
+          },
+          "thinking": {
+            "description": "The Pi thinking level this model runs at; one it takes in models.yml.",
+            "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]
+          }
+        }
+      }
+    },
+    "shell": {
+      "description": "true: Pi also gets its bash tool, a shell inside the box. Off when not set. The box holds no credential and has no network, so the shell reaches only the data directory and the runner's sockets.",
+      "type": "boolean"
+    },
+    "limits": {
+      "description": "Required unless model is none, which takes no limits.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["turns", "tokens_per_run", "usd_per_month"],
+      "properties": {
+        "turns": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "tokens_per_run": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000000
+        },
+        "usd_per_month": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "tool_calls": {
+          "description": "Tool calls allowed in one run; 200 when not set.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "tool_seconds": {
+          "description": "Seconds one tool call may take; 60 when not set.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "collect_tool_calls": {
+          "description": "Tool calls collect.ts may make in one run; 200 when not set.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      }
+    },
+    "tools": {
+      "description": "Names of directories under tools/.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,40}$" }
+    },
+    "collect_tools": {
+      "description": "Names of directories under tools/ that collect.ts may call.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,40}$" }
+    },
+    "collect_inputs": {
+      "description": "String workflow inputs a person fills in when starting a run by hand, such as the crash to replay. A filled one must match its pattern and reaches collect.ts, which reads them with collectInputs() (src/collect/env.ts); an empty one is left out. Only for a job that runs a model and has collect.ts. None when not set.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "description", "pattern"],
+        "properties": {
+          "name": {
+            "description": "The workflow input's name; it must not be one the kit already gives the workflow.",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "description": {
+            "description": "What to fill in, shown in the run dialog: one line.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[ -~]+$"
+          },
+          "pattern": {
+            "description": "A regular expression, starting with ^ and ending with $, that every value must match. A value is at most 200 printable ASCII characters in any case.",
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 400,
+            "pattern": "^\\^.*\\$$"
+          }
+        }
+      }
+    },
+    "pin_files": {
+      "description": "true: the model's gh-file reads each organization repository the input's repos object names at the commit given there (a full sha), unless a call names a ref; other repositories and every call without it read main. Off when not set.",
+      "type": "boolean"
+    },
+    "ledger": {
+      "description": "true: collect.ts keeps a ledger between runs, one JSON object of at most 256 KB, such as which crashes it already investigated: it reads the previous run's with readLedger() and writes the next with writeLedger() (src/collect/env.ts), and the workflow keeps it as the job-<name>-ledger artifact. Only for a job that runs a model and has collect.ts. Off when not set.",
+      "type": "boolean"
+    },
+    "settings": {
+      "description": "Values a person sets for the job's collect.ts, which reads them with jobSettings() (src/collect/env.ts) and puts what the model needs in the input: a switch flipped here, with no code change. collect.ts names the ones it reads and their defaults. None when not set.",
+      "type": "object",
+      "maxProperties": 20,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{1,40}$" },
+      "additionalProperties": {
+        "anyOf": [
+          { "type": "boolean" },
+          { "type": "number" },
+          { "type": "string", "maxLength": 200 }
+        ]
+      }
+    },
+    "media": {
+      "description": "Runs jobs/<name>/media.ts on the runner, outside the box, before collect.ts: it may reach the network and gets only the secrets listed here. It writes media files and a media.json manifest that collect.ts, the report and delivery read.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["network", "secrets", "timeout_minutes"],
+      "properties": {
+        "network": {
+          "description": "public: the runner's own network only; any other name: a network join from flax.yml (network_joins) the workflow runs before the run and leaves after.",
+          "type": "string", "pattern": "^[a-z][a-z0-9-]{0,30}$"
+        },
+        "secrets": {
+          "description": "Secrets media.ts gets, by environment variable name; each must be one the kit allows for media.ts (MEDIA_SECRET_ENV in src/lib/media.ts).",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" }
+        },
+        "timeout_minutes": {
+          "description": "Minutes media.ts may run before it is stopped; the workflow's timeout grows by as much.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 180
+        },
+        "pr_paths": {
+          "description": "Globs of files a job with output kind pr may change with files from media.json, byte for byte as media.ts wrote them; the answer only names which media file goes where.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*$"
+          }
+        },
+        "setup": {
+          "description": "What the workflow installs on the runner before the run, in this order: packages (the kit's locked node_modules, which a media.ts that imports playwright needs), chromium (Playwright's Chromium with its system libraries; needs packages), java (JDK 21 and Maven), ghcr (a ghcr.io login with the workflow token, read-only packages, for pulling private images). Nothing when not set.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string", "pattern": "^[a-z][a-z0-9-]{0,30}$"
+          }
+        },
+        "model": {
+          "description": "A short-lived model key for media.ts: before the media stage the runner issues one gateway key limited to this model, capped at usd_per_run and expiring with the stage, and serves the model to media.ts on a Unix socket (FLAX_AGENTS_MEDIA_MODEL_SOCKET) that adds the key, so media.ts never holds it. Its spend counts toward the job's month like any run key. None when not set.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model", "usd_per_run"],
+          "properties": {
+            "model": {
+              "description": "A model id listed in models.yml.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
+            "fallback": {
+              "description": "Another model id listed in models.yml, never the same as model: the same key also allows it and the socket serves it to a call that names it (FLAX_AGENTS_MEDIA_MODEL_FALLBACK), for media.ts to ask when model fails. usd_per_run caps both together. None when not set.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
+            "usd_per_run": {
+              "description": "The key's budget, which the gateway enforces on every call: at most 2.",
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 2
+            },
+            "usd_per_month": {
+              "description": "The month's budget of a job with model: none, which has no limits; required for one, refused for a job that runs a model, whose limits.usd_per_month already covers its media key.",
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000
+            },
+            "optional": {
+              "description": "When the month cannot hold usd_per_run, media.ts runs without the model (no socket) instead of the run failing. Off when not set.",
+              "type": "boolean"
+            }
+          }
+        },
+        "read_repos": {
+          "description": "organization repositories media.ts may read through the GitHub API (gh api, a tarball download) without checking them out: just before the run, the workflow makes a contents-read token the reader app grants for these repositories alone, and media.ts gets it as GH_TOKEN. The token lives an hour, so media.ts reads early. None when not set.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+          }
+        },
+        "dispatch_repos": {
+          "description": "organization repositories media.ts may start workflow runs in (gh workflow run), and whose runs, logs and artifacts it may read: just before the run, the workflow makes an actions-write token the writer app grants for these repositories alone, and media.ts gets it as FLAX_AGENTS_DISPATCH_TOKEN. The writer app must be installed on them with Actions: Read and write. The token lives an hour. None when not set.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+          }
+        },
+        "parts": {
+          "description": "Only for a job with model: none and output kind youtube: media.ts runs once per part, each in a workflow job of its own on the agents pool, in parallel (FLAX_AGENTS_MEDIA_PART names the part), and one job after them merges their media and delivers once. A part that fails or never finishes is listed in media.json data.failed. A part takes what it leaves out from the stage; its setup and sources add to the stage's. One run of media.ts when not set.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id"],
+            "properties": {
+              "id": {
+                "description": "The part's id: a scenario id.",
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{1,40}$"
+              },
+              "timeout_minutes": {
+                "description": "Minutes this part's media.ts may run; the stage's when not set.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 180
+              },
+              "network": {
+                "description": "This part's network; the stage's when not set.",
+                "type": "string", "pattern": "^[a-z][a-z0-9-]{0,30}$"
+              },
+              "secrets": {
+                "description": "The stage's secrets this part gets; all of them when not set.",
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+                }
+              },
+              "setup": {
+                "description": "Installed for this part besides the stage's setup.",
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string", "pattern": "^[a-z][a-z0-9-]{0,30}$"
+                }
+              },
+              "sources": {
+                "description": "Checked out for this part besides the stage's sources, in the same forms.",
+                "type": "array",
+                "uniqueItems": true,
+                "maxItems": 5,
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["repo", "submodules"],
+                      "properties": {
+                        "repo": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+                        },
+                        "submodules": {
+                          "type": "array",
+                          "uniqueItems": true,
+                          "maxItems": 10,
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "model": {
+                "description": "This part gets the stage's media.model key, its own for its job; no part does when not set.",
+                "type": "boolean"
+              },
+              "edition_heap": {
+                "description": "The workflow's edition_heap input (such as 8g) reaches this part as FLAX_AGENTS_EDITION_HEAP: the heap its edition run uses instead of the scenario's. Off when not set.",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "cache": {
+          "description": "Build files inside the source checkouts kept between runs with the Actions cache: before the run the workflow restores the newest cache saved under the runner OS and the contents of key_files, and after a successful run it saves the paths again when they hold files and changed. Only build outputs and downloaded dependencies belong here, never secrets or results. Not with parts. None when not set.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "paths", "key_files"],
+            "properties": {
+              "source": {
+                "description": "A repository listed in sources, whose checkout holds the paths.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+              },
+              "paths": {
+                "description": "Directories inside the checkout, relative to it, globs allowed.",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 5,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*$"
+                }
+              },
+              "key_files": {
+                "description": "Files inside the checkout, relative to it, globs allowed, whose contents key the cache: a change to them starts it afresh.",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 5,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*$"
+                }
+              }
+            }
+          }
+        },
+        "org_read": {
+          "description": "media.ts gets FLAX_AGENTS_ORG_READ_TOKEN, a contents-read token the reader app makes for every repository it can see, for a stage that reads more repositories than sources can list. Not with parts. Off when not set.",
+          "type": "boolean"
+        },
+        "inputs": {
+          "description": "Boolean workflow inputs a person can tick when starting a run by hand; the ticked ones reach media.ts in FLAX_AGENTS_MEDIA_INPUTS, comma-separated. Only for a job with model: none, and not with parts. None when not set.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "description"],
+            "properties": {
+              "name": {
+                "description": "The workflow input's name; it must not be one the kit already gives the workflow.",
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,39}$"
+              },
+              "description": {
+                "description": "What ticking it does, shown in the run dialog: one line.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^[ -~]+$"
+              }
+            }
+          }
+        },
+        "sources": {
+          "description": "organization repositories the workflow checks out read-only with the reader app, into media-sources/<name> in the workspace, before the run; media.ts reads and builds them there.",
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+              },
+              {
+                "type": "object",
+                "description": "A repository whose checkout also brings its submodules; submodules names the private ones the read token must cover.",
+                "additionalProperties": false,
+                "required": ["repo", "submodules"],
+                "properties": {
+                  "repo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+                  },
+                  "submodules": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": { "kind": { "type": "string" } },
+      "discriminator": { "propertyName": "kind" },
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "channel"],
+          "properties": {
+            "kind": { "const": "slack" },
+            "channel": {
+              "description": "A channel listed in channels.yml, without the #.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,79}$"
+            },
+            "untrusted_input": {
+              "description": "What a run whose model saw untrusted text (a result of a tool whose tool.yml says source: untrusted, for the model or for collect.ts) delivers: post (the default) posts the message, held to the kit's message rules; report_only keeps it in the run's report and posts nothing.",
+              "enum": ["post", "report_only"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "repos",
+            "paths",
+            "max_changed_lines",
+            "untrusted_input"
+          ],
+          "properties": {
+            "kind": { "const": "pr" },
+            "repos": {
+              "description": "Repositories listed in repos.yml, as owner/name.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}$"
+              }
+            },
+            "paths": {
+              "description": "Globs, relative to the repository root, that the job may change.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$"
+              }
+            },
+            "max_changed_lines": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000
+            },
+            "untrusted_input": {
+              "description": "What a run whose model saw untrusted text (a result of a tool whose tool.yml says source: untrusted, for the model or for collect.ts) delivers: report_only keeps the answer in the run's report and opens no pull request; open_pr opens it anyway.",
+              "enum": ["report_only", "open_pr"]
+            },
+            "frontmatter_keys": {
+              "description": "Frontmatter keys the model may change, each changed line with evidence like any other; the PR checker and the second check refuse a change to any other key. None when not set. intent, audience and owner are never allowed.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/frontmatterKey" }
+            },
+            "stamp_keys": {
+              "description": "Frontmatter keys only the job's code sets: collect.ts lists the values in the input's stamps, and delivery sets them after every check has passed. The model may not change them, so none may also be in frontmatter_keys. None when not set.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/frontmatterKey" }
+            },
+            "data_keys": {
+              "description": "In a YAML or JSON file the job may change (.yml, .yaml, .json), the keys whose values the model may change, each changed line with evidence like any other; the PR checker refuses a change to any other value, to a key, to the file's shape (which maps hold which keys, how long each list is) or to a comment. A value in a list counts as its key's. Such files are not held to this when not set.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "review_team": {
+              "description": "The organization team, by its slug, asked to review every pull request the job opens, besides the people whose changes the pull request cites. The team needs access to the repositories. None when not set.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,99}$"
+            },
+            "review_model": {
+              "description": "The model the second check runs on, with its thinking level: listed in models.yml and of another family than the job's model and every entry of models, so the check does not share the writer's blind spots. The job's own model when not set.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["model", "thinking"],
+              "properties": {
+                "model": {
+                  "description": "A model id listed in models.yml.",
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$"
+                },
+                "thinking": {
+                  "description": "The Pi thinking level the second check runs at; one the model takes in models.yml.",
+                  "enum": [
+                    "off",
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "xhigh",
+                    "max"
+                  ]
+                }
+              }
+            },
+            "auto_merge": {
+              "description": "Merges a live run's pull request right after it is opened and checked, when every changed path matches one of paths; otherwise it stays open for review and says why. For generated data only: flax agents check refuses globs outside the job's output paths, under .github/, jobs/, src/, test/ or tools/, or naming prompts. Off when not set.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["paths"],
+              "properties": {
+                "paths": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$"
+                  }
+                }
+              }
+            },
+            "attribution_check": {
+              "description": "true: before the second check, code reads from GitHub every commit and pull request an added line credits, and leaves out a page whose credit is not merged into the repository's default branch, names the wrong merge commit, carries a date other than the day it landed in America/Los_Angeles, or quotes a code identifier on no added or removed line of the credited diffs. Off when not set.",
+              "type": "boolean"
+            },
+            "drop_refused_changes": {
+              "description": "true: when the second check rejects the proposal and every reason names a change (its page and its number), the job's publish.ts rebuilds the answer without those changes, and the rebuilt answer goes through the PR checker, the citation and attribution checks and the second check once more, budget permitting. A second rejection, a reason that names no change, or publish.ts publishing nothing without them delivers nothing, as without this key. Needs publish.ts. Off when not set.",
+              "type": "boolean"
+            },
+            "notify": {
+              "description": "A channel listed in the post list of channels.yml, without the #, told about each pull request a live run opens, so a person reviews it. A run whose publish.ts publishes nothing may post a short analysis there instead (a shadow run to the shadow channel). No notice when not set.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,79}$"
+            },
+            "branch_key": {
+              "description": "One pull request per key: the branch is agent/<job>/<key>, the key read from the top-level string field `field` of the input (from: input, set by collect.ts) or of the model's answer (from: answer). A key is two to eight groups of lowercase letters and digits joined by hyphens, at most 64 characters, never a date. Delivery updates the open pull request of the same key and never closes or touches the job's pull requests of other keys. One branch a day, agent/<job>/<YYYY-MM-DD>, replacing the job's earlier pull requests, when not set.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["from", "field"],
+              "properties": {
+                "from": { "enum": ["input", "answer"] },
+                "field": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,39}$"
+                }
+              }
+            },
+            "pages_on_demand": {
+              "description": "A page a patch names that the input's pages do not give is read by the runner with the reader app, when it is in one of repos and matches one of these paths: at the commit the input's other pages of that repository were read at, or else at the head of its default branch. A file that is not there is known to be absent (see new_files). The page is then checked like a given page. At most 10 pages a run. None when not set.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["paths"],
+              "properties": {
+                "paths": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$"
+                  }
+                }
+              }
+            },
+            "new_files": {
+              "description": "A patch may create a file (from /dev/null) only under one of paths, at most max of them a run, and only where the run knows the file is absent at the base commit: an input page with absent: true and no lines, or a page on demand that is not there. Every other rule holds. No new files when not set.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["max", "paths"],
+              "properties": {
+                "max": { "type": "integer", "minimum": 0, "maximum": 10 },
+                "paths": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$"
+                  }
+                }
+              }
+            },
+            "tool_citations": {
+              "description": "true: a change may cite { tool, quote }, a quote of what one of the model's tools (tools) returned in this run; the PR checker refuses a quote no result of that tool holds, and the second check sees the quote. Off when not set.",
+              "type": "boolean"
+            },
+            "code_fix": {
+              "description": "true: the job fixes code. A change may cite the code it changes (the job's own paths, usually at the deployed commit), every page must also match its repository's code.paths in repos.yml and a created file its code.tests, no page may be a build file, lockfile, workflow, Dockerfile, chart or migration, a code file may change beyond its literal values, and the second check holds the change to the code-fix rules and sees the pull request body sections publish.ts wrote. flax agents check refuses it for a repository without code in repos.yml, and for the workspace repository itself. Off when not set.",
+              "type": "boolean"
+            },
+            "draft": {
+              "description": "true: every pull request the job opens is a draft, for a person to mark ready for review. Off when not set.",
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "playlist", "docs_repo", "map_path"],
+          "properties": {
+            "kind": { "const": "youtube" },
+            "playlist": {
+              "description": "The title of a playlist that already exists on the channel; every upload is added to it unless its scenario names another. null adds none. A title the channel does not have refuses the upload; the kit never creates a playlist.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 150,
+                  "pattern": "^[^<>\\n]+$"
+                },
+                { "type": "null" }
+              ]
+            },
+            "docs_repo": {
+              "description": "A repository listed in repos.yml, as owner/name, that holds map_path.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}$"
+            },
+            "map_path": {
+              "description": "The JSON file in docs_repo mapping scenario ids to the videos uploaded for them, relative to the repository root.",
+              "type": "string",
+              "pattern": "^(?!/)(?!.*(^|/)\\.\\.?(/|$))[A-Za-z0-9._/-]{1,200}\\.json$"
+            },
+            "notify": {
+              "description": "A channel listed in the post list of channels.yml, without the #, told about each live upload so a person reviews and publishes it. No notice when not set.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,79}$"
+            },
+            "review_team": {
+              "description": "The organization team, by its slug, asked to review the map pull request when the job opens it, so a person publishes the private uploads and merges. The team needs access to docs_repo. None when not set.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,99}$"
+            },
+            "docs_media_dir": {
+              "description": "A folder under public/ in docs_repo where the map pull request also commits each uploaded video's poster and captions, as <dir>/<scenario>/poster.<png|jpg> and captions.vtt, and the map entry names them with the description, chapters and duration, for the docs' video pages. Only bytes from the run's media stage are written, after their sha256 checks. Nothing beyond the map file when not set.",
+              "type": "string",
+              "pattern": "^public(/[a-z0-9][a-z0-9_-]*)+$"
+            },
+            "docs_source_dir": {
+              "description": "A folder in docs_repo, relative to the repository root, where the map pull request also commits each uploaded video's scenario source file byte for byte, at <dir>/<scenarioFile>: media.json data.scenarios[id].scenarioFile names a JSON file (application/json, at most 256 KiB) of the manifest, and every scenario needs one. Only bytes from the run's media stage are written, after their sha256 checks; a shadow or stub run keeps each file in the report under delivery/youtube-sources/ and commits nothing. Not inside docs_media_dir or around it, and not around map_path. Nothing beyond the map file when not set.",
+              "type": "string",
+              "maxLength": 120,
+              "pattern": "^[a-z0-9][a-z0-9_-]*(/[a-z0-9][a-z0-9_-]*)*$"
+            },
+            "video_noun": {
+              "description": "What the review notice, the shadow notice and the map pull request call one video, such as \"What's new episode\"; an s is added for more than one. \"demo video\" when not set.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "^[A-Za-z][A-Za-z0-9' ]*[A-Za-z0-9]$"
+            },
+            "unlist_replaced": {
+              "description": "A second schedule on which the job records nothing and only tidies the channel: each video the job's merged map pull requests once recorded and the map no longer does is taken out of these playlists and set from public to unlisted, so old links keep working. Nothing is deleted or made public, and no other video is touched. shadow plans it in the report and changes nothing. Needs media.parts. Off when not set.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["schedule", "playlists", "mode"],
+              "properties": {
+                "schedule": {
+                  "description": "Five-field cron, UTC, not the job's own schedule.",
+                  "type": "string",
+                  "format": "cron"
+                },
+                "playlists": {
+                  "description": "Titles of the channel playlists the job adds uploads to; a replaced video is taken out of these and no other.",
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150,
+                    "pattern": "^[^<>\\n]+$"
+                  }
+                },
+                "mode": { "enum": ["shadow", "live"] }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "file" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": {
+              "description": "Each run's results (the media stage's files, media.json and index.json, every check's status) go up as a workflow artifact per environment, kept 90 days; a check job compares them with the previous run's.",
+              "const": "results"
+            },
+            "alert": {
+              "description": "A channel listed in the post list of channels.yml, without the #, told when a check that passed in the previous run of the same environment fails, or the reverse. Shadow runs post to the shadow channel. No alert when not set.",
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,79}$"
+            }
+          }
+        }
+      ]
+    },
+    "mode": {
+      "enum": ["shadow", "live"]
+    }
+  },
+  "if": {
+    "properties": { "model": { "const": "none" } },
+    "required": ["model"]
+  },
+  "then": {
+    "properties": {
+      "thinking": false,
+      "limits": false,
+      "shell": false,
+      "tools": { "type": "array", "maxItems": 0 },
+      "collect_tools": { "type": "array", "maxItems": 0 }
+    }
+  },
+  "else": { "required": ["thinking", "limits"] },
+  "$defs": {
+    "jobName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,40}$"
+    },
+    "frontmatterKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "not": { "enum": ["intent", "audience", "owner"] }
+    }
+  }
+}

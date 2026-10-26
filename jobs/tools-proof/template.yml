@@ -1,0 +1,22 @@
+# A model job that answers four questions only the workspace's tools can
+# answer (Kubernetes, GitHub Actions, the log store, Slack), each with a quote
+# of the tool result, to prove the tools path end to end. It needs the four
+# tools under tools/ by these names: k8s-pods, gh-workflow-runs, logs-streams
+# and slack-history.
+description: Answers four questions that only the tools can answer, one per upstream, to prove the tools path end to end.
+fields:
+  model:
+    description: The model id the job runs on, as models.yml lists it.
+    example: anthropic/claude-sonnet-4-5
+  cluster:
+    description: The Kubernetes cluster the pods question asks about, as flax.yml names it under clusters.
+    example: test
+  namespace:
+    description: The namespace on that cluster whose pods are counted.
+    example: kube-system
+  proofRepo:
+    description: The name (under the workspace's GitHub owner) of a repository with at least one completed workflow run.
+    example: notes
+  alertChannel:
+    description: The Slack channel, without the #, whose newest message is summarized; it must be in the read list of channels.yml.
+    example: alerts-live

@@ -1,0 +1,60 @@
+{
+  "name": "@flax/agents",
+  "version": "0.1.8",
+  "description": "Scheduled agents that run unattended on cheap models with code guardrails: the job kit, its checker, generator, runner and a reusable GitHub Action",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spice-labs-inc/flax.git",
+    "directory": "packages/agents"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.15"
+  },
+  "flax": "./bin/flax-agents.mjs",
+  "bin": {
+    "flax-agents": "./bin/flax-agents.mjs"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json",
+    "./tools-server/mapping": "./src/tools-server/mapping.ts",
+    "./test/*": "./test/*.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@kubernetes/client-node": "2.0.0",
+    "@modelcontextprotocol/client": "2.2.0",
+    "@modelcontextprotocol/server": "2.2.0",
+    "@slack/web-api": "8.1.1",
+    "@xterm/xterm": "5.5.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "esbuild": "0.28.2",
+    "ffmpeg-static": "5.3.0",
+    "imapflow": "2.1.2",
+    "mailparser": "3.9.32",
+    "playwright": "1.63.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "yaml": "^2.9.1",
+    "@flax/core": "git+https://github.com/spice-labs-inc/flax.git#core-v0.1.8"
+  },
+  "files": [
+    "action.yml",
+    "bin",
+    "images/agent",
+    "jobs",
+    "schema",
+    "src",
+    "test/fake-*.ts",
+    "test/helpers.ts",
+    "test/legacy-steps.ts",
+    "test/fixtures/gateway-tls",
+    "test/fixtures/workspace",
+    "tools",
+    "workflows",
+    "docs"
+  ]
+}

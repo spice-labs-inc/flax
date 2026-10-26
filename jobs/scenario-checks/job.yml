@@ -1,0 +1,59 @@
+# Job definition. Schema: schema/job.schema.json. Rules: docs/guardrails.md.
+# After editing, run pnpm generate and pnpm check.
+
+name: {{name}} # must equal the folder name
+
+# GitHub handle that gets failure alerts.
+owner: {{owner}}
+
+# One sentence on what this job does.
+purpose: Runs the scenario library's checks against one environment, keeps the results as a workflow artifact, and says which checks started or stopped failing.
+
+# envs: one environment a run, each on its own cron, staggered so about one
+# run an hour happens in all. A run started by hand, or by a deploy's
+# workflow through the API, names its environment and a reason.
+trigger:
+  envs: {{environments}}
+
+# none: a check job never runs a model, in its media stage either.
+model: none
+
+tools: []
+
+# media.ts runs on the runner, outside any box: it installs the scenario
+# library checkout, waits for the environment's probe URL to answer, and
+# runs the scenarios against the environment, with fixture scenarios where
+# fixtures may be created. Where the GitHub Action scenarios may run
+# (--dispatch), they start the scenario library's action-check workflow and
+# read its runs and artifacts (dispatch_repos: the writer app's
+# actions-write token for the scenario library alone, which only the
+# scenario run gets). Setup steps, and a run that wrote no results, are
+# tried once more before the run fails. Failing scenarios are results, not
+# a failure. The scenario run pushes its progress to the explorer
+# (EXPLORER_URL in media.ts) with EXPLORER_INGEST_TOKEN, so open explorer
+# pages follow it; a push that fails never fails or slows the run.
+# A scenario library that builds a sample project from another repository
+# adds read_repos (the reader app's token for that repository, which only
+# the scenario run gets as GH_TOKEN) and cache (its build outputs, kept
+# between runs, keyed by the file that pins the commit).
+media:
+  network: {{network}}
+  secrets: [EXPLORER_INGEST_TOKEN]
+  timeout_minutes: 150
+  setup: {{setup}}
+  sources: [{{github}}/{{scenariosRepo}}]
+  dispatch_repos: [{{github}}/{{scenariosRepo}}]
+
+# Each run's results (run.json, planned.json, messages.ndjson, media.json and
+# index.json, every check's status) go up as the artifact
+# <job>-<env>, kept 90 days. A check that passed in the environment's
+# previous run and fails now, or the reverse, is posted to the alert
+# channel.
+output:
+  kind: results
+  alert: {{alertChannel}}
+
+# shadow runs leave <job>-shadow-<env> and post their alerts to the shadow
+# channel. live needs SHADOW_RUNS.md with 4 run links and code owner
+# approval.
+mode: shadow

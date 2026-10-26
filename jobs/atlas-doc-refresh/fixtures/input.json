@@ -1,0 +1,584 @@
+{
+  "generatedAt": "2026-09-30T14:00:00.000Z",
+  "rules": {
+    "repos": ["notes-co/atlas"],
+    "paths": [
+      "repos/*.md",
+      "repos/*/*.md",
+      "INDEX.md",
+      "ARCHITECTURE.md",
+      "GLOSSARY.md",
+      "GAPS.md"
+    ],
+    "max_changed_lines": 800,
+    "frontmatter_keys": [
+      "repo",
+      "language",
+      "type",
+      "status",
+      "deploy",
+      "depends_on",
+      "artifacts",
+      "default_branch"
+    ]
+  },
+  "repos": {
+    "notes-co/atlas": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+    "notes-co/alpha": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "notes-co/delta": "4444444ddddddddddddddddddddddddddddddddd",
+    "notes-co/reports": "6666666fffffffffffffffffffffffffffffffff"
+  },
+  "pages": [
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/alpha.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "lines": [
+        "---",
+        "name: alpha",
+        "repo: notes-co/alpha",
+        "language: rust",
+        "type: service",
+        "status: active",
+        "deploy: none",
+        "depends_on: [beta]",
+        "used_by: []",
+        "artifacts: []",
+        "default_branch: main",
+        "analyzed_commit: 0a0a0a0 2026-09-01",
+        "analysis_source: fresh-clone",
+        "---",
+        "",
+        "# alpha: a service",
+        "",
+        "## tldr",
+        "alpha serves the widget API on port 8080 (`src/main.rs`).",
+        "",
+        "## role",
+        "none",
+        "",
+        "## architecture",
+        "none",
+        "",
+        "## data",
+        "none",
+        "",
+        "## interfaces",
+        "none",
+        "",
+        "## configuration",
+        "- `ALPHA_PORT`: listen port, default 8080 (`src/config.rs`).",
+        "",
+        "## build-test-run",
+        "none",
+        "",
+        "## cicd",
+        "none",
+        "",
+        "## keyfiles",
+        "none",
+        "",
+        "## invariants",
+        "none",
+        "",
+        "## recent",
+        "- 2026-09-01: PR #10 (merge 0a0a0a0) first release.",
+        ""
+      ]
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/delta.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "lines": [
+        "---",
+        "name: delta",
+        "repo: notes-co/delta",
+        "language: rust",
+        "type: service",
+        "status: active",
+        "deploy: none",
+        "depends_on: []",
+        "used_by: []",
+        "artifacts: []",
+        "default_branch: main",
+        "analyzed_commit: 0d0d0d0 2026-08-15",
+        "analysis_source: fresh-clone",
+        "---",
+        "",
+        "# delta: a service",
+        "",
+        "## tldr",
+        "none",
+        "",
+        "## role",
+        "none",
+        "",
+        "## architecture",
+        "- `src/module_00.rs`: handles part 0 of the pipeline.",
+        "- `src/module_01.rs`: handles part 1 of the pipeline.",
+        "- `src/module_02.rs`: handles part 2 of the pipeline.",
+        "- `src/module_03.rs`: handles part 3 of the pipeline.",
+        "- `src/module_04.rs`: handles part 4 of the pipeline.",
+        "- `src/module_05.rs`: handles part 5 of the pipeline.",
+        "- `src/module_06.rs`: handles part 6 of the pipeline.",
+        "- `src/module_07.rs`: handles part 7 of the pipeline.",
+        "- `src/module_08.rs`: handles part 8 of the pipeline.",
+        "- `src/module_09.rs`: handles part 9 of the pipeline.",
+        "- `src/module_10.rs`: handles part 10 of the pipeline.",
+        "- `src/module_11.rs`: handles part 11 of the pipeline.",
+        "- `src/module_12.rs`: handles part 12 of the pipeline.",
+        "- `src/module_13.rs`: handles part 13 of the pipeline.",
+        "- `src/module_14.rs`: handles part 14 of the pipeline.",
+        "- `src/module_15.rs`: handles part 15 of the pipeline.",
+        "- `src/module_16.rs`: handles part 16 of the pipeline.",
+        "- `src/module_17.rs`: handles part 17 of the pipeline.",
+        "- `src/module_18.rs`: handles part 18 of the pipeline.",
+        "- `src/module_19.rs`: handles part 19 of the pipeline.",
+        "- `src/module_20.rs`: handles part 20 of the pipeline.",
+        "- `src/module_21.rs`: handles part 21 of the pipeline.",
+        "- `src/module_22.rs`: handles part 22 of the pipeline.",
+        "- `src/module_23.rs`: handles part 23 of the pipeline.",
+        "- `src/module_24.rs`: handles part 24 of the pipeline.",
+        "- `src/module_25.rs`: handles part 25 of the pipeline.",
+        "- `src/module_26.rs`: handles part 26 of the pipeline.",
+        "- `src/module_27.rs`: handles part 27 of the pipeline.",
+        "- `src/module_28.rs`: handles part 28 of the pipeline.",
+        "- `src/module_29.rs`: handles part 29 of the pipeline.",
+        "- `src/module_30.rs`: handles part 30 of the pipeline.",
+        "- `src/module_31.rs`: handles part 31 of the pipeline.",
+        "- `src/module_32.rs`: handles part 32 of the pipeline.",
+        "- `src/module_33.rs`: handles part 33 of the pipeline.",
+        "- `src/module_34.rs`: handles part 34 of the pipeline.",
+        "- `src/module_35.rs`: handles part 35 of the pipeline.",
+        "- `src/module_36.rs`: handles part 36 of the pipeline.",
+        "- `src/module_37.rs`: handles part 37 of the pipeline.",
+        "- `src/module_38.rs`: handles part 38 of the pipeline.",
+        "- `src/module_39.rs`: handles part 39 of the pipeline.",
+        "",
+        "## data",
+        "none",
+        "",
+        "## interfaces",
+        "none",
+        "",
+        "## configuration",
+        "none",
+        "",
+        "## build-test-run",
+        "none",
+        "",
+        "## cicd",
+        "none",
+        "",
+        "## keyfiles",
+        "none",
+        "",
+        "## invariants",
+        "none",
+        "",
+        "## recent",
+        "none",
+        ""
+      ]
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/reports.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "lines": [
+        "---",
+        "name: reports",
+        "repo: notes-co/reports",
+        "language: rust",
+        "type: service",
+        "status: active",
+        "deploy: none",
+        "depends_on: []",
+        "used_by: []",
+        "artifacts: []",
+        "default_branch: main",
+        "analyzed_commit: 0c0c0c0 2026-09-12",
+        "analysis_source: fresh-clone",
+        "---",
+        "",
+        "# reports: a service",
+        "",
+        "## tldr",
+        "none",
+        "",
+        "## role",
+        "none",
+        "",
+        "## architecture",
+        "none",
+        "",
+        "## data",
+        "none",
+        "",
+        "## interfaces",
+        "none",
+        "",
+        "## configuration",
+        "none",
+        "",
+        "## build-test-run",
+        "none",
+        "",
+        "## cicd",
+        "none",
+        "",
+        "## keyfiles",
+        "none",
+        "",
+        "## invariants",
+        "none",
+        "",
+        "## recent",
+        "none",
+        ""
+      ]
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "INDEX.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "lines": [
+        "# INDEX",
+        "",
+        "| Repo | Role |",
+        "|---|---|",
+        "| [alpha](repos/alpha.md) | widget API |"
+      ]
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "ARCHITECTURE.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "lines": ["# ARCHITECTURE", "", "- alpha serves widgets."]
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "GLOSSARY.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "lines": ["# GLOSSARY", "", "- **widget**: the unit alpha serves."]
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "GAPS.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "lines": ["# GAPS", "", "## Open"]
+    }
+  ],
+  "drift": [
+    {
+      "path": "repos/alpha.md",
+      "repo": "notes-co/alpha",
+      "from": "0a0a0a0",
+      "to": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "total_commits": 2,
+      "commits": [
+        {
+          "sha": "9a9a9a9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "date": "2026-09-20T10:00:00Z",
+          "subject": "Move the port to ALPHA_LISTEN (#12)",
+          "author": "dev-bob"
+        },
+        {
+          "sha": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "date": "2026-09-28T10:00:00Z",
+          "subject": "Depend on gamma for widgets (#14)",
+          "author": "dev-alice"
+        }
+      ],
+      "commits_left_out": 0,
+      "files": [
+        {
+          "path": "src/config.rs",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 1,
+          "patch": "@@ -3,1 +3,1 @@\n-    env(\"ALPHA_PORT\")\n+    env(\"ALPHA_LISTEN\")"
+        },
+        {
+          "path": "Cargo.toml",
+          "status": "modified",
+          "additions": 1,
+          "deletions": 0,
+          "patch": "@@ -8,0 +9,1 @@\n+gamma = { git = \"https://github.com/notes-co/gamma\" }"
+        }
+      ],
+      "files_may_be_more": false,
+      "patches_left_out": 0
+    },
+    {
+      "path": "repos/delta.md",
+      "repo": "notes-co/delta",
+      "from": "0d0d0d0",
+      "to": "4444444ddddddddddddddddddddddddddddddddd",
+      "total_commits": 1,
+      "commits": [
+        {
+          "sha": "4444444ddddddddddddddddddddddddddddddddd",
+          "date": "2026-09-25T10:00:00Z",
+          "subject": "Split module_03 (#40)"
+        }
+      ],
+      "commits_left_out": 0,
+      "files": [
+        {
+          "path": "src/module_03.rs",
+          "status": "renamed",
+          "additions": 0,
+          "deletions": 0,
+          "previous_path": "src/module_3.rs"
+        }
+      ],
+      "files_may_be_more": false,
+      "patches_left_out": 0
+    },
+    {
+      "path": "repos/reports.md",
+      "repo": "notes-co/reports",
+      "from": "0c0c0c0",
+      "to": "6666666fffffffffffffffffffffffffffffffff",
+      "total_commits": 2,
+      "commits": [
+        {
+          "sha": "6666666fffffffffffffffffffffffffffffffff",
+          "date": "2026-09-26T10:00:00Z",
+          "subject": "Add a probe runner"
+        }
+      ],
+      "commits_left_out": 1,
+      "files": [
+        {
+          "path": "REPORT.md",
+          "status": "modified",
+          "additions": 4,
+          "deletions": 4
+        },
+        {
+          "path": "src/probe.rs",
+          "status": "added",
+          "additions": 40,
+          "deletions": 0,
+          "patch": "@@ -0,0 +1,2 @@\n+pub fn probe() {}\n+"
+        }
+      ],
+      "files_may_be_more": false,
+      "patches_left_out": 0
+    }
+  ],
+  "sources": [
+    {
+      "kind": "commit",
+      "repo": "notes-co/alpha",
+      "commit": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "date": "2026-09-29T12:00:00Z",
+      "title": "alpha 0a0a0a0..1111111: every change since the doc's analyzed_commit (2 commits)",
+      "files": [
+        {
+          "path": "src/config.rs",
+          "status": "modified"
+        },
+        {
+          "path": "Cargo.toml",
+          "status": "modified"
+        }
+      ],
+      "excerpt": [
+        {
+          "path": "src/config.rs",
+          "removed": ["    env(\"ALPHA_PORT\")"],
+          "added": ["    env(\"ALPHA_LISTEN\")"]
+        },
+        {
+          "path": "Cargo.toml",
+          "removed": [],
+          "added": [
+            "gamma = { git = \"https://github.com/notes-co/gamma\" }"
+          ]
+        }
+      ],
+      "authors": ["dev-alice", "dev-bob"]
+    },
+    {
+      "kind": "commit",
+      "repo": "notes-co/alpha",
+      "commit": "9a9a9a9aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "date": "2026-09-20T10:00:00Z",
+      "title": "Move the port to ALPHA_LISTEN (#12)",
+      "files": [],
+      "excerpt": [],
+      "authors": ["dev-bob"]
+    },
+    {
+      "kind": "commit",
+      "repo": "notes-co/alpha",
+      "commit": "1111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "date": "2026-09-28T10:00:00Z",
+      "title": "Depend on gamma for widgets (#14)",
+      "files": [],
+      "excerpt": [],
+      "authors": ["dev-alice"]
+    },
+    {
+      "kind": "commit",
+      "repo": "notes-co/delta",
+      "commit": "4444444ddddddddddddddddddddddddddddddddd",
+      "date": "2026-09-29T12:00:00Z",
+      "title": "delta 0d0d0d0..4444444: every change since the doc's analyzed_commit (1 commit)",
+      "files": [
+        {
+          "path": "src/module_03.rs",
+          "status": "renamed"
+        }
+      ],
+      "excerpt": []
+    },
+    {
+      "kind": "commit",
+      "repo": "notes-co/delta",
+      "commit": "4444444ddddddddddddddddddddddddddddddddd",
+      "date": "2026-09-25T10:00:00Z",
+      "title": "Split module_03 (#40)",
+      "files": [],
+      "excerpt": []
+    },
+    {
+      "kind": "commit",
+      "repo": "notes-co/reports",
+      "commit": "6666666fffffffffffffffffffffffffffffffff",
+      "date": "2026-09-29T12:00:00Z",
+      "title": "reports 0c0c0c0..6666666: every change since the doc's analyzed_commit (2 commits)",
+      "files": [
+        {
+          "path": "REPORT.md",
+          "status": "modified"
+        },
+        {
+          "path": "src/probe.rs",
+          "status": "added"
+        }
+      ],
+      "excerpt": [
+        {
+          "path": "src/probe.rs",
+          "removed": [],
+          "added": ["pub fn probe() {}", ""]
+        }
+      ]
+    },
+    {
+      "kind": "commit",
+      "repo": "notes-co/reports",
+      "commit": "6666666fffffffffffffffffffffffffffffffff",
+      "date": "2026-09-26T10:00:00Z",
+      "title": "Add a probe runner",
+      "files": [],
+      "excerpt": []
+    }
+  ],
+  "budgets": [
+    {
+      "path": "repos/alpha.md",
+      "bytes": 611,
+      "max_bytes": 32768
+    },
+    {
+      "path": "repos/delta.md",
+      "bytes": 2636,
+      "max_bytes": 32768
+    },
+    {
+      "path": "repos/reports.md",
+      "bytes": 490,
+      "max_bytes": 32768
+    },
+    {
+      "path": "INDEX.md",
+      "bytes": 76,
+      "max_bytes": 24576
+    },
+    {
+      "path": "ARCHITECTURE.md",
+      "bytes": 40
+    },
+    {
+      "path": "GLOSSARY.md",
+      "bytes": 49,
+      "max_bytes": 25600
+    },
+    {
+      "path": "GAPS.md",
+      "bytes": 16
+    }
+  ],
+  "stamps": [
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/deploy.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "key": "analyzed_commit",
+      "value": "2222222 2026-09-30",
+      "why": "noise: only version pins or regenerated data changed"
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/alpha.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "key": "analyzed_commit",
+      "value": "1111111 2026-09-30",
+      "why": "refresh: set when the answer lists this doc and passes every check"
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/delta.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "key": "analyzed_commit",
+      "value": "4444444 2026-09-30",
+      "why": "refresh: set when the answer lists this doc and passes every check"
+    },
+    {
+      "repo": "notes-co/atlas",
+      "path": "repos/reports.md",
+      "commit": "a7145d0c58358f00e1d2a3b4c5d6e7f8091a2b3c",
+      "key": "analyzed_commit",
+      "value": "6666666 2026-09-30",
+      "why": "refresh: set when the answer lists this doc and passes every check"
+    }
+  ],
+  "deferred": [],
+  "atlas_docs": [
+    "alpha",
+    "beta",
+    "delta",
+    "deploy",
+    "gamma",
+    "gone",
+    "reports"
+  ],
+  "template_rules": [
+    "<!--",
+    "TEMPLATE for per-repo atlas docs. Audience: LLMs, not people.",
+    "STYLE RULES (binding):",
+    "- Every claim anchored to a source.",
+    "-->"
+  ],
+  "coverage": {
+    "docsRead": 7,
+    "localStale": 1,
+    "unresolved": ["gone"],
+    "drifted": 4,
+    "noise": 1,
+    "refreshed": 3,
+    "deferred": 0,
+    "scrubbed": []
+  },
+  "collection": {
+    "toolCalls": 33,
+    "failedCalls": 1,
+    "failures": ["gh-commits: 404 Not Found"]
+  }
+}

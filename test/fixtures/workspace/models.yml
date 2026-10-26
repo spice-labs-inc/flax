@@ -1,0 +1,59 @@
+# Models a job may name in job.yml. Adding a model here needs code owner review.
+# Prices are USD per million tokens, from the provider's model list
+# (https://api.code.acme.ai/v1/models, checked 2026-09-29). Update them when
+# the provider changes its rates.
+#
+# Every run reaches its model through the model gateway, which holds the
+# provider keys (boxes never do): Pi calls the Acme plugin, the plugin calls
+# the runner's forwarder, and the gateway routes by the name after the slash,
+# so its model list and its /v1/models/info catalog must list that name at
+# the same prices.
+#
+# thinking lists the levels of Pi --thinking the model honors. The Acme
+# plugin maps each level to the effort levels the model advertises in its
+# /v1/models/info entry (Pi xhigh sends effort max) and marks the rest
+# unsupported, and Pi quietly moves an unsupported level to the next one up
+# (the next one down when none is higher), so a job may name only a listed
+# level. The plugin never maps Pi max, so no model here takes it. The Acme
+# levels are from https://api.code.acme.ai/v1/models/info (checked
+# 2026-09-29); the Claude levels from the gateway's /v1/models/info catalog
+# (app-gitops apps/hetzner/hosta/llm-gateway), which the plugin reads the
+# same way.
+- id: acme/acme-deepseek-v4.1-flash
+  provider: acme
+  usd_per_million_input: 0.15
+  usd_per_million_output: 0.6
+  thinking: [off, low, high, xhigh]
+- id: acme/acme-glm-5.3-flash
+  provider: acme
+  usd_per_million_input: 0.15
+  usd_per_million_output: 0.5
+  thinking: [low, high, xhigh]
+- id: acme/acme-glm-5.3
+  provider: acme
+  usd_per_million_input: 1.4
+  usd_per_million_output: 4.4
+  thinking: [low, high, xhigh]
+# Claude models: prices are Anthropic's first-party rates (checked 2026-09-29).
+- id: anthropic/claude-opus-5-5
+  provider: anthropic
+  usd_per_million_input: 4
+  usd_per_million_output: 20
+  thinking: [low, medium, high, xhigh]
+- id: anthropic/claude-sonnet-5-5
+  provider: anthropic
+  usd_per_million_input: 2
+  usd_per_million_output: 10
+  thinking: [low, medium, high, xhigh]
+# Above 100K prompt tokens; up to that it is 0.10 / 0.50 (checked 2026-10-08).
+# One price per model here, so the higher tier keeps the worst case honest.
+- id: anthropic/claude-haiku-5-5
+  provider: anthropic
+  usd_per_million_input: 0.5
+  usd_per_million_output: 2.5
+  thinking: [off, low, medium, high, xhigh]
+- id: anthropic/claude-haiku-4-5
+  provider: anthropic
+  usd_per_million_input: 1
+  usd_per_million_output: 5
+  thinking: [off]

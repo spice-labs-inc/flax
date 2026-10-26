@@ -1,0 +1,1304 @@
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { basename, dirname, join } from "node:path";
+import { promisify } from "node:util";
+import { buildCues, toVtt, type Word } from "./captions.ts";
+import { MAX_POSTER_BYTES } from "../deliver/media.ts";
+import { SCENARIO_ID } from "../output-check/youtube.ts";
+import {
+  DOCS_ROOT_ENV,
+  RECORDINGS_ROOT_ENV,
+  castPath,
+  parseCast,
+} from "./cast-file.ts";
+import {
+  FPS,
+  chapterTimes,
+  planEdit,
+  posterStep,
+  youtubeChapters,
+  type Chapter,
+  type EditOptions,
+  type EditPlan,
+  type Piece,
+} from "./edit.ts";
+import { writeManifest } from "./manifest.ts";
+import {
+  Painter,
+  calloutHtml,
+  captionHtml,
+  cardHtml,
+  posterHtml,
+  recapHtml,
+  speedHtml,
+  speedLabel,
+} from "./paint.ts";
+import {
+  CAPTION_BAND,
+  FRAME_HEIGHT,
+  FRAME_WIDTH,
+  boxInView,
+  cameraFilter,
+  cameraKeys,
+  cameraView,
+  mixAudio,
+  sourceSize,
+  stepBox,
+  toPicture,
+  zoomMoves,
+  type BedLevels,
+  type CameraKey,
+  type Size,
+  type Span,
+} from "./production.ts";
+import {
+  hiddenSteps,
+  highlightedSteps,
+  readRecording,
+  refuseFailed,
+  resolveStep,
+  terminalOverride,
+  type Box,
+  type CardContent,
+  type Sidecar,
+  type StepRef,
+  type TerminalScene,
+  type TimelineStep,
+} from "./recording.ts";
+import type { StandInRules } from "./stand-ins.ts";
+import {
+  drawTerminal,
+  replayText,
+  speedUpReplay,
+  terminalReplay,
+  type TerminalPace,
+  type TerminalReplay,
+} from "./terminal.ts";
+import type { SceneAudio, Voice } from "./tts.ts";
+import type { Log } from "./util.ts";
+
+const run = promisify(execFile);
+
+/** The ffmpeg binary ffmpeg-static installed. */
+export function ffmpegPath(): string {
+  const bundled = createRequire(import.meta.url)("ffmpeg-static") as
+    string | null;
+  if (!bundled)
+    throw new Error("ffmpeg-static has no ffmpeg for this platform");
+  return bundled;
+}
+
+/**
+ * A card: an image, or HTML drawn at the frame's size, still or animated;
+ * never shorter than its narration.
+ */
+export interface Card {
+  /** A PNG or JPEG, fitted into the frame. */
+  image?: string;
+  /** A whole HTML document, drawn by Chromium at 2560 by 1440 (laid out at 1280 by 720). */
+  html?: string;
+  /** Draws the html once per frame for `seconds`, its CSS animations paused at each frame's time and `window.mediaFrame(seconds, frame)` called when the page defines it; the last frame holds after. */
+  animate?: { seconds: number };
+  /** Default 3. */
+  seconds?: number;
+  /** Spoken over the card; for the title and end cards, only when the sidecar's intro or outro has no text. */
+  narration?: string;
+}
+
+/** A card inside the video, before a step's scene or in place of its picture. */
+export interface MidCard extends Card {
+  /** The step the card goes before (a hidden one's next visible step) or replaces; "start" puts it before the title card. */
+  at: StepRef | "start";
+  /** Show the card in place of the step's browser frames or terminal scene; the step's narration block is spoken over it. */
+  replace?: boolean;
+  /** A chapter starting at the card. */
+  chapter?: string;
+}
+
+/** A closing card before the end card: each line appears as its narration starts. */
+export interface Recap {
+  heading?: string;
+  /** Each line's narration is its text unless given; "" leaves it unspoken. */
+  lines: { text: string; narration?: string }[];
+  /** The least the card lasts. Default 3. */
+  seconds?: number;
+  /** Seconds between one line's narration ending and the next line. Default 0.5. */
+  gap?: number;
+  /** A chapter starting at the card. */
+  chapter?: string;
+}
+
+/** How one stretch of the video gives way to the next where the picture jumps. */
+export interface Transition {
+  /** fade: the next stretch dissolves in over the last frame before it; cut: no transition. */
+  kind: "fade" | "cut";
+  /** Default 0.5. */
+  seconds?: number;
+}
+
+/** The caller's look and sound; flax ships none. */
+export interface RenderAssets {
+  /** CSS for the pictures Chromium draws (cards, captions, callouts, terminals, the poster): font faces and the --media-* properties of PAINT_DEFAULTS and TERMINAL_DEFAULTS. */
+  css?: string;
+  /** The color around a fitted picture and in the caption band, as ffmpeg takes it (black, 0x101828). Default black. */
+  background?: string;
+  titleCard?: Card;
+  endCard?: Card;
+  /** Draws the sidecar's intro or outro as a whole HTML document; default cardHtml. */
+  cardHtml?: (card: CardContent, kind: "intro" | "outro") => string;
+  /** Draws the recap card with its first `shown` lines visible, as a whole HTML document; default recapHtml. */
+  recapHtml?: (recap: Recap, shown: number) => string;
+  /** A music bed under the whole video, looped to length and ducked under the narration. */
+  music?: {
+    file: string;
+    /** Seconds into the track the bed starts. */
+    offset?: number;
+    levels?: BedLevels;
+  };
+  /** Draws the poster from the poster step's screen; default posterHtml when the sidecar's poster has a title or kicker, else the screen fitted into the frame. */
+  poster?: (o: {
+    screen: string;
+    out: string;
+    title: string;
+    kicker?: string;
+  }) => Promise<void>;
+}
+
+/** Production effects; each is off unless asked for. */
+export interface Production {
+  /** Zoom to each box the recorder highlighted on a highlighted step, and back out at the step's end. */
+  zoom?:
+    | boolean
+    | {
+        /** Default 2. */
+        maxZoom?: number;
+        /** Seconds a move takes. Default 0.8. */
+        move?: number;
+      };
+  /** A label pointing at a box during a step: the box given (viewport CSS pixels), else the step's last highlighted, pointed or clicked box. */
+  callouts?: { at: StepRef; text: string; box?: Box; seconds?: number }[];
+}
+
+type CardPicture = { still: string } | { list: string };
+
+/** The narration voice, or a function choosing one from the sidecar's `voice`. */
+export type NarrationVoice =
+  Voice | ((voice: string | undefined) => Voice | Promise<Voice>);
+
+/** What renderRecording renders and how. */
+export interface RenderRecordingOptions extends EditOptions {
+  /** The record directory: video.webm, timeline.json, screens/, terminal/ and the sidecar copy. */
+  recordDir: string;
+  /** The sidecar; default the copy in the record directory. */
+  sidecar?: Sidecar;
+  tts: NarrationVoice;
+  assets?: RenderAssets;
+  production?: Production;
+  /** Cards inside the video: before a step's scene, in place of its picture, or at the very start. */
+  cards?: MidCard[];
+  /** A closing card before the outro, its lines appearing as they are spoken. */
+  recap?: Recap;
+  /** Where the picture jumps (into and out of cards, between scenes, at a cut): a fade or a cut. Default cut. */
+  transition?: Transition;
+  /** Seconds cut from the start and the end of a step's raw video (not a terminal scene's), the step named by its 1-based index or its text. */
+  trim?: { at: StepRef; start?: number; end?: number }[];
+  /** The docs checkout a terminal override's `docs:<path>` cast is read from. Default FLAX_DOCS_ROOT. */
+  docsRoot?: string;
+  /** The stand-in rules for what terminal scenes show (the set the sidecar's `standIns` names). */
+  standIns?: StandInRules;
+  /** How terminal scenes are paced (the sidecar's pace fills what this leaves out) and their font size in layout pixels. */
+  terminal?: TerminalPace & { fontSize?: number };
+  /** The directory video.mp4, captions.vtt, poster.png and media.json are written into. */
+  out: string;
+  /** Height of the band under the picture for captions; 0 lets the picture fill the frame. Default 160. */
+  captionBand?: number;
+  /** Draw the captions into the band too; captions.vtt is written either way. */
+  burnCaptions?: boolean;
+  /** Write media.json listing the three files, with the video's entry in data.scenarios. Default true. */
+  manifest?: boolean;
+  /** The chapters media.json gives YouTube: one starting less than `minSeconds` (default 10) after the one before it is folded into that one. */
+  chapters?: { minSeconds?: number };
+  /** ffmpeg encoder threads; default all cores. */
+  threads?: number;
+  /** Keep the working files (audio, painted pictures, terminal frames) in out/.render. */
+  keepWork?: boolean;
+  log?: Log;
+}
+
+/** What a rendered recording is; chapters at their exact output times. */
+export interface RecordingMedia {
+  id: string;
+  title: string;
+  description?: string;
+  scenario: string;
+  duration: number;
+  chapters: Chapter[];
+  voice: string;
+  posterStep: number;
+  publish?: Record<string, unknown>;
+}
+
+/**
+ * The video's entry in media.json's data.scenarios, as the kit's YouTube
+ * output and delivery read it: the files (paths relative to `out`), the
+ * length, the YouTube chapters, and the title, description, tags and
+ * playlist (from the sidecar's publish.youtube, else its publish, else
+ * its title and description), with the rest of publish carried as is.
+ */
+export interface ScenarioEntry {
+  video: string;
+  captions: string;
+  poster: string;
+  duration: number;
+  title: string;
+  description: string;
+  tags: string[];
+  chapters: Chapter[];
+  playlist?: string | null;
+  [key: string]: unknown;
+}
+
+/** Absolute paths of what renderRecording wrote, and the edit it made. */
+export interface RenderedRecording {
+  video: string;
+  captions: string;
+  /** poster.png, or poster.jpg when no PNG fits the kit's poster limit. */
+  poster: string;
+  manifest?: string;
+  media: RecordingMedia;
+  /** What media.json's data.scenarios[media.id] holds. */
+  entry: ScenarioEntry;
+  plan: EditPlan;
+  /** What each terminal scene shows, as plain text, by step. */
+  terminals: { step: number; text: string }[];
+}
+
+/** A media file's length in seconds, frame size and whether it has sound, from ffmpeg's own reading of it. */
+export async function probeMedia(file: string): Promise<{
+  duration?: number;
+  width?: number;
+  height?: number;
+  audio: boolean;
+}> {
+  let text = "";
+  try {
+    await run(ffmpegPath(), ["-hide_banner", "-i", file]);
+  } catch (e) {
+    text = String((e as { stderr?: string }).stderr ?? "");
+  }
+  const d = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(text);
+  const v = /Stream #\S+.*Video: .*?[ ,](\d{2,5})x(\d{2,5})[ ,[]/.exec(text);
+  return {
+    ...(d
+      ? { duration: Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) }
+      : {}),
+    ...(v ? { width: Number(v[1]), height: Number(v[2]) } : {}),
+    audio: /Stream #\S+.*Audio: /.test(text),
+  };
+}
+
+async function voiceFor(
+  tts: NarrationVoice,
+  voice: string | undefined,
+): Promise<Voice> {
+  return typeof tts === "function" ? await tts(voice) : tts;
+}
+
+/** Decodes an audio file to interleaved stereo float samples at `rate`. */
+async function decodeStereo(
+  file: string,
+  rate: number,
+  offset = 0,
+): Promise<Float32Array> {
+  const { stdout } = await run(
+    ffmpegPath(),
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      ...(offset > 0 ? ["-ss", String(offset)] : []),
+      "-i",
+      file,
+      "-f",
+      "f32le",
+      "-ac",
+      "2",
+      "-ar",
+      String(rate),
+      "-",
+    ],
+    { encoding: "buffer", maxBuffer: 1 << 30 },
+  );
+  const copy = new Uint8Array(stdout.byteLength);
+  copy.set(stdout);
+  return new Float32Array(copy.buffer, 0, Math.floor(copy.byteLength / 4));
+}
+
+const fit = (size: Size, bg: string) =>
+  `scale=${size.width}:${size.height}:force_original_aspect_ratio=decrease:flags=lanczos,` +
+  `pad=${size.width}:${size.height}:(ow-iw)/2:(oh-ih)/2:color=${bg},setsar=1`;
+
+/** The camera keys of one piece, its start at 0: where the camera is as it starts and ends, and every key between. */
+function pieceKeys(
+  keys: readonly CameraKey[],
+  start: number,
+  end: number,
+  picture: Size,
+): CameraKey[] {
+  return [
+    { t: 0, view: cameraView(keys, start, picture) },
+    ...keys
+      .filter((k) => k.t > start && k.t < end)
+      .map((k) => ({ t: k.t - start, view: k.view })),
+    { t: end - start, view: cameraView(keys, end, picture) },
+  ];
+}
+
+/**
+ * What a step's terminal scene replays: the sidecar's cast for it, else the
+ * recorder's transcript (with the sidecar's display and preface), else the
+ * recorder's cast; undefined for a step that ran no commands.
+ */
+async function stepTerminal(
+  dir: string,
+  steps: readonly TimelineStep[],
+  sidecar: Sidecar,
+  step: TimelineStep,
+  o: { pace: TerminalPace; standIns?: StandInRules; docsRoot?: string },
+): Promise<TerminalReplay | undefined> {
+  const override = terminalOverride(steps, sidecar, step.index);
+  const common = {
+    pace: o.pace,
+    ...(override?.preface ? { preface: override.preface } : {}),
+    ...(o.standIns ? { standIns: o.standIns } : {}),
+  };
+  if (override?.cast) {
+    const file = castPath(
+      override.cast,
+      dir,
+      process.env[RECORDINGS_ROOT_ENV],
+      o.docsRoot,
+    );
+    return terminalReplay({
+      ...common,
+      cast: parseCast(await readFile(file, "utf8"), override.cast),
+    });
+  }
+  if (step.terminal) {
+    const {
+      index: _index,
+      display,
+      preface,
+      more,
+      ...first
+    } = JSON.parse(
+      await readFile(join(dir, step.terminal), "utf8"),
+    ) as TerminalScene;
+    const shown = override?.display ?? display;
+    const typed = override?.preface ?? preface;
+    return terminalReplay({
+      ...common,
+      commands: [first, ...(more ?? [])],
+      ...(shown ? { display: shown } : {}),
+      ...(typed ? { preface: typed } : {}),
+    });
+  }
+  const cast = join(dir, "terminal", `${step.index}.cast`);
+  if (existsSync(cast))
+    return terminalReplay({
+      ...common,
+      cast: parseCast(await readFile(cast, "utf8"), cast),
+    });
+  return undefined;
+}
+
+const QUIET = ["-hide_banner", "-loglevel", "error", "-y"];
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * The raw video at a constant `fps`, each frame repeated until the next
+ * one and the last held to `seconds`, so a cut at any time starts on the
+ * frame on screen then. A recording with frames only where the picture
+ * changed (a variable frame rate) loses none at a cut. Lossless H.264 in
+ * Matroska, a keyframe a second.
+ */
+export async function constantRate(
+  file: string,
+  out: string,
+  o: { fps?: number; seconds: number },
+): Promise<string> {
+  const fps = o.fps ?? FPS;
+  await run(ffmpegPath(), [
+    ...QUIET,
+    "-i",
+    file,
+    "-vf",
+    `fps=${fps},tpad=stop_mode=clone:stop_duration=${o.seconds.toFixed(3)}`,
+    "-t",
+    o.seconds.toFixed(3),
+    "-an",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "ultrafast",
+    "-qp",
+    "0",
+    "-g",
+    String(fps),
+    out,
+  ]);
+  return out;
+}
+
+/**
+ * Keeps a poster within the kit's limit for a thumbnail (2 MB): a larger
+ * one is redrawn at 1920 by 1080, and when that PNG is still too large it
+ * becomes a JPEG beside it (poster.jpg) at the best quality that fits.
+ * Returns the poster's file.
+ */
+export async function fitPoster(
+  file: string,
+  o: { maxBytes?: number; background?: string } = {},
+): Promise<string> {
+  const max = o.maxBytes ?? MAX_POSTER_BYTES;
+  if ((await stat(file)).size <= max) return file;
+  const small = { width: 1920, height: 1080 };
+  const vf = fit(small, o.background ?? "black");
+  const png = join(dirname(file), `.${basename(file)}-1920.png`);
+  await run(ffmpegPath(), [
+    ...QUIET,
+    "-i",
+    file,
+    "-vf",
+    vf,
+    "-frames:v",
+    "1",
+    "-fflags",
+    "+bitexact",
+    png,
+  ]);
+  if ((await stat(png)).size <= max) {
+    await rename(png, file);
+    return file;
+  }
+  const jpg = join(
+    dirname(file),
+    `${basename(file).replace(/\.[^.]*$/, "")}.jpg`,
+  );
+  for (const q of [2, 4, 7, 10, 15, 20, 31]) {
+    await run(ffmpegPath(), [
+      ...QUIET,
+      "-i",
+      png,
+      "-frames:v",
+      "1",
+      "-q:v",
+      String(q),
+      "-fflags",
+      "+bitexact",
+      jpg,
+    ]);
+    if ((await stat(jpg)).size <= max) {
+      await rm(png, { force: true });
+      await rm(file, { force: true });
+      return jpg;
+    }
+  }
+  await rm(png, { force: true });
+  throw new Error(`the poster does not fit in ${max} bytes even as a JPEG`);
+}
+
+/**
+ * Renders a record run into video.mp4 (2560 by 1440, H.264 and AAC),
+ * captions.vtt, poster.png and media.json in `out`: hidden steps cut, each
+ * step that ran commands shown as a terminal scene, each narration block
+ * from the sidecar spoken from its step with the picture holding its last
+ * frame until the block is done, the intro, outro, mid-video and recap
+ * cards, fades where the picture jumps when asked for, the optional
+ * music bed, zoom and callouts, and the captions from the voice's word
+ * timing. Refuses a recording of a failed run.
+ */
+export async function renderRecording(
+  opts: RenderRecordingOptions,
+): Promise<RenderedRecording> {
+  const log = opts.log ?? (() => undefined);
+  const rec = await readRecording(opts.recordDir, opts.sidecar);
+  refuseFailed(rec.timeline);
+  const { timeline, sidecar } = rec;
+  if ((opts.manifest ?? true) && !SCENARIO_ID.test(sidecar.id))
+    throw new Error(
+      `the sidecar's id "${sidecar.id}" is not a scenario id media.json can carry (${SCENARIO_ID.source})`,
+    );
+  const steps = timeline.steps;
+  const assets = opts.assets ?? {};
+  const bg = assets.background ?? "black";
+  const band = opts.captionBand ?? CAPTION_BAND;
+  if (band < 0 || band >= FRAME_HEIGHT / 2)
+    throw new Error(`captionBand ${band} is out of range`);
+  if (opts.burnCaptions && band === 0)
+    throw new Error("burnCaptions needs a caption band");
+  const frame: Size = { width: FRAME_WIDTH, height: FRAME_HEIGHT };
+  const picture: Size = { width: FRAME_WIDTH, height: FRAME_HEIGHT - band };
+  const source = sourceSize(timeline);
+  const fps = FPS;
+  const work = join(opts.out, ".render");
+  await mkdir(work, { recursive: true });
+  const painter = new Painter();
+  try {
+    const voice = await voiceFor(opts.tts, sidecar.voice);
+    const synth = async (text: string): Promise<SceneAudio> => {
+      const a = await voice.synth(text);
+      log(`  narration ${a.duration.toFixed(2)}s: ${text.slice(0, 60)}`);
+      return a;
+    };
+    const cardSpec = (
+      content: CardContent | undefined,
+      card: Card | undefined,
+    ) =>
+      content || card
+        ? {
+            ...(content ? { content } : {}),
+            ...(card ? { card } : {}),
+            text: content?.text ?? card?.narration,
+          }
+        : undefined;
+    const intro = cardSpec(sidecar.intro, assets.titleCard);
+    const outro = cardSpec(sidecar.outro, assets.endCard);
+    const introAudio = intro?.text ? await synth(intro.text) : undefined;
+    const blocks = sidecar.narration ?? [];
+    const audio: SceneAudio[] = [];
+    for (const b of blocks) audio.push(await synth(b.text));
+    const midCards = opts.cards ?? [];
+    const cardAudio: (SceneAudio | undefined)[] = [];
+    for (const c of midCards)
+      cardAudio.push(c.narration ? await synth(c.narration) : undefined);
+    const recapSpoken = (opts.recap?.lines ?? []).map(
+      (l) => l.narration ?? l.text,
+    );
+    const recapAudio: (SceneAudio | undefined)[] = [];
+    for (const text of recapSpoken)
+      recapAudio.push(text ? await synth(text) : undefined);
+    const outroAudio = outro?.text ? await synth(outro.text) : undefined;
+
+    const hidden = hiddenSteps(steps, sidecar);
+    const pace: TerminalPace = {
+      ...(sidecar.pace?.typeMsPerChar !== undefined
+        ? { typeMsPerChar: sidecar.pace.typeMsPerChar }
+        : {}),
+      ...(sidecar.pace?.afterActionMs !== undefined
+        ? { afterActionMs: sidecar.pace.afterActionMs }
+        : {}),
+      ...(sidecar.pace?.readMs !== undefined
+        ? { readMs: sidecar.pace.readMs }
+        : {}),
+      ...opts.terminal,
+    };
+    const docsRoot = opts.docsRoot ?? process.env[DOCS_ROOT_ENV];
+    const replays = new Map<number, TerminalReplay>();
+    for (const step of steps) {
+      if (hidden.has(step.index)) continue;
+      const replay = await stepTerminal(rec.dir, steps, sidecar, step, {
+        pace,
+        ...(opts.standIns ? { standIns: opts.standIns } : {}),
+        ...(docsRoot ? { docsRoot } : {}),
+      });
+      if (replay) replays.set(step.index, replay);
+    }
+
+    const cardTime = (
+      c: ReturnType<typeof cardSpec>,
+      a: SceneAudio | undefined,
+    ) =>
+      c
+        ? {
+            seconds: c.card?.seconds ?? 3,
+            ...(a ? { narration: a.duration } : {}),
+          }
+        : undefined;
+    const titleCard = cardTime(intro, introAudio);
+    const endCard = cardTime(outro, outroAudio);
+    const plan = planEdit(
+      {
+        steps,
+        hidden,
+        narration: blocks.map((b, i) => ({
+          step: resolveStep(steps, b.at).index,
+          seconds: audio[i]!.duration,
+        })),
+        terminals: new Map(
+          [...replays].map(([index, r]) => [index, r.duration]),
+        ),
+        trims: new Map(
+          (opts.trim ?? []).map((t) => {
+            if ((t.start ?? 0) < 0 || (t.end ?? 0) < 0)
+              throw new Error(
+                `trim at ${String(t.at)}: seconds cut must not be negative`,
+              );
+            return [
+              resolveStep(steps, t.at).index,
+              {
+                ...(t.start ? { start: t.start } : {}),
+                ...(t.end ? { end: t.end } : {}),
+              },
+            ];
+          }),
+        ),
+        ...(titleCard ? { titleCard } : {}),
+        ...(endCard ? { endCard } : {}),
+        cards: midCards.map((c, i) => ({
+          at: c.at === "start" ? "start" : resolveStep(steps, c.at).index,
+          ...(c.replace ? { replace: true } : {}),
+          seconds: c.seconds ?? 3,
+          ...(cardAudio[i] ? { narration: cardAudio[i].duration } : {}),
+        })),
+        ...(opts.recap
+          ? {
+              recap: {
+                seconds: opts.recap.seconds ?? 3,
+                gap: opts.recap.gap ?? 0.5,
+                lines: recapAudio.map((a) => a?.duration ?? 0),
+              },
+            }
+          : {}),
+      },
+      opts,
+      fps,
+    );
+    log(
+      `edit: ${plan.scenes.length} scenes, ${replays.size} terminal scenes, ` +
+        `${[...hidden].filter((i) => i > 0).length} hidden steps cut, ${plan.duration.toFixed(2)}s, ` +
+        `${plan.scenes.reduce((n, s) => n + s.hold, 0).toFixed(2)}s held`,
+    );
+
+    // Narration and its words on the output timeline.
+    const placed: { audio: SceneAudio; start: number }[] = [
+      ...(introAudio && plan.titleCard?.narration !== undefined
+        ? [{ audio: introAudio, start: plan.titleCard.narration }]
+        : []),
+      ...audio.map((a, i) => ({ audio: a, start: plan.narration[i]! })),
+      ...cardAudio.flatMap((a, i) =>
+        a && plan.cards[i]?.narration !== undefined
+          ? [{ audio: a, start: plan.cards[i].narration }]
+          : [],
+      ),
+      ...recapAudio.flatMap((a, i) =>
+        a && plan.recap ? [{ audio: a, start: plan.recap.lines[i]! }] : [],
+      ),
+      ...(outroAudio && plan.endCard?.narration !== undefined
+        ? [{ audio: outroAudio, start: plan.endCard.narration }]
+        : []),
+    ];
+    const rate = placed[0]?.audio.sampleRate ?? 24000;
+    const narration = new Float32Array(Math.ceil(plan.duration * rate));
+    const words: Word[] = [];
+    const speech: Span[] = [];
+    for (const p of placed) {
+      if (p.audio.sampleRate !== rate)
+        throw new Error(
+          `narration sample rate ${p.audio.sampleRate} differs from ${rate}`,
+        );
+      const at = Math.round(p.start * rate);
+      narration.set(
+        p.audio.pcm.subarray(0, Math.max(0, narration.length - at)),
+        at,
+      );
+      for (const w of p.audio.words)
+        words.push({
+          text: w.text,
+          start: w.start + p.start,
+          end: w.end + p.start,
+        });
+      speech.push({ start: p.start, end: p.start + p.audio.duration });
+    }
+    const bed = assets.music
+      ? {
+          pcm: await decodeStereo(assets.music.file, rate, assets.music.offset),
+          speech,
+          ...(assets.music.levels ? { levels: assets.music.levels } : {}),
+        }
+      : undefined;
+    const mixed = mixAudio(narration, rate, bed);
+    const audioFile = join(work, "audio.f32");
+    await writeFile(
+      audioFile,
+      new Uint8Array(mixed.buffer, mixed.byteOffset, mixed.byteLength),
+    );
+
+    const cues = buildCues(
+      words.sort((a, b) => a.start - b.start),
+      { breaks: placed.map((p) => p.start) },
+    );
+    const captions = join(opts.out, "captions.vtt");
+    await writeFile(captions, toVtt(cues));
+
+    // Camera and callouts.
+    const zoom = opts.production?.zoom;
+    const keys = zoom
+      ? cameraKeys(
+          zoomMoves(
+            steps,
+            highlightedSteps(steps, sidecar),
+            plan,
+            source,
+            picture,
+          ),
+          picture,
+          typeof zoom === "object" ? zoom : {},
+        )
+      : [];
+    const overlays: { file: string; y: number; start: number; end: number }[] =
+      [];
+    for (const [i, c] of (opts.production?.callouts ?? []).entries()) {
+      const step = resolveStep(steps, c.at);
+      const time = plan.steps.get(step.index);
+      if (!time)
+        throw new Error(`callout "${c.text}" is on hidden step ${step.index}`);
+      const box =
+        c.box ?? stepBox(step, ["highlight", "point", "click", "type"]);
+      if (!box)
+        throw new Error(
+          `callout "${c.text}": step ${step.index} has no box to point at; give one`,
+        );
+      const start = time.start + Math.min(0.3, (time.end - time.start) / 4);
+      const end = c.seconds
+        ? Math.min(plan.duration, start + c.seconds)
+        : time.end;
+      const inPicture = toPicture(box, source, picture);
+      const shown =
+        keys.length > 0
+          ? boxInView(inPicture, cameraView(keys, start, picture), picture)
+          : inPicture;
+      const file = await painter.paint(
+        calloutHtml(shown, c.text, picture, assets.css),
+        picture,
+        join(work, `callout-${i}.png`),
+      );
+      overlays.push({ file, y: 0, start, end });
+    }
+    if (opts.idle !== false && opts.idle?.badge !== false) {
+      const badges = new Map<string, string>();
+      for (const span of plan.idle) {
+        const label = speedLabel(span.speed);
+        let file = badges.get(label);
+        if (!file) {
+          file = await painter.paint(
+            speedHtml(span.speed, picture, assets.css),
+            picture,
+            join(work, `speed-${badges.size}.png`),
+          );
+          badges.set(label, file);
+        }
+        overlays.push({ file, y: 0, start: span.start, end: span.end });
+      }
+    }
+    if (opts.burnCaptions)
+      for (const [i, cue] of cues.entries()) {
+        const file = await painter.paint(
+          captionHtml(
+            cue.lines,
+            { width: FRAME_WIDTH, height: band },
+            assets.css,
+          ),
+          { width: FRAME_WIDTH, height: band },
+          join(work, `cue-${String(i).padStart(4, "0")}.png`),
+        );
+        overlays.push({
+          file,
+          y: picture.height,
+          start: cue.start,
+          end: cue.end,
+        });
+      }
+
+    // Each card's picture: a still, or a concat list of frames.
+    const cardFrames = new Map<
+      Extract<Piece, { kind: "card" }>["card"],
+      number
+    >();
+    for (const p of plan.pieces)
+      if (p.kind === "card") cardFrames.set(p.card, p.frames);
+    const cardPicture = async (
+      card: Card | undefined,
+      html: string | undefined,
+      name: string,
+      frames: number,
+    ): Promise<CardPicture> => {
+      if (card?.animate) {
+        const animated = card.html ?? html;
+        if (card.image || animated === undefined)
+          throw new Error(`the ${name} card is animated, so it needs html`);
+        const drawn = await painter.paintFrames(animated, frame, {
+          frames: Math.max(
+            1,
+            Math.min(frames, Math.round(card.animate.seconds * fps)),
+          ),
+          fps,
+          dir: join(work, name),
+        });
+        log(`  ${name} card: ${drawn.shots} frames drawn`);
+        return { list: drawn.list };
+      }
+      if (card?.image) return { still: card.image };
+      const still = card?.html ?? html;
+      if (still === undefined)
+        throw new Error(`the ${name} card has neither an image nor html`);
+      return {
+        still: await painter.paint(still, frame, join(work, `${name}.png`)),
+      };
+    };
+    const sidecarCard = (
+      c: NonNullable<ReturnType<typeof cardSpec>>,
+      kind: "intro" | "outro",
+      key: "title" | "end",
+    ) =>
+      cardPicture(
+        c.card,
+        c.content
+          ? (assets.cardHtml?.(c.content, kind) ??
+              cardHtml(c.content, frame, assets.css))
+          : undefined,
+        kind,
+        cardFrames.get(key) ?? 1,
+      );
+    const cardPictures = new Map<
+      Extract<Piece, { kind: "card" }>["card"],
+      CardPicture
+    >();
+    if (intro)
+      cardPictures.set("title", await sidecarCard(intro, "intro", "title"));
+    if (outro)
+      cardPictures.set("end", await sidecarCard(outro, "outro", "end"));
+    for (const [i, c] of midCards.entries())
+      cardPictures.set(
+        i,
+        await cardPicture(
+          c,
+          undefined,
+          `card-${i + 1}`,
+          cardFrames.get(i) ?? 1,
+        ),
+      );
+    if (opts.recap && plan.recap) {
+      const recap = opts.recap;
+      const reveals = [plan.recap.start, ...plan.recap.lines].map((t) =>
+        Math.round((t - plan.recap!.start) * fps),
+      );
+      const total = cardFrames.get("recap")!;
+      const lines: string[] = [];
+      for (let shown = 0; shown < reveals.length; shown++) {
+        const from = reveals[shown]!;
+        const to = reveals[shown + 1] ?? total;
+        if (to <= from) continue;
+        const file = await painter.paint(
+          assets.recapHtml?.(recap, shown) ??
+            recapHtml(recap, shown, frame, assets.css),
+          frame,
+          join(work, "recap", `${shown}.png`),
+        );
+        lines.push(
+          `file '${file}'`,
+          `duration ${((to - from) / fps).toFixed(6)}`,
+        );
+      }
+      lines.push(lines.at(-2)!);
+      const list = join(work, "recap", "frames.txt");
+      await writeFile(list, lines.join("\n") + "\n");
+      cardPictures.set("recap", { list });
+    }
+
+    // Terminal scenes, drawn frame by frame at their planned length.
+    const terminalLists = new Map<number, string>();
+    const terminalLast = new Map<number, string>();
+    for (const p of plan.pieces) {
+      if (p.kind !== "terminal") continue;
+      const dir = join(work, `terminal-${p.step}`);
+      const replay = replays.get(p.step)!;
+      const drawn = await drawTerminal(
+        painter,
+        p.idle ? speedUpReplay(replay, p.idle.at, p.idle.speed) : replay,
+        {
+          size: picture,
+          frames: p.frames,
+          fps,
+          dir,
+          ...(assets.css ? { css: assets.css } : {}),
+          ...(opts.terminal?.fontSize
+            ? { fontSize: opts.terminal.fontSize }
+            : {}),
+        },
+      );
+      log(`  terminal scene for step ${p.step}: ${drawn.shots} frames drawn`);
+      terminalLists.set(p.step, drawn.list);
+      terminalLast.set(p.step, drawn.last);
+    }
+
+    // The raw video is cut from a constant-rate copy, made once when needed.
+    let constant: Promise<string> | undefined;
+    const rawVideo = (video: string) =>
+      (constant ??= constantRate(video, join(work, "source.mkv"), {
+        fps,
+        seconds: Math.max(0, ...steps.map((s) => (s.endMs ?? 0) / 1000)) + 1,
+      }));
+
+    // A still for a stretch with no raw video: its last step's screen.
+    const stillFor = (p: Extract<Piece, { kind: "clip" }>) =>
+      steps
+        .filter(
+          (s) =>
+            !hidden.has(s.index) &&
+            !replays.has(s.index) &&
+            s.screen &&
+            (((s.startMs ?? 0) / 1000 >= p.srcStart - 0.002 &&
+              (s.endMs ?? 0) / 1000 <= p.srcEnd + 0.002) ||
+              ((s.startMs ?? 0) / 1000 < p.srcEnd - 0.002 &&
+                (s.endMs ?? 0) / 1000 > p.srcStart + 0.002)),
+        )
+        .at(-1)?.screen;
+
+    // The filter graph: one input and chain per piece, each a full frame, then
+    // concatenated, overlaid and encoded against the mixed audio.
+    const inputs: string[] = [];
+    const chains: string[] = [];
+    const labels: string[] = [];
+    let n = 0;
+    const merged: { piece: Exclude<Piece, { kind: "hold" }>; hold: number }[] =
+      [];
+    for (const p of plan.pieces) {
+      if (p.kind === "hold") merged.at(-1)!.hold += p.frames;
+      else merged.push({ piece: p, hold: 0 });
+    }
+    const stillInput = (file: string | undefined, seconds: number) =>
+      file
+        ? [
+            "-loop",
+            "1",
+            "-framerate",
+            String(fps),
+            "-t",
+            seconds.toFixed(3),
+            "-i",
+            file,
+          ]
+        : [
+            "-f",
+            "lavfi",
+            "-i",
+            `color=c=${bg}:s=${source.width}x${source.height}:r=${fps}:d=${seconds.toFixed(3)}`,
+          ];
+    // Where the picture jumps, a fade dissolves the next stretch in over the
+    // previous one's last frame, held on for the fade, so nothing moves in time.
+    const fadeFrames =
+      opts.transition?.kind === "fade"
+        ? Math.round((opts.transition.seconds ?? 0.5) * fps)
+        : 0;
+    const fades = merged.map(({ piece, hold }, i) => {
+      const prev = merged[i - 1]?.piece;
+      if (!prev || fadeFrames <= 0) return 0;
+      const continues =
+        prev.kind === "clip" &&
+        piece.kind === "clip" &&
+        Math.abs(prev.srcEnd - piece.srcStart) < 0.002;
+      return continues ? 0 : Math.min(fadeFrames, piece.frames + hold);
+    });
+    for (const [i, { piece, hold }] of merged.entries()) {
+      const label = `p${labels.length}`;
+      const total = piece.frames + hold;
+      const extra = fades[i + 1] ?? 0;
+      if (piece.kind === "card") {
+        const picture = cardPictures.get(piece.card)!;
+        if ("still" in picture) {
+          inputs.push(...stillInput(picture.still, (total + extra) / fps + 1));
+          chains.push(
+            `[${n}:v]fps=${fps},${fit(frame, bg)},trim=end_frame=${total + extra},setpts=PTS-STARTPTS[${label}]`,
+          );
+        } else {
+          inputs.push("-f", "concat", "-safe", "0", "-i", picture.list);
+          chains.push(
+            `[${n}:v]fps=${fps},${fit(frame, bg)},tpad=stop_mode=clone:stop=${total + extra},trim=end_frame=${total + extra},setpts=PTS-STARTPTS[${label}]`,
+          );
+        }
+      } else {
+        let lead = "";
+        if (piece.kind === "terminal") {
+          inputs.push(
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            terminalLists.get(piece.step)!,
+          );
+        } else if (rec.video) {
+          const length = piece.srcEnd - piece.srcStart;
+          inputs.push(
+            "-ss",
+            piece.srcStart.toFixed(3),
+            "-t",
+            (length + 0.25).toFixed(3),
+            "-i",
+            await rawVideo(rec.video),
+          );
+          lead = `setpts=(PTS-STARTPTS)/${piece.speed.toFixed(6)},`;
+        } else {
+          const still = stillFor(piece);
+          inputs.push(
+            ...stillInput(
+              still ? join(rec.dir, still) : undefined,
+              total / fps + 1,
+            ),
+          );
+        }
+        const start = piece.start;
+        const end = start + total / fps;
+        const camera =
+          keys.length > 0 && piece.kind === "clip"
+            ? cameraFilter(pieceKeys(keys, start, end, picture), picture, fps)
+            : undefined;
+        chains.push(
+          `[${n}:v]${lead}fps=${fps},${fit(picture, bg)},` +
+            `trim=end_frame=${piece.frames},tpad=stop_mode=clone:stop=${hold + extra + fps},trim=end_frame=${total + extra},setpts=PTS-STARTPTS` +
+            (camera ? `,${camera}` : "") +
+            (band > 0
+              ? `,pad=${FRAME_WIDTH}:${FRAME_HEIGHT}:0:0:color=${bg}`
+              : "") +
+            `[${label}]`,
+        );
+      }
+      labels.push(label);
+      n++;
+    }
+    const segments: string[][] = [];
+    labels.forEach((l, i) => {
+      if (i === 0 || fades[i]! > 0) segments.push([l]);
+      else segments.at(-1)!.push(l);
+    });
+    if (segments.length === 1)
+      chains.push(
+        `${labels.map((l) => `[${l}]`).join("")}concat=n=${labels.length}:v=1:a=0[v0]`,
+      );
+    else {
+      let joined = "";
+      let at = 0;
+      let first = 0;
+      segments.forEach((segment, k) => {
+        const out = `s${k}`;
+        chains.push(
+          `${segment.map((l) => `[${l}]`).join("")}concat=n=${segment.length}:v=1:a=0,fps=${fps}[${out}]`,
+        );
+        if (k > 0) {
+          const fade = fades[first]!;
+          const next = k === segments.length - 1 ? "v0" : `x${k}`;
+          chains.push(
+            `[${joined}][${out}]xfade=transition=fade:duration=${(fade / fps).toFixed(6)}:offset=${(at / fps).toFixed(6)}[${next}]`,
+          );
+          joined = next;
+        } else joined = out;
+        for (let j = first; j < first + segment.length; j++)
+          at += merged[j]!.piece.frames + merged[j]!.hold;
+        first += segment.length;
+      });
+    }
+    let last = "v0";
+    overlays.forEach((o, i) => {
+      inputs.push("-loop", "1", "-framerate", String(fps), "-i", o.file);
+      const next = `v${i + 1}`;
+      chains.push(
+        `[${last}][${n}:v]overlay=0:${o.y}:shortest=1:enable='between(t,${o.start.toFixed(3)},${o.end.toFixed(3)})'[${next}]`,
+      );
+      last = next;
+      n++;
+    });
+    chains.push(`[${last}]format=yuv420p[final]`);
+    inputs.push(
+      "-f",
+      "f32le",
+      "-ar",
+      String(rate),
+      "-ac",
+      "2",
+      "-i",
+      audioFile,
+    );
+    const audioInput = n;
+    const video = join(opts.out, "video.mp4");
+    const graph = join(work, "graph.txt");
+    await writeFile(graph, chains.join(";\n"));
+    log(`encoding ${merged.length} pieces and ${overlays.length} overlays`);
+    // ffmpeg's version and encoder tags stay out of the file, so a re-encode of the same input is byte-stable.
+    await run(
+      ffmpegPath(),
+      [
+        ...QUIET,
+        ...inputs,
+        "-filter_complex_script",
+        graph,
+        "-map",
+        "[final]",
+        "-map",
+        `${audioInput}:a`,
+        ...(opts.threads ? ["-threads", String(opts.threads)] : []),
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "18",
+        "-r",
+        String(fps),
+        "-c:a",
+        "aac",
+        "-b:a",
+        "160k",
+        "-t",
+        plan.duration.toFixed(3),
+        "-map_metadata",
+        "-1",
+        "-fflags",
+        "+bitexact",
+        "-flags:v",
+        "+bitexact",
+        "-flags:a",
+        "+bitexact",
+        "-movflags",
+        "+faststart",
+        video,
+      ],
+      { maxBuffer: 1 << 26 },
+    );
+
+    // The poster: the poster step's terminal scene's last frame, its screen,
+    // or its last frame from the raw video.
+    const pstep = posterStep(steps, sidecar);
+    let screen =
+      terminalLast.get(pstep.index) ??
+      (pstep.screen ? join(rec.dir, pstep.screen) : undefined);
+    if (!screen) {
+      if (!rec.video)
+        throw new Error(
+          `poster step ${pstep.index} has no screen and the recording no video`,
+        );
+      screen = join(work, "poster-frame.png");
+      await run(ffmpegPath(), [
+        ...QUIET,
+        "-ss",
+        Math.max(0, (pstep.endMs ?? 0) / 1000 - 0.05).toFixed(3),
+        "-i",
+        await rawVideo(rec.video),
+        "-frames:v",
+        "1",
+        screen,
+      ]);
+    }
+    const posterPng = join(opts.out, "poster.png");
+    const posterTitle = sidecar.poster?.title ?? sidecar.title;
+    const kicker = sidecar.poster?.kicker;
+    if (assets.poster)
+      await assets.poster({
+        screen,
+        out: posterPng,
+        title: posterTitle,
+        ...(kicker ? { kicker } : {}),
+      });
+    else if (sidecar.poster?.title || kicker) {
+      const data = `data:image/png;base64,${(await readFile(screen)).toString("base64")}`;
+      await painter.paint(
+        posterHtml(
+          { screen: data, title: posterTitle, ...(kicker ? { kicker } : {}) },
+          frame,
+          assets.css,
+        ),
+        frame,
+        posterPng,
+      );
+    } else
+      await run(ffmpegPath(), [
+        ...QUIET,
+        "-i",
+        screen,
+        "-vf",
+        fit(frame, bg),
+        "-frames:v",
+        "1",
+        "-fflags",
+        "+bitexact",
+        posterPng,
+      ]);
+    const poster = await fitPoster(posterPng, { background: bg });
+    if (poster !== posterPng)
+      log(`poster: ${basename(poster)}, to fit the poster limit`);
+
+    const chapters = [
+      ...(sidecar.intro?.chapter && plan.titleCard
+        ? [{ start: plan.titleCard.start, title: sidecar.intro.chapter }]
+        : []),
+      ...chapterTimes(sidecar.chapters ?? [], steps, hidden, plan),
+      ...midCards.flatMap((c, i) =>
+        c.chapter ? [{ start: plan.cards[i]!.start, title: c.chapter }] : [],
+      ),
+      ...(opts.recap?.chapter && plan.recap
+        ? [{ start: plan.recap.start, title: opts.recap.chapter }]
+        : []),
+      ...(sidecar.outro?.chapter && plan.endCard
+        ? [{ start: plan.endCard.start, title: sidecar.outro.chapter }]
+        : []),
+    ].sort((a, b) => a.start - b.start);
+    const media: RecordingMedia = {
+      id: sidecar.id,
+      title: sidecar.title,
+      ...(sidecar.description ? { description: sidecar.description } : {}),
+      scenario: timeline.scenario,
+      duration: plan.duration,
+      chapters,
+      voice: voice.name,
+      posterStep: pstep.index,
+      ...(sidecar.publish ? { publish: sidecar.publish } : {}),
+    };
+    const { youtube, ...publish } = sidecar.publish ?? {};
+    const entry: ScenarioEntry = {
+      title: sidecar.title,
+      description: sidecar.description ?? "",
+      tags: [],
+      ...publish,
+      ...(isObject(youtube) ? youtube : {}),
+      video: "video.mp4",
+      captions: "captions.vtt",
+      poster: basename(poster),
+      duration: plan.duration,
+      chapters: youtubeChapters(chapters, plan.duration, opts.chapters),
+    };
+    let manifest: string | undefined;
+    if (opts.manifest ?? true) {
+      await writeManifest(
+        opts.out,
+        [entry.video, entry.captions, entry.poster],
+        { scenarios: { [sidecar.id]: entry } },
+      );
+      manifest = join(opts.out, "media.json");
+    }
+    return {
+      video,
+      captions,
+      poster,
+      ...(manifest ? { manifest } : {}),
+      media,
+      entry,
+      plan,
+      terminals: [...replays]
+        .filter(([step]) =>
+          plan.cards.every((c, i) => c.step !== step || !midCards[i]!.replace),
+        )
+        .map(([step, r]) => ({
+          step,
+          text: replayText(r),
+        })),
+    };
+  } finally {
+    await painter.close();
+    if (!opts.keepWork) await rm(work, { recursive: true, force: true });
+  }
+}

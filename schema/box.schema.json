@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/spice-labs-inc/flax/schema/box.schema.json",
+  "title": "Pinned box",
+  "description": "The contents of box.yml: the sandbox (lbx) release, its commit, the sha256 of its launcher binary and the agent image digest every job runs with. The Publish image workflow prints them; flax agents box-release pin writes them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pinned",
+    "box_release",
+    "box_commit",
+    "lbx_sha256",
+    "image"
+  ],
+  "properties": {
+    "pinned": {
+      "description": "false while the values are placeholders; jobs refuse to run until it is true.",
+      "type": "boolean"
+    },
+    "box_release": {
+      "description": "The sandbox (lbx) release tag vX.Y.Z whose launcher binary every run uses. v0.0.0 is the placeholder.",
+      "type": "string",
+      "pattern": "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "box_commit": {
+      "description": "Full commit id the release names (its notes block); recorded for the record, since the binary is what runs. Its lbx must have --socket-dir and --no-network.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "image": {
+      "description": "The image jobs run in, by digest: the agent image built from images/agent/Dockerfile (flax.yml agents.agentImage).",
+      "type": "string",
+      "pattern": "^[a-z0-9.-]+(:[0-9]+)?/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$"
+    },
+    "lbx_sha256": {
+      "description": "The sha256 of the release's lbx-x86_64-unknown-linux-musl asset, from its .sha256 file; the action refuses to run a binary that does not match. All zeros is the placeholder.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
