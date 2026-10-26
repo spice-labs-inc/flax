@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { stringify } from "yaml";
@@ -33,7 +33,9 @@ export interface FakeStep extends Partial<
  * (with the sidecar's display and preface for it) and the sidecar as
  * <id>.video.yml. `scale` is the recording's video pixels
  * per CSS pixel, as the timeline says; boxes are given in viewport CSS
- * pixels, as the recorder writes them.
+ * pixels, as the recorder writes them. With `vfr`, the video has a frame
+ * only where the color changes, as a screencast writes it, so a color held
+ * across steps is one frame.
  */
 export async function writeFakeRecording(
   dir: string,
@@ -44,6 +46,7 @@ export async function writeFakeRecording(
     size?: string;
     status?: string;
     scale?: number;
+    vfr?: boolean;
   } = {},
 ): Promise<Timeline> {
   const viewport = o.viewport ?? { width: 1440, height: 900 };
@@ -70,7 +73,7 @@ export async function writeFakeRecording(
     "realtime",
     join(dir, "video.webm"),
   );
-  await run(ffmpegPath(), args);
+  if (!o.vfr) await run(ffmpegPath(), args);
   let at = 0;
   const timelineSteps: TimelineStep[] = [];
   const scenes = new Map<number, TerminalCommand[]>();
@@ -116,6 +119,39 @@ export async function writeFakeRecording(
       endMs: Math.round((at + seconds) * 1000),
     });
     at += seconds;
+  }
+  if (o.vfr) {
+    const list: string[] = [];
+    steps.forEach((s, i) => {
+      if (i > 0 && steps[i - 1]!.color === s.color)
+        list[list.length - 1] =
+          `duration ${Number(list.at(-1)!.split(" ")[1]) + s.seconds}`;
+      else
+        list.push(
+          `file '${join(dir, "screens", `${i + 1}.png`)}'`,
+          `duration ${s.seconds}`,
+        );
+    });
+    await writeFile(join(dir, "vfr.txt"), list.join("\n") + "\n");
+    await run(ffmpegPath(), [
+      ...args.slice(0, 4),
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      join(dir, "vfr.txt"),
+      "-fps_mode",
+      "vfr",
+      "-c:v",
+      "libvpx",
+      "-b:v",
+      "300k",
+      "-deadline",
+      "realtime",
+      join(dir, "video.webm"),
+    ]);
+    await rm(join(dir, "vfr.txt"));
   }
   for (const [index, [first, ...more]] of scenes) {
     const override = terminalOverride(timelineSteps, sidecar, index);

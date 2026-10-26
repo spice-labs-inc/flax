@@ -48,6 +48,23 @@ export interface CardTime {
   narration?: number;
 }
 
+/** A card inside the video: before a step's scene (the first visible step at or after `at`), in place of a step's picture, or at the very start. */
+export interface CardInput extends CardTime {
+  at: number | "start";
+  /** Shown in place of the step's clip or terminal scene. */
+  replace?: boolean;
+}
+
+/** A closing card whose lines appear one by one, each as its narration starts. */
+export interface RecapInput {
+  /** The least the card lasts. */
+  seconds: number;
+  /** Seconds of each line's narration; 0 for a line not spoken. */
+  lines: readonly number[];
+  /** Seconds between one line's narration and the next line. */
+  gap: number;
+}
+
 /** What the edit is planned from. */
 export interface EditInput {
   steps: readonly TimelineStep[];
@@ -61,6 +78,9 @@ export interface EditInput {
   trims?: ReadonlyMap<number, { start?: number; end?: number }>;
   titleCard?: CardTime;
   endCard?: CardTime;
+  cards?: readonly CardInput[];
+  /** Before the end card. */
+  recap?: RecapInput;
 }
 
 /** A stretch of the output video. */
@@ -90,7 +110,23 @@ export type Piece =
       /** From `at` seconds into the replay, its writes come `speed` times faster. */
       idle?: { at: number; speed: number };
     }
-  | { kind: "card"; card: "title" | "end"; start: number; frames: number };
+  | {
+      kind: "card";
+      /** The title, end or recap card, or a card of the input's `cards` by position. */
+      card: "title" | "end" | "recap" | number;
+      start: number;
+      frames: number;
+    };
+
+/** Where a card of the input's `cards` is on the output timeline. */
+export interface CardSpan {
+  start: number;
+  end: number;
+  /** The step it goes before or replaces; absent for a card at the start. */
+  step?: number;
+  /** When its narration starts. */
+  narration?: number;
+}
 
 /** A run of visible steps that starts at a narrated step (or the first visible one). */
 export interface Scene {
@@ -120,6 +156,10 @@ export interface EditPlan {
   narration: number[];
   titleCard?: { start: number; end: number; narration?: number };
   endCard?: { start: number; end: number; narration?: number };
+  /** The input's cards, in its order. */
+  cards: CardSpan[];
+  /** The recap card, and when each line appears and its narration starts. */
+  recap?: { start: number; end: number; lines: number[] };
   /** The sped-up stretches on the output timeline. */
   idle: IdleSpan[];
   frames: number;
@@ -153,8 +193,10 @@ export function visibleFrom(
  * narration block starting at its step (after the lead-in) and the scene's
  * last frame held until the block and its tail are done. A scene longer than
  * its narration plays at its own pace unless `maxSpeed` allows speeding it
- * up. Throws when no step is visible, a block has no visible step at or
- * after its own, or two blocks land on one step.
+ * up. Cards go before a step's scene or in place of its picture, each as
+ * long as its narration needs; the recap goes before the end card. Throws
+ * when no step is visible, a block or card has no visible step at or after
+ * its own, two blocks land on one step, or a card cannot replace its step.
  */
 export function planEdit(
   input: EditInput,
@@ -193,11 +235,58 @@ export function planEdit(
     anchors.set(step.index, i);
   });
 
+  const cards = input.cards ?? [];
+  const atStart: number[] = [];
+  const before = new Map<number, number[]>();
+  const replaced = new Map<number, number>();
+  cards.forEach((c, i) => {
+    if (c.at === "start") {
+      if (c.replace)
+        throw new Error(
+          `card ${i + 1} is at the start; it has no step to replace`,
+        );
+      atStart.push(i);
+      return;
+    }
+    if (c.replace) {
+      if (!input.steps.some((s) => s.index === c.at) || input.hidden.has(c.at))
+        throw new Error(
+          `card ${i + 1} replaces step ${c.at}, which is not a visible step`,
+        );
+      const other = replaced.get(c.at);
+      if (other !== undefined)
+        throw new Error(
+          `cards ${other + 1} and ${i + 1} both replace step ${c.at}`,
+        );
+      if (input.trims?.has(c.at))
+        throw new Error(
+          `step ${c.at} is replaced by card ${i + 1}; a trim cuts only a step's raw video`,
+        );
+      if (c.narration !== undefined && anchors.has(c.at))
+        throw new Error(
+          `card ${i + 1} has narration and replaces step ${c.at}, where narration block ${anchors.get(c.at)! + 1} starts`,
+        );
+      replaced.set(c.at, i);
+      return;
+    }
+    const step = visibleFrom(input.steps, input.hidden, c.at);
+    if (!step)
+      throw new Error(
+        `card ${i + 1} (step ${c.at}) has no visible step at or after it`,
+      );
+    before.set(step.index, [...(before.get(step.index) ?? []), i]);
+  });
+
   const groups: { steps: TimelineStep[]; narration?: number }[] = [];
   for (const step of visible) {
     const block = anchors.get(step.index);
     const current = groups.at(-1);
-    if (!current || block !== undefined)
+    if (
+      !current ||
+      block !== undefined ||
+      before.has(step.index) ||
+      replaced.has(step.index)
+    )
       groups.push({
         steps: [step],
         ...(block === undefined ? {} : { narration: block }),
@@ -212,7 +301,10 @@ export function planEdit(
   const idleSpans: IdleSpan[] = [];
   let frame = 0;
 
-  const card = (kind: "title" | "end", c: CardTime) => {
+  const card = (
+    kind: Extract<Piece, { kind: "card" }>["card"],
+    c: CardTime,
+  ) => {
     const need = c.narration === undefined ? 0 : leadIn + c.narration + tail;
     const frames = Math.max(
       1,
@@ -227,7 +319,16 @@ export function planEdit(
       ...(c.narration === undefined ? {} : { narration: start + leadIn }),
     };
   };
+  const spans: CardSpan[] = new Array<CardSpan>(cards.length);
+  const midCard = (i: number, step?: number) => {
+    spans[i] = {
+      ...card(i, cards[i]!),
+      ...(step === undefined ? {} : { step }),
+    };
+    return spans[i];
+  };
 
+  for (const i of atStart) midCard(i);
   const titleCard = input.titleCard
     ? card("title", input.titleCard)
     : undefined;
@@ -245,12 +346,29 @@ export function planEdit(
   };
 
   for (const group of groups) {
-    const terminal = (s: TimelineStep) => input.terminals?.get(s.index);
+    const first = group.steps[0]!.index;
+    for (const i of before.get(first) ?? []) midCard(i, first);
+    const terminal = (s: TimelineStep) =>
+      replaced.has(s.index) ? undefined : input.terminals?.get(s.index);
+    const cardLength = (s: TimelineStep) => {
+      const c = cards[replaced.get(s.index) ?? -1];
+      return c
+        ? Math.max(
+            c.seconds,
+            c.narration === undefined ? 0 : leadIn + c.narration + tail,
+          )
+        : undefined;
+    };
     const srcLength = group.steps.reduce((n, s) => {
       const [a, b] = span(s);
-      return terminal(s) === undefined ? n + (b - a) : n;
+      return terminal(s) === undefined && cardLength(s) === undefined
+        ? n + (b - a)
+        : n;
     }, 0);
-    const fixed = group.steps.reduce((n, s) => n + (terminal(s) ?? 0), 0);
+    const fixed = group.steps.reduce(
+      (n, s) => n + (terminal(s) ?? cardLength(s) ?? 0),
+      0,
+    );
     const audio =
       group.narration === undefined
         ? undefined
@@ -315,6 +433,14 @@ export function planEdit(
         stepTimes.set(step.index, { start, end: start });
         continue;
       }
+      const replacing = replaced.get(step.index);
+      if (replacing !== undefined) {
+        const shown = midCard(replacing, step.index);
+        clip = undefined;
+        stepTimes.set(step.index, { start: shown.start, end: shown.end });
+        lastSrc = whole;
+        continue;
+      }
       const full = terminal(step);
       if (full !== undefined) {
         const shown = Math.min(full, left);
@@ -374,7 +500,20 @@ export function planEdit(
       0,
       Math.ceil(need * fps - 1e-9) - pictureFrames,
     );
-    if (holdFrames > 0) {
+    const lastPiece = pieces.at(-1);
+    if (
+      holdFrames > 0 &&
+      lastPiece?.kind === "card" &&
+      typeof lastPiece.card === "number" &&
+      lastPiece.start >= f2s(sceneStart, fps)
+    ) {
+      // A card the scene ends on holds itself, so the card's span covers the narration.
+      lastPiece.frames += holdFrames;
+      frame += holdFrames;
+      spans[lastPiece.card]!.end = f2s(frame, fps);
+      const last = group.steps.at(-1)!;
+      stepTimes.get(last.index)!.end = f2s(frame, fps);
+    } else if (holdFrames > 0) {
       pieces.push({
         kind: "hold",
         at: lastSrc,
@@ -397,6 +536,25 @@ export function planEdit(
     });
   }
 
+  let recap: EditPlan["recap"];
+  if (input.recap) {
+    const r = input.recap;
+    if (r.lines.length === 0) throw new Error("the recap has no lines");
+    const start = f2s(frame, fps);
+    const lines: number[] = [];
+    let at = Math.ceil(leadIn * fps - 1e-9);
+    r.lines.forEach((seconds, i) => {
+      lines.push(start + f2s(at, fps));
+      if (i < r.lines.length - 1)
+        at += Math.ceil((seconds + r.gap) * fps - 1e-9);
+      else at += Math.ceil((seconds + tail) * fps - 1e-9);
+    });
+    const frames = Math.max(at, Math.ceil(r.seconds * fps - 1e-9), 1);
+    pieces.push({ kind: "card", card: "recap", start, frames });
+    frame += frames;
+    recap = { start, end: f2s(frame, fps), lines };
+  }
+
   const endCard = input.endCard ? card("end", input.endCard) : undefined;
 
   return {
@@ -407,6 +565,8 @@ export function planEdit(
     narration,
     ...(titleCard ? { titleCard } : {}),
     ...(endCard ? { endCard } : {}),
+    cards: spans,
+    ...(recap ? { recap } : {}),
     idle: idleSpans,
     frames: frame,
     duration: f2s(frame, fps),
@@ -435,12 +595,12 @@ export interface Chapter {
   title: string;
 }
 
-/** The sidecar's chapters, each at its step's start (the next visible step's for a hidden one), in order. */
+/** The sidecar's chapters, each at its step's start (the next visible step's for a hidden one), or at the first card placed before that step, in order. */
 export function chapterTimes(
   chapters: readonly { at: StepRef; title: string }[],
   steps: readonly TimelineStep[],
   hidden: ReadonlySet<number>,
-  plan: Pick<EditPlan, "steps">,
+  plan: Pick<EditPlan, "steps"> & Partial<Pick<EditPlan, "cards">>,
 ): Chapter[] {
   return chapters
     .map((c) => {
@@ -449,7 +609,11 @@ export function chapterTimes(
         throw new Error(
           `chapter "${c.title}" has no visible step at or after it`,
         );
-      return { start: plan.steps.get(step.index)!.start, title: c.title };
+      const start = plan.steps.get(step.index)!.start;
+      const card = plan.cards?.find(
+        (s) => s.step === step.index && s.start < start,
+      );
+      return { start: card?.start ?? start, title: c.title };
     })
     .sort((a, b) => a.start - b.start);
 }

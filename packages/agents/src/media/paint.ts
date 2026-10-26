@@ -1,5 +1,5 @@
-import { mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { Browser, Page } from "playwright";
 import { calloutPlacement, type Size } from "./production.ts";
 import type { Box, CardContent } from "./recording.ts";
@@ -56,6 +56,63 @@ export class Painter {
       await page.close();
     }
     return file;
+  }
+
+  /**
+   * Draws an animated HTML document as frames: for each frame its CSS
+   * animations and transitions are paused at the frame's time and
+   * `window.mediaFrame(seconds, frame)` is called (awaited) when the page
+   * defines it. Writes one PNG per frame that differs from the one before
+   * and an ffmpeg concat list (`list`) showing each for as long as it
+   * lasts; `last` is the final frame.
+   */
+  async paintFrames(
+    html: string,
+    size: Size,
+    o: { frames: number; fps: number; dir: string },
+  ): Promise<{ list: string; shots: number; last: string }> {
+    await mkdir(o.dir, { recursive: true });
+    const page = await this.page(size);
+    try {
+      await page.setContent(html, { waitUntil: "load" });
+      await page.evaluate("document.fonts.ready");
+      const shots: { file: string; frame: number }[] = [];
+      let previous: Buffer | undefined;
+      for (let frame = 0; frame < o.frames; frame++) {
+        const t = frame / o.fps;
+        await page.evaluate(`(async () => {
+          const seen = (window.__mediaAnimations ??= new Set());
+          for (const a of document.getAnimations()) seen.add(a);
+          for (const a of seen) { a.pause(); a.currentTime = ${t * 1000}; }
+          if (typeof window.mediaFrame === "function") await window.mediaFrame(${t}, ${frame});
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+        })()`);
+        const png = await page.screenshot({
+          type: "png",
+          scale: "device",
+          omitBackground: true,
+        });
+        if (previous && png.equals(previous)) continue;
+        previous = png;
+        const file = join(o.dir, `f${String(frame).padStart(6, "0")}.png`);
+        await writeFile(file, png);
+        shots.push({ file, frame });
+      }
+      const lines: string[] = [];
+      shots.forEach((s, i) => {
+        const next = shots[i + 1]?.frame ?? o.frames;
+        lines.push(
+          `file '${s.file}'`,
+          `duration ${((next - s.frame) / o.fps).toFixed(6)}`,
+        );
+      });
+      lines.push(`file '${shots.at(-1)!.file}'`);
+      const list = join(o.dir, "frames.txt");
+      await writeFile(list, lines.join("\n") + "\n");
+      return { list, shots: shots.length, last: shots.at(-1)!.file };
+    } finally {
+      await page.close();
+    }
   }
 
   async close(): Promise<void> {
@@ -154,6 +211,38 @@ export function cardHtml(card: CardContent, frame: Size, css = ""): string {
         ? `<ol>${items.map((t, i) => `<li><b>${i + 1}</b>${escapeHtml(t)}</li>`).join("")}</ol>`
         : ""
     }</main>`,
+  );
+}
+
+/**
+ * A plain recap card: the heading and the lines as a list, only the first
+ * `shown` lines visible (the rest keep their place), in the caller's font
+ * and colors (--media-band is the background, --media-accent the marks).
+ * A caller that wants its own look passes `assets.recapHtml`.
+ */
+export function recapHtml(
+  recap: { heading?: string; lines: readonly { text: string }[] },
+  shown: number,
+  frame: Size,
+  css = "",
+): string {
+  const w = frame.width / LAYOUT_SCALE;
+  const h = frame.height / LAYOUT_SCALE;
+  return page(
+    css,
+    `body{width:${w}px;height:${h}px;background:var(--media-band);color:var(--media-text);font-family:var(--media-font)}
+    main{position:absolute;left:96px;right:96px;top:50%;transform:translateY(-50%)}
+    h1{font-size:60px;line-height:1.08;margin:0 0 44px;font-weight:600;text-wrap:balance}
+    ul{list-style:none;margin:0;padding:0}
+    li{display:flex;align-items:baseline;gap:22px;font-size:34px;line-height:1.25;margin:0 0 24px}
+    li::before{content:"";flex:none;width:14px;height:14px;border-radius:50%;background:var(--media-accent);transform:translateY(-4px)}
+    li.later{visibility:hidden}`,
+    `<main>${recap.heading ? `<h1>${escapeHtml(recap.heading)}</h1>` : ""}<ul>${recap.lines
+      .map(
+        (l, i) =>
+          `<li${i < shown ? "" : ' class="later"'}>${escapeHtml(l.text)}</li>`,
+      )
+      .join("")}</ul></main>`,
   );
 }
 

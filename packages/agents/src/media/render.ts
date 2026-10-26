@@ -31,6 +31,7 @@ import {
   captionHtml,
   cardHtml,
   posterHtml,
+  recapHtml,
   speedHtml,
   speedLabel,
 } from "./paint.ts";
@@ -90,8 +91,7 @@ export function ffmpegPath(): string {
 }
 
 /**
- * A card before or after the recording, beside or in place of the
- * sidecar's intro or outro: an image, or HTML drawn at the frame's size;
+ * A card: an image, or HTML drawn at the frame's size, still or animated;
  * never shorter than its narration.
  */
 export interface Card {
@@ -99,10 +99,43 @@ export interface Card {
   image?: string;
   /** A whole HTML document, drawn by Chromium at 2560 by 1440 (laid out at 1280 by 720). */
   html?: string;
+  /** Draws the html once per frame for `seconds`, its CSS animations paused at each frame's time and `window.mediaFrame(seconds, frame)` called when the page defines it; the last frame holds after. */
+  animate?: { seconds: number };
   /** Default 3. */
   seconds?: number;
-  /** Spoken over the card when the sidecar's intro or outro has no text. */
+  /** Spoken over the card; for the title and end cards, only when the sidecar's intro or outro has no text. */
   narration?: string;
+}
+
+/** A card inside the video, before a step's scene or in place of its picture. */
+export interface MidCard extends Card {
+  /** The step the card goes before (a hidden one's next visible step) or replaces; "start" puts it before the title card. */
+  at: StepRef | "start";
+  /** Show the card in place of the step's browser frames or terminal scene; the step's narration block is spoken over it. */
+  replace?: boolean;
+  /** A chapter starting at the card. */
+  chapter?: string;
+}
+
+/** A closing card before the end card: each line appears as its narration starts. */
+export interface Recap {
+  heading?: string;
+  /** Each line's narration is its text unless given; "" leaves it unspoken. */
+  lines: { text: string; narration?: string }[];
+  /** The least the card lasts. Default 3. */
+  seconds?: number;
+  /** Seconds between one line's narration ending and the next line. Default 0.5. */
+  gap?: number;
+  /** A chapter starting at the card. */
+  chapter?: string;
+}
+
+/** How one stretch of the video gives way to the next where the picture jumps. */
+export interface Transition {
+  /** fade: the next stretch dissolves in over the last frame before it; cut: no transition. */
+  kind: "fade" | "cut";
+  /** Default 0.5. */
+  seconds?: number;
 }
 
 /** The caller's look and sound; flax ships none. */
@@ -115,6 +148,8 @@ export interface RenderAssets {
   endCard?: Card;
   /** Draws the sidecar's intro or outro as a whole HTML document; default cardHtml. */
   cardHtml?: (card: CardContent, kind: "intro" | "outro") => string;
+  /** Draws the recap card with its first `shown` lines visible, as a whole HTML document; default recapHtml. */
+  recapHtml?: (recap: Recap, shown: number) => string;
   /** A music bed under the whole video, looped to length and ducked under the narration. */
   music?: {
     file: string;
@@ -146,6 +181,8 @@ export interface Production {
   callouts?: { at: StepRef; text: string; box?: Box; seconds?: number }[];
 }
 
+type CardPicture = { still: string } | { list: string };
+
 /** The narration voice, or a function choosing one from the sidecar's `voice`. */
 export type NarrationVoice =
   Voice | ((voice: string | undefined) => Voice | Promise<Voice>);
@@ -159,6 +196,12 @@ export interface RenderRecordingOptions extends EditOptions {
   tts: NarrationVoice;
   assets?: RenderAssets;
   production?: Production;
+  /** Cards inside the video: before a step's scene, in place of its picture, or at the very start. */
+  cards?: MidCard[];
+  /** A closing card before the outro, its lines appearing as they are spoken. */
+  recap?: Recap;
+  /** Where the picture jumps (into and out of cards, between scenes, at a cut): a fade or a cut. Default cut. */
+  transition?: Transition;
   /** Seconds cut from the start and the end of a step's raw video (not a terminal scene's), the step named by its 1-based index or its text. */
   trim?: { at: StepRef; start?: number; end?: number }[];
   /** The docs checkout a terminal override's `docs:<path>` cast is read from. Default FLAX_DOCS_ROOT. */
@@ -378,6 +421,41 @@ function isObject(v: unknown): v is Record<string, unknown> {
 }
 
 /**
+ * The raw video at a constant `fps`, each frame repeated until the next
+ * one and the last held to `seconds`, so a cut at any time starts on the
+ * frame on screen then. A recording with frames only where the picture
+ * changed (a variable frame rate) loses none at a cut. Lossless H.264 in
+ * Matroska, a keyframe a second.
+ */
+export async function constantRate(
+  file: string,
+  out: string,
+  o: { fps?: number; seconds: number },
+): Promise<string> {
+  const fps = o.fps ?? FPS;
+  await run(ffmpegPath(), [
+    ...QUIET,
+    "-i",
+    file,
+    "-vf",
+    `fps=${fps},tpad=stop_mode=clone:stop_duration=${o.seconds.toFixed(3)}`,
+    "-t",
+    o.seconds.toFixed(3),
+    "-an",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "ultrafast",
+    "-qp",
+    "0",
+    "-g",
+    String(fps),
+    out,
+  ]);
+  return out;
+}
+
+/**
  * Keeps a poster within the kit's limit for a thumbnail (2 MB): a larger
  * one is redrawn at 1920 by 1080, and when that PNG is still too large it
  * becomes a JPEG beside it (poster.jpg) at the best quality that fits.
@@ -440,7 +518,8 @@ export async function fitPoster(
  * captions.vtt, poster.png and media.json in `out`: hidden steps cut, each
  * step that ran commands shown as a terminal scene, each narration block
  * from the sidecar spoken from its step with the picture holding its last
- * frame until the block is done, the intro and outro cards, the optional
+ * frame until the block is done, the intro, outro, mid-video and recap
+ * cards, fades where the picture jumps when asked for, the optional
  * music bed, zoom and callouts, and the captions from the voice's word
  * timing. Refuses a recording of a failed run.
  */
@@ -494,6 +573,16 @@ export async function renderRecording(
     const blocks = sidecar.narration ?? [];
     const audio: SceneAudio[] = [];
     for (const b of blocks) audio.push(await synth(b.text));
+    const midCards = opts.cards ?? [];
+    const cardAudio: (SceneAudio | undefined)[] = [];
+    for (const c of midCards)
+      cardAudio.push(c.narration ? await synth(c.narration) : undefined);
+    const recapSpoken = (opts.recap?.lines ?? []).map(
+      (l) => l.narration ?? l.text,
+    );
+    const recapAudio: (SceneAudio | undefined)[] = [];
+    for (const text of recapSpoken)
+      recapAudio.push(text ? await synth(text) : undefined);
     const outroAudio = outro?.text ? await synth(outro.text) : undefined;
 
     const hidden = hiddenSteps(steps, sidecar);
@@ -561,6 +650,21 @@ export async function renderRecording(
         ),
         ...(titleCard ? { titleCard } : {}),
         ...(endCard ? { endCard } : {}),
+        cards: midCards.map((c, i) => ({
+          at: c.at === "start" ? "start" : resolveStep(steps, c.at).index,
+          ...(c.replace ? { replace: true } : {}),
+          seconds: c.seconds ?? 3,
+          ...(cardAudio[i] ? { narration: cardAudio[i].duration } : {}),
+        })),
+        ...(opts.recap
+          ? {
+              recap: {
+                seconds: opts.recap.seconds ?? 3,
+                gap: opts.recap.gap ?? 0.5,
+                lines: recapAudio.map((a) => a?.duration ?? 0),
+              },
+            }
+          : {}),
       },
       opts,
       fps,
@@ -577,6 +681,14 @@ export async function renderRecording(
         ? [{ audio: introAudio, start: plan.titleCard.narration }]
         : []),
       ...audio.map((a, i) => ({ audio: a, start: plan.narration[i]! })),
+      ...cardAudio.flatMap((a, i) =>
+        a && plan.cards[i]?.narration !== undefined
+          ? [{ audio: a, start: plan.cards[i].narration }]
+          : [],
+      ),
+      ...recapAudio.flatMap((a, i) =>
+        a && plan.recap ? [{ audio: a, start: plan.recap.lines[i]! }] : [],
+      ),
       ...(outroAudio && plan.endCard?.narration !== undefined
         ? [{ audio: outroAudio, start: plan.endCard.narration }]
         : []),
@@ -617,7 +729,10 @@ export async function renderRecording(
       new Uint8Array(mixed.buffer, mixed.byteOffset, mixed.byteLength),
     );
 
-    const cues = buildCues(words);
+    const cues = buildCues(
+      words.sort((a, b) => a.start - b.start),
+      { breaks: placed.map((p) => p.start) },
+    );
     const captions = join(opts.out, "captions.vtt");
     await writeFile(captions, toVtt(cues));
 
@@ -700,25 +815,101 @@ export async function renderRecording(
         });
       }
 
-    const cardImage = async (
+    // Each card's picture: a still, or a concat list of frames.
+    const cardFrames = new Map<
+      Extract<Piece, { kind: "card" }>["card"],
+      number
+    >();
+    for (const p of plan.pieces)
+      if (p.kind === "card") cardFrames.set(p.card, p.frames);
+    const cardPicture = async (
+      card: Card | undefined,
+      html: string | undefined,
+      name: string,
+      frames: number,
+    ): Promise<CardPicture> => {
+      if (card?.animate) {
+        const animated = card.html ?? html;
+        if (card.image || animated === undefined)
+          throw new Error(`the ${name} card is animated, so it needs html`);
+        const drawn = await painter.paintFrames(animated, frame, {
+          frames: Math.max(
+            1,
+            Math.min(frames, Math.round(card.animate.seconds * fps)),
+          ),
+          fps,
+          dir: join(work, name),
+        });
+        log(`  ${name} card: ${drawn.shots} frames drawn`);
+        return { list: drawn.list };
+      }
+      if (card?.image) return { still: card.image };
+      const still = card?.html ?? html;
+      if (still === undefined)
+        throw new Error(`the ${name} card has neither an image nor html`);
+      return {
+        still: await painter.paint(still, frame, join(work, `${name}.png`)),
+      };
+    };
+    const sidecarCard = (
       c: NonNullable<ReturnType<typeof cardSpec>>,
       kind: "intro" | "outro",
-    ): Promise<string> => {
-      if (c.card?.image) return c.card.image;
-      const html =
-        c.card?.html ??
-        (c.content
+      key: "title" | "end",
+    ) =>
+      cardPicture(
+        c.card,
+        c.content
           ? (assets.cardHtml?.(c.content, kind) ??
-            cardHtml(c.content, frame, assets.css))
-          : undefined);
-      if (html === undefined)
-        throw new Error(`the ${kind} card has neither an image nor html`);
-      return painter.paint(html, frame, join(work, `${kind}.png`));
-    };
-    const cardFiles = {
-      title: intro ? await cardImage(intro, "intro") : undefined,
-      end: outro ? await cardImage(outro, "outro") : undefined,
-    };
+              cardHtml(c.content, frame, assets.css))
+          : undefined,
+        kind,
+        cardFrames.get(key) ?? 1,
+      );
+    const cardPictures = new Map<
+      Extract<Piece, { kind: "card" }>["card"],
+      CardPicture
+    >();
+    if (intro)
+      cardPictures.set("title", await sidecarCard(intro, "intro", "title"));
+    if (outro)
+      cardPictures.set("end", await sidecarCard(outro, "outro", "end"));
+    for (const [i, c] of midCards.entries())
+      cardPictures.set(
+        i,
+        await cardPicture(
+          c,
+          undefined,
+          `card-${i + 1}`,
+          cardFrames.get(i) ?? 1,
+        ),
+      );
+    if (opts.recap && plan.recap) {
+      const recap = opts.recap;
+      const reveals = [plan.recap.start, ...plan.recap.lines].map((t) =>
+        Math.round((t - plan.recap!.start) * fps),
+      );
+      const total = cardFrames.get("recap")!;
+      const lines: string[] = [];
+      for (let shown = 0; shown < reveals.length; shown++) {
+        const from = reveals[shown]!;
+        const to = reveals[shown + 1] ?? total;
+        if (to <= from) continue;
+        const file = await painter.paint(
+          assets.recapHtml?.(recap, shown) ??
+            recapHtml(recap, shown, frame, assets.css),
+          frame,
+          join(work, "recap", `${shown}.png`),
+        );
+        lines.push(
+          `file '${file}'`,
+          `duration ${((to - from) / fps).toFixed(6)}`,
+        );
+      }
+      lines.push(lines.at(-2)!);
+      const list = join(work, "recap", "frames.txt");
+      await writeFile(list, lines.join("\n") + "\n");
+      cardPictures.set("recap", { list });
+    }
 
     // Terminal scenes, drawn frame by frame at their planned length.
     const terminalLists = new Map<number, string>();
@@ -745,6 +936,14 @@ export async function renderRecording(
       terminalLists.set(p.step, drawn.list);
       terminalLast.set(p.step, drawn.last);
     }
+
+    // The raw video is cut from a constant-rate copy, made once when needed.
+    let constant: Promise<string> | undefined;
+    const rawVideo = (video: string) =>
+      (constant ??= constantRate(video, join(work, "source.mkv"), {
+        fps,
+        seconds: Math.max(0, ...steps.map((s) => (s.endMs ?? 0) / 1000)) + 1,
+      }));
 
     // A still for a stretch with no raw video: its last step's screen.
     const stillFor = (p: Extract<Piece, { kind: "clip" }>) =>
@@ -791,15 +990,38 @@ export async function renderRecording(
             "-i",
             `color=c=${bg}:s=${source.width}x${source.height}:r=${fps}:d=${seconds.toFixed(3)}`,
           ];
-    for (const { piece, hold } of merged) {
+    // Where the picture jumps, a fade dissolves the next stretch in over the
+    // previous one's last frame, held on for the fade, so nothing moves in time.
+    const fadeFrames =
+      opts.transition?.kind === "fade"
+        ? Math.round((opts.transition.seconds ?? 0.5) * fps)
+        : 0;
+    const fades = merged.map(({ piece, hold }, i) => {
+      const prev = merged[i - 1]?.piece;
+      if (!prev || fadeFrames <= 0) return 0;
+      const continues =
+        prev.kind === "clip" &&
+        piece.kind === "clip" &&
+        Math.abs(prev.srcEnd - piece.srcStart) < 0.002;
+      return continues ? 0 : Math.min(fadeFrames, piece.frames + hold);
+    });
+    for (const [i, { piece, hold }] of merged.entries()) {
       const label = `p${labels.length}`;
       const total = piece.frames + hold;
+      const extra = fades[i + 1] ?? 0;
       if (piece.kind === "card") {
-        const file = cardFiles[piece.card]!;
-        inputs.push(...stillInput(file, total / fps + 1));
-        chains.push(
-          `[${n}:v]fps=${fps},${fit(frame, bg)},trim=end_frame=${total},setpts=PTS-STARTPTS[${label}]`,
-        );
+        const picture = cardPictures.get(piece.card)!;
+        if ("still" in picture) {
+          inputs.push(...stillInput(picture.still, (total + extra) / fps + 1));
+          chains.push(
+            `[${n}:v]fps=${fps},${fit(frame, bg)},trim=end_frame=${total + extra},setpts=PTS-STARTPTS[${label}]`,
+          );
+        } else {
+          inputs.push("-f", "concat", "-safe", "0", "-i", picture.list);
+          chains.push(
+            `[${n}:v]fps=${fps},${fit(frame, bg)},tpad=stop_mode=clone:stop=${total + extra},trim=end_frame=${total + extra},setpts=PTS-STARTPTS[${label}]`,
+          );
+        }
       } else {
         let lead = "";
         if (piece.kind === "terminal") {
@@ -819,7 +1041,7 @@ export async function renderRecording(
             "-t",
             (length + 0.25).toFixed(3),
             "-i",
-            rec.video,
+            await rawVideo(rec.video),
           );
           lead = `setpts=(PTS-STARTPTS)/${piece.speed.toFixed(6)},`;
         } else {
@@ -839,7 +1061,7 @@ export async function renderRecording(
             : undefined;
         chains.push(
           `[${n}:v]${lead}fps=${fps},${fit(picture, bg)},` +
-            `trim=end_frame=${piece.frames},tpad=stop_mode=clone:stop=${hold + fps},trim=end_frame=${total},setpts=PTS-STARTPTS` +
+            `trim=end_frame=${piece.frames},tpad=stop_mode=clone:stop=${hold + extra + fps},trim=end_frame=${total + extra},setpts=PTS-STARTPTS` +
             (camera ? `,${camera}` : "") +
             (band > 0
               ? `,pad=${FRAME_WIDTH}:${FRAME_HEIGHT}:0:0:color=${bg}`
@@ -850,9 +1072,37 @@ export async function renderRecording(
       labels.push(label);
       n++;
     }
-    chains.push(
-      `${labels.map((l) => `[${l}]`).join("")}concat=n=${labels.length}:v=1:a=0[v0]`,
-    );
+    const segments: string[][] = [];
+    labels.forEach((l, i) => {
+      if (i === 0 || fades[i]! > 0) segments.push([l]);
+      else segments.at(-1)!.push(l);
+    });
+    if (segments.length === 1)
+      chains.push(
+        `${labels.map((l) => `[${l}]`).join("")}concat=n=${labels.length}:v=1:a=0[v0]`,
+      );
+    else {
+      let joined = "";
+      let at = 0;
+      let first = 0;
+      segments.forEach((segment, k) => {
+        const out = `s${k}`;
+        chains.push(
+          `${segment.map((l) => `[${l}]`).join("")}concat=n=${segment.length}:v=1:a=0,fps=${fps}[${out}]`,
+        );
+        if (k > 0) {
+          const fade = fades[first]!;
+          const next = k === segments.length - 1 ? "v0" : `x${k}`;
+          chains.push(
+            `[${joined}][${out}]xfade=transition=fade:duration=${(fade / fps).toFixed(6)}:offset=${(at / fps).toFixed(6)}[${next}]`,
+          );
+          joined = next;
+        } else joined = out;
+        for (let j = first; j < first + segment.length; j++)
+          at += merged[j]!.piece.frames + merged[j]!.hold;
+        first += segment.length;
+      });
+    }
     let last = "v0";
     overlays.forEach((o, i) => {
       inputs.push("-loop", "1", "-framerate", String(fps), "-i", o.file);
@@ -938,7 +1188,7 @@ export async function renderRecording(
         "-ss",
         Math.max(0, (pstep.endMs ?? 0) / 1000 - 0.05).toFixed(3),
         "-i",
-        rec.video,
+        await rawVideo(rec.video),
         "-frames:v",
         "1",
         screen,
@@ -987,6 +1237,12 @@ export async function renderRecording(
         ? [{ start: plan.titleCard.start, title: sidecar.intro.chapter }]
         : []),
       ...chapterTimes(sidecar.chapters ?? [], steps, hidden, plan),
+      ...midCards.flatMap((c, i) =>
+        c.chapter ? [{ start: plan.cards[i]!.start, title: c.chapter }] : [],
+      ),
+      ...(opts.recap?.chapter && plan.recap
+        ? [{ start: plan.recap.start, title: opts.recap.chapter }]
+        : []),
       ...(sidecar.outro?.chapter && plan.endCard
         ? [{ start: plan.endCard.start, title: sidecar.outro.chapter }]
         : []),
@@ -1032,10 +1288,14 @@ export async function renderRecording(
       media,
       entry,
       plan,
-      terminals: [...replays].map(([step, r]) => ({
-        step,
-        text: replayText(r),
-      })),
+      terminals: [...replays]
+        .filter(([step]) =>
+          plan.cards.every((c, i) => c.step !== step || !midCards[i]!.replace),
+        )
+        .map(([step, r]) => ({
+          step,
+          text: replayText(r),
+        })),
     };
   } finally {
     await painter.close();

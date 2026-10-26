@@ -67,6 +67,37 @@ async function pixel(
   return [stdout[0]!, stdout[1]!, stdout[2]!];
 }
 
+/** The brightest channel value in a region of a video's frame at `t` seconds. */
+async function brightest(
+  file: string,
+  r: { x: number; y: number; width: number; height: number },
+  t: number,
+): Promise<number> {
+  const { stdout } = await run(
+    ffmpegPath(),
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-ss",
+      t.toFixed(3),
+      "-i",
+      file,
+      "-frames:v",
+      "1",
+      "-vf",
+      `crop=${r.width}:${r.height}:${r.x}:${r.y}`,
+      "-f",
+      "rawvideo",
+      "-pix_fmt",
+      "rgb24",
+      "-",
+    ],
+    { encoding: "buffer", maxBuffer: 1 << 26 },
+  );
+  return stdout.reduce((m, v) => Math.max(m, v), 0);
+}
+
 /** Which of red, green, blue, yellow and white a pixel is. */
 function named([r, g, b]: [number, number, number]): string {
   const on = (v: number) => v > 60;
@@ -586,6 +617,192 @@ describe("renderRecording", () => {
     expect((await pixel(rendered.video, 1460, 880, t))[2]).toBeLessThan(150);
     expect((await pixel(rendered.video, 700, 300, t))[2]).toBeLessThan(150);
   }, 180_000);
+
+  it("plays an animated card at the start, a card in place of a terminal step, a recap revealed line by line, and fades between them", async () => {
+    const record = join(dir, "cards");
+    const sidecar: Sidecar = {
+      scenario: "Sync the list",
+      id: "sync-the-list",
+      title: "Sync the list",
+      narration: [
+        { at: 1, text: "Open the list." },
+        { at: 3, text: "The item is there." },
+      ],
+      chapters: [
+        { at: 1, title: "Open" },
+        { at: "Then I see the item", title: "Check" },
+      ],
+    };
+    await writeFakeRecording(
+      record,
+      [STEPS[1]!, STEPS[2]!, STEPS[3]!].map((s) => ({ ...s, seconds: 2 })),
+      sidecar,
+      { scale: 2 },
+    );
+    const page = (style: string) =>
+      `<!doctype html><html><head><style>html,body{margin:0;width:100%;height:100%}${style}</style></head><body></body></html>`;
+    const voice = sineVoice({ secondsPerWord: 0.25 });
+    const lines: string[] = [];
+    const rendered = await renderRecording({
+      recordDir: record,
+      tts: voice,
+      out: join(dir, "cards-out"),
+      threads: 2,
+      chapters: { minSeconds: 2 },
+      cards: [
+        {
+          at: "start",
+          html: page(
+            "body{animation:sting 1s linear forwards}@keyframes sting{from{background:#ff0000}to{background:#0000ff}}",
+          ),
+          animate: { seconds: 1 },
+          seconds: 1.5,
+        },
+        {
+          at: "And I sync the notes",
+          replace: true,
+          html: page("body{background:#ff0000}"),
+          narration: "The notes sync in the background.",
+          chapter: "Sync",
+        },
+      ],
+      recap: {
+        heading: "What you did",
+        lines: [
+          { text: "Opened the list" },
+          { text: "Synced the notes", narration: "You synced your notes." },
+        ],
+        chapter: "Recap",
+      },
+      transition: { kind: "fade", seconds: 0.5 },
+      log: (l) => lines.push(l),
+    });
+
+    // The sting is 1.5 s; the sync card holds 3 s over its 1.5 s of
+    // narration; the recap's second line comes 38 frames after its first.
+    const plan = rendered.plan;
+    expect(plan.pieces.map((p) => [p.kind, p.start])).toEqual([
+      ["card", 0],
+      ["clip", 1.5],
+      ["card", 3.5],
+      ["clip", 6.5],
+      ["card", 8.5],
+    ]);
+    expect(plan.cards).toEqual([
+      { start: 0, end: 1.5 },
+      { start: 3.5, end: 6.5, step: 2, narration: 3.5 },
+    ]);
+    expect(plan.recap).toEqual({
+      start: 8.5,
+      end: 11.5,
+      lines: [8.5, 8.5 + 38 / 30],
+    });
+    expect(voice.spoken).toEqual([
+      "Open the list.",
+      "The item is there.",
+      "The notes sync in the background.",
+      "Opened the list",
+      "You synced your notes.",
+    ]);
+    expect(rendered.terminals).toEqual([]);
+    expect(lines.some((l) => /card-1 card: \d+ frames drawn/.test(l))).toBe(
+      true,
+    );
+    const video = await probeMedia(rendered.video);
+    expect(Math.abs(video.duration! - 11.5)).toBeLessThan(0.05);
+
+    // The sting animates from red to blue and holds; each jump dissolves
+    // over half a second, and the terminal step shows only the card.
+    const rgb = (t: number) => pixel(rendered.video, 1280, 640, t);
+    const at = (t: number) => rgb(t).then(named);
+    expect(await at(0.02)).toBe("red");
+    expect(await at(1.3)).toBe("blue");
+    const intoClip = await rgb(1.75);
+    expect(intoClip[1]).toBeGreaterThan(30);
+    expect(intoClip[2]).toBeGreaterThan(60);
+    expect(await at(2.2)).toBe("green");
+    expect(await at(3.4)).toBe("green");
+    const intoCard = await rgb(3.75);
+    expect(intoCard[0]).toBeGreaterThan(60);
+    expect(intoCard[0]).toBeLessThan(200);
+    expect(await at(4.2)).toBe("red");
+    expect(await at(6.3)).toBe("red");
+    expect(await at(7.2)).toBe("blue");
+
+    // The recap shows its first line, then the second as it is spoken.
+    const first = { x: 200, y: 690, width: 1400, height: 100 };
+    const second = { x: 200, y: 810, width: 1400, height: 120 };
+    expect(await brightest(rendered.video, first, 9.4)).toBeGreaterThan(200);
+    expect(await brightest(rendered.video, second, 9.4)).toBeLessThan(60);
+    expect(await brightest(rendered.video, second, 10.6)).toBeGreaterThan(200);
+
+    const cues = parseVtt(await readFile(rendered.captions, "utf8"));
+    const cue = (text: string) =>
+      cues.find((c) => c.lines.join(" ") === text)?.start;
+    expect(cue("The notes sync in the background.")).toBeCloseTo(3.5, 2);
+    expect(cue("Opened the list")).toBeCloseTo(8.5, 2);
+    expect(cue("You synced your notes.")).toBeCloseTo(8.5 + 38 / 30, 2);
+
+    expect(rendered.media.chapters).toEqual([
+      { start: 1.5, title: "Open" },
+      { start: 3.5, title: "Sync" },
+      { start: 6.5, title: "Check" },
+      { start: 8.5, title: "Recap" },
+    ]);
+    expect(rendered.entry.chapters).toEqual([
+      { start: 0, title: "Open" },
+      { start: 3, title: "Sync" },
+      { start: 6, title: "Check" },
+      { start: 8, title: "Recap" },
+    ]);
+  }, 180_000);
+
+  it("cuts a variable-frame-rate recording on the frame on screen, one held across a step boundary included", async () => {
+    const record = join(dir, "vfr");
+    const sidecar: Sidecar = {
+      scenario: "Wait for it",
+      id: "wait-for-it",
+      title: "Wait for it",
+      poster: { at: 2 },
+    };
+    await writeFakeRecording(
+      record,
+      [
+        { keyword: "Given", text: "a list", color: "red", seconds: 1 },
+        { keyword: "When", text: "I wait", color: "red", seconds: 1 },
+        { keyword: "Then", text: "I see it", color: "blue", seconds: 1 },
+      ],
+      sidecar,
+      { vfr: true },
+    );
+    // Two frames: red at 0, held through the hidden step and the next, and blue at 2.
+    const { stdout } = await run(ffmpegPath(), [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      join(record, "video.webm"),
+      "-map",
+      "0:v",
+      "-c",
+      "copy",
+      "-f",
+      "framemd5",
+      "-",
+    ]);
+    expect(stdout.split("\n").filter((l) => /^\s*0,/.test(l))).toHaveLength(2);
+    const rendered = await renderRecording({
+      recordDir: record,
+      tts: sineVoice(),
+      out: join(dir, "vfr-out"),
+      threads: 2,
+    });
+    expect(rendered.plan.steps.get(2)).toEqual({ start: 0, end: 1 });
+    const at = (t: number) => pixel(rendered.video, 1280, 640, t).then(named);
+    expect(await at(0.1)).toBe("red");
+    expect(await at(0.9)).toBe("red");
+    expect(await at(1.5)).toBe("blue");
+  }, 120_000);
 
   it("refuses a recording of a failed run and writes nothing", async () => {
     const record = join(dir, "failed");

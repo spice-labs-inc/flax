@@ -419,6 +419,181 @@ describe("planEdit", () => {
     expect(outputTime(plan, 3)).toBeUndefined();
     expect(outputTime(plan, 6.5)).toBe(1.5);
   });
+
+  it("puts a card before a step's scene, long enough for its narration, and starts the chapter on that step at the card", () => {
+    const s = steps(["When", 2], ["When", 2], ["Then", 2]);
+    const plan = planEdit(
+      {
+        steps: s,
+        hidden: new Set(),
+        narration: [{ step: 1, seconds: 1 }],
+        cards: [{ at: 2, seconds: 1, narration: 2 }],
+      },
+      { tail: 0.5 },
+    );
+    expect(plan.pieces).toEqual([
+      { kind: "clip", srcStart: 0, srcEnd: 2, speed: 1, start: 0, frames: 60 },
+      { kind: "card", card: 0, start: 2, frames: 75 },
+      {
+        kind: "clip",
+        srcStart: 2,
+        srcEnd: 6,
+        speed: 1,
+        start: 4.5,
+        frames: 120,
+      },
+    ]);
+    expect(plan.cards).toEqual([{ start: 2, end: 4.5, step: 2, narration: 2 }]);
+    expect(plan.scenes.map((x) => x.steps)).toEqual([[1], [2, 3]]);
+    expect(plan.steps.get(2)).toEqual({ start: 4.5, end: 6.5 });
+    expect(plan.duration).toBe(8.5);
+    expect(
+      chapterTimes(
+        [
+          { at: 2, title: "Second" },
+          { at: 3, title: "Third" },
+        ],
+        s,
+        new Set(),
+        plan,
+      ),
+    ).toEqual([
+      { start: 2, title: "Second" },
+      { start: 6.5, title: "Third" },
+    ]);
+
+    const moved = planEdit({
+      steps: s,
+      hidden: new Set([2]),
+      narration: [],
+      cards: [{ at: 2, seconds: 1 }],
+    });
+    expect(moved.cards).toEqual([{ start: 2, end: 3, step: 3 }]);
+  });
+
+  it("shows a card in place of a step's picture, held until the step's block is done", () => {
+    const s = steps(["When", 2], ["And", 3], ["Then", 2]);
+    const plan = planEdit(
+      {
+        steps: s,
+        hidden: new Set(),
+        narration: [
+          { step: 2, seconds: 3 },
+          { step: 3, seconds: 0.5 },
+        ],
+        terminals: new Map([[2, 3]]),
+        cards: [{ at: 2, replace: true, seconds: 1 }],
+      },
+      { tail: 0.5 },
+    );
+    expect(plan.pieces).toEqual([
+      { kind: "clip", srcStart: 0, srcEnd: 2, speed: 1, start: 0, frames: 60 },
+      { kind: "card", card: 0, start: 2, frames: 105 },
+      {
+        kind: "clip",
+        srcStart: 5,
+        srcEnd: 7,
+        speed: 1,
+        start: 5.5,
+        frames: 60,
+      },
+    ]);
+    expect(plan.cards).toEqual([{ start: 2, end: 5.5, step: 2 }]);
+    expect(plan.steps.get(2)).toEqual({ start: 2, end: 5.5 });
+    expect(plan.narration).toEqual([2, 5.5]);
+
+    const spoken = planEdit({
+      steps: s,
+      hidden: new Set(),
+      narration: [],
+      cards: [{ at: 2, replace: true, seconds: 1, narration: 2 }],
+    });
+    expect(spoken.cards).toEqual([
+      { start: 2, end: 4.5, step: 2, narration: 2 },
+    ]);
+  });
+
+  it("refuses a card that cannot replace its step", () => {
+    const s = steps(["Given", 1], ["When", 2], ["Then", 2]);
+    const plan = (
+      cards: { at: number | "start"; replace?: boolean; narration?: number }[],
+      more: { trims?: Map<number, { start: number }> } = {},
+    ) =>
+      planEdit({
+        steps: s,
+        hidden: new Set([1]),
+        narration: [{ step: 2, seconds: 1 }],
+        cards: cards.map((c) => ({ seconds: 1, ...c })),
+        ...more,
+      });
+    expect(() => plan([{ at: 1, replace: true }])).toThrow(
+      /card 1 replaces step 1, which is not a visible step/,
+    );
+    expect(() => plan([{ at: "start", replace: true }])).toThrow(
+      /card 1 is at the start/,
+    );
+    expect(() =>
+      plan([
+        { at: 3, replace: true },
+        { at: 3, replace: true },
+      ]),
+    ).toThrow(/cards 1 and 2 both replace step 3/);
+    expect(() => plan([{ at: 2, replace: true, narration: 1 }])).toThrow(
+      /card 1 has narration and replaces step 2, where narration block 1 starts/,
+    );
+    expect(() =>
+      plan([{ at: 3, replace: true }], {
+        trims: new Map([[3, { start: 0.5 }]]),
+      }),
+    ).toThrow(/step 3 is replaced by card 1/);
+    expect(() => plan([{ at: 4 }])).toThrow(
+      /card 1 \(step 4\) has no visible step at or after it/,
+    );
+  });
+
+  it("puts a card at the start before the title card", () => {
+    const s = steps(["When", 2]);
+    const plan = planEdit({
+      steps: s,
+      hidden: new Set(),
+      narration: [],
+      titleCard: { seconds: 2 },
+      cards: [{ at: "start", seconds: 1 }],
+    });
+    expect(plan.pieces.map((p) => [p.kind, p.start, p.frames])).toEqual([
+      ["card", 0, 30],
+      ["card", 1, 60],
+      ["clip", 3, 60],
+    ]);
+    expect(plan.cards).toEqual([{ start: 0, end: 1 }]);
+    expect(plan.titleCard).toEqual({ start: 1, end: 3 });
+  });
+
+  it("reveals each recap line as its narration starts, before the end card", () => {
+    const s = steps(["When", 2]);
+    const plan = planEdit(
+      {
+        steps: s,
+        hidden: new Set(),
+        narration: [],
+        recap: { seconds: 1, lines: [1, 0, 1.5], gap: 0.5 },
+        endCard: { seconds: 1 },
+      },
+      { tail: 0.5 },
+    );
+    expect(
+      plan.pieces.map((p) => p.kind === "card" && [p.card, p.start, p.frames]),
+    ).toEqual([false, ["recap", 2, 120], ["end", 6, 30]]);
+    expect(plan.recap).toEqual({ start: 2, end: 6, lines: [2, 3.5, 4] });
+    expect(() =>
+      planEdit({
+        steps: s,
+        hidden: new Set(),
+        narration: [],
+        recap: { seconds: 1, lines: [], gap: 0.5 },
+      }),
+    ).toThrow(/the recap has no lines/);
+  });
 });
 
 describe("hidden steps, chapters and the poster", () => {

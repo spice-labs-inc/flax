@@ -32,8 +32,12 @@ function wrap(words: string[]): string[] {
   return lines;
 }
 
-/** Groups timed words into readable cues: at most two lines of 60 characters, one to six seconds, a sentence end closes a cue. */
-export function buildCues(words: Word[]): Cue[] {
+/** Groups timed words into readable cues: at most two lines of 60 characters, one to six seconds, a sentence end closes a cue, and so does each time in `breaks` (where a new piece of narration starts). */
+export function buildCues(
+  words: Word[],
+  o: { breaks?: readonly number[] } = {},
+): Cue[] {
+  const breaks = o.breaks ?? [];
   const cues: Cue[] = [];
   let group: Word[] = [];
   const flush = () => {
@@ -53,7 +57,8 @@ export function buildCues(words: Word[]): Cue[] {
     const seconds = w.end - next[0]!.start;
     if (
       group.length > 0 &&
-      (wrap(next.map((x) => x.text)).length > MAX_LINES ||
+      (breaks.some((b) => group[0]!.start < b - 1e-6 && w.start >= b - 1e-6) ||
+        wrap(next.map((x) => x.text)).length > MAX_LINES ||
         chars > LINE_CHARS * MAX_LINES ||
         seconds > MAX_SECONDS)
     )

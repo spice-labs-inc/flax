@@ -37,6 +37,17 @@ describe("captions", () => {
     expect(cues[1]!.start).toBeCloseTo(0.9);
   });
 
+  it("close a cue where a new piece of narration starts", () => {
+    const cues = buildCues(
+      [...words("Opened the list"), ...words("Synced the notes", 1.5)],
+      { breaks: [0, 1.5] },
+    );
+    expect(cues.map((c) => [c.start, c.lines])).toEqual([
+      [0, ["Opened the list"]],
+      [1.5, ["Synced the notes"]],
+    ]);
+  });
+
   it("keep cues to two lines of 60 characters and six seconds", () => {
     const long = Array.from({ length: 40 }, (_, i) => `word${i}`).join(" ");
     for (const cue of buildCues(words(long, 0, 0.25))) {
