@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parseConfig } from "../src/config.ts";
-import { plainMedia } from "../src/record/media.ts";
+import { plainMedia, settledBox } from "../src/record/media.ts";
 import {
   cursorPath,
   DEFAULT_PACE,
@@ -796,5 +796,31 @@ describe("the media hooks outside a recorded scenario", () => {
     });
     expect(world.recording).toBeUndefined();
     expect(world.media).toBe(plainMedia);
+  });
+});
+
+describe("settledBox", () => {
+  it("waits for a box that a smooth scroll still moves to stop", async () => {
+    const reads = [500, 380, 260, 180, 150, 150, 150].map((y) => ({
+      x: 10,
+      y,
+      width: 100,
+      height: 20,
+    }));
+    let i = 0;
+    const box = await settledBox(async () => reads[Math.min(i++, 6)]!, {
+      intervalMs: 1,
+    });
+    expect(box).toEqual({ x: 10, y: 150, width: 100, height: 20 });
+    expect(i).toBe(6);
+  });
+
+  it("answers the last box when it never settles in time", async () => {
+    let y = 0;
+    const box = await settledBox(
+      async () => ({ x: 0, y: (y += 50), width: 1, height: 1 }),
+      { intervalMs: 1, timeoutMs: 20 },
+    );
+    expect(box?.y).toBeGreaterThan(50);
   });
 });

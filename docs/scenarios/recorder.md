@@ -101,7 +101,7 @@ A step tells the recording what it acts on and checks through `this.media` on th
 
 `media.recording` says which it is. `this.media` is always present, so `this.media?.pointAt(...)` and `this.media.pointAt(...)` both typecheck. Each step ends with a pause: a Then is held for `readMs` (with its highlight on screen), any other filmed step for `afterActionMs` unless its last action already paused. Hidden steps are never paced, and their clicks and typing are plain. A navigation is noted on its own. Steps that do not call the hooks still run and are filmed; they only lack the cursor and the boxes.
 
-The cursor is drawn in the page (a screencast shows none) and every press leaves a ripple; the ripple and the highlight box take `recorder.highlightColor`. Anything else a workspace wants on screen while filming, such as stand-in text for run-specific values, it hands the base hooks as a script for every document of the filmed page, added before the page's first load:
+An element outside the viewport is scrolled smoothly into view first, and its box is read once the scroll has stopped, so the cursor and the highlight box land on it. The cursor is drawn in the page (a screencast shows none) and every press leaves a ripple; the ripple and the highlight box take `recorder.highlightColor`. Anything else a workspace wants on screen while filming, such as stand-in text for run-specific values, it hands the base hooks as a script for every document of the filmed page, added before the page's first load:
 
 ```ts
 installBaseHooks({

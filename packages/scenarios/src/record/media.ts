@@ -404,9 +404,9 @@ export class SceneRecording implements Media {
       await target.evaluate((el) =>
         el.scrollIntoView({ behavior: "smooth", block: "center" }),
       );
-      await sleep(700);
+      await sleep(300);
     }
-    const b = await target.boundingBox();
+    const b = await settledBox(() => target.boundingBox());
     if (!b) throw new Error("the element has no box on the page");
     return b;
   }
@@ -509,6 +509,33 @@ const rounded = (b: Box): Box => ({
   width: Math.round(b.width),
   height: Math.round(b.height),
 });
+
+/**
+ * The box `read` answers once it stops moving (two reads in a row within a pixel, `intervalMs`
+ * apart), such as an element's while a smooth scroll brings it into view; the last read after
+ * `timeoutMs`.
+ */
+export async function settledBox(
+  read: () => Promise<Box | null>,
+  o: { intervalMs?: number; timeoutMs?: number } = {},
+): Promise<Box | null> {
+  const interval = o.intervalMs ?? 100;
+  const deadline = performance.now() + (o.timeoutMs ?? 3000);
+  let last = await read();
+  for (;;) {
+    await sleep(interval);
+    const next = await read();
+    const still =
+      last !== null &&
+      next !== null &&
+      Math.abs(next.x - last.x) < 1 &&
+      Math.abs(next.y - last.y) < 1 &&
+      Math.abs(next.width - last.width) < 1 &&
+      Math.abs(next.height - last.height) < 1;
+    if (still || performance.now() >= deadline) return next;
+    last = next;
+  }
+}
 
 /** A cucumber status (PASSED, FAILED...) as the timeline writes it. */
 export function stepStatus(status: string | undefined): StepStatus {
