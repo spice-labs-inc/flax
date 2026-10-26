@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Video sidecar",
+  "description": "One YAML document per recorded scenario in <name>.video.yml beside <name>.feature, or in <name>.<id>.video.yml when a feature has several; matched on scenario. Step references are a 1-based index into the scenario's own steps (Background steps are not counted) or a step's exact text with its keyword as written.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenario", "id", "title"],
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "stepRef": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "$ref": "#/$defs/text"
+        }
+      ]
+    },
+    "ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "pixels": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 7680
+    },
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["heading", "text"],
+      "description": "A title or closing card not tied to a step; text is narration spoken over it.",
+      "properties": {
+        "chapter": {
+          "$ref": "#/$defs/text"
+        },
+        "heading": {
+          "$ref": "#/$defs/text"
+        },
+        "sub": {
+          "$ref": "#/$defs/text"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/text"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label"],
+                "properties": {
+                  "label": {
+                    "$ref": "#/$defs/text"
+                  },
+                  "icon": {
+                    "$ref": "#/$defs/text"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "terminalOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at"],
+      "anyOf": [
+        {
+          "required": ["display"]
+        },
+        {
+          "required": ["preface"]
+        }
+      ],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/stepRef"
+        },
+        "display": {
+          "$ref": "#/$defs/text",
+          "description": "The command line the terminal scene shows in place of the one the step ran."
+        },
+        "preface": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Lines typed before the command."
+        }
+      }
+    }
+  },
+  "properties": {
+    "scenario": {
+      "$ref": "#/$defs/text",
+      "description": "The exact scenario name in the feature (an outline's name after its example values are filled in)."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "The media id, stable across re-recordings; the recording's directory name."
+    },
+    "title": {
+      "$ref": "#/$defs/text"
+    },
+    "description": {
+      "$ref": "#/$defs/text"
+    },
+    "voice": {
+      "$ref": "#/$defs/text",
+      "description": "A narration voice id, interpreted by the renderer."
+    },
+    "pace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "typeMsPerChar": {
+          "$ref": "#/$defs/ms"
+        },
+        "afterActionMs": {
+          "$ref": "#/$defs/ms"
+        },
+        "readMs": {
+          "$ref": "#/$defs/ms"
+        }
+      }
+    },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": {
+          "$ref": "#/$defs/pixels"
+        },
+        "height": {
+          "$ref": "#/$defs/pixels"
+        },
+        "deviceScaleFactor": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Video pixels per CSS pixel; the recorder default otherwise."
+        }
+      }
+    },
+    "intro": {
+      "$ref": "#/$defs/card"
+    },
+    "outro": {
+      "$ref": "#/$defs/card"
+    },
+    "narration": {
+      "type": "array",
+      "description": "Spoken text; each block starts at its step and runs until the next block's, so blocks start at increasing, visible steps.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "text"],
+        "properties": {
+          "at": {
+            "$ref": "#/$defs/stepRef"
+          },
+          "text": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    },
+    "chapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "title"],
+        "properties": {
+          "at": {
+            "$ref": "#/$defs/stepRef"
+          },
+          "title": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    },
+    "highlight": {
+      "description": "Which steps get an on-screen highlight: every visible Then (the default), none, or the steps listed.",
+      "oneOf": [
+        {
+          "enum": ["then", "none"]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stepRef"
+          }
+        }
+      ]
+    },
+    "hide": {
+      "type": "array",
+      "description": "Steps that run but are not filmed; every Given by default.",
+      "items": {
+        "$ref": "#/$defs/stepRef"
+      }
+    },
+    "poster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at"],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/stepRef"
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "kicker": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "terminal": {
+      "description": "What terminal scenes show in place of what their steps ran.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/terminalOverride"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/terminalOverride"
+          }
+        }
+      ]
+    },
+    "standIns": {
+      "$ref": "#/$defs/text",
+      "description": "The name of a stand-in rule set the consumer supplies."
+    },
+    "publish": {
+      "type": "object",
+      "description": "Passed through untouched to whatever delivers the video."
+    }
+  }
+}
