@@ -1,0 +1,26 @@
+{
+  "name": "@flax/contract",
+  "version": "0.1.8",
+  "description": "The data contract between the flax packages: the files a scenario run writes, the dataset the explorer reads, and the scenarios configuration shape",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spice-labs-inc/flax",
+    "directory": "packages/contract"
+  },
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "files": [
+    "dist"
+  ]
+}
