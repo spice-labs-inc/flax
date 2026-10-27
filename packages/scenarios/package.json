@@ -38,13 +38,13 @@
     "@cucumber/messages": "34.2.1",
     "@flax/contract": "workspace:*",
     "@flax/core": "workspace:*",
-    "imapflow": "2.2.8",
-    "mailparser": "3.9.36",
+    "imapflow": "2.5.8",
+    "mailparser": "3.10.0",
     "yaml": "^2.9.1"
   },
   "peerDependencies": {
     "@cucumber/cucumber": "^13.3.0",
-    "playwright": "^1.63.0"
+    "playwright": "^1.64.1"
   },
   "peerDependenciesMeta": {
     "playwright": {
@@ -55,7 +55,7 @@
     "@cucumber/cucumber": "^13.3.0",
     "@types/mailparser": "3.9.0",
     "@types/node": "^24.0.0",
-    "playwright": "^1.63.0",
+    "playwright": "^1.64.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   }
