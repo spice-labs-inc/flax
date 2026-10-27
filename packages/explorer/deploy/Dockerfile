@@ -33,7 +33,8 @@ EXPOSE 8080
 
 FROM install AS service
 ARG GIT_SHA=unknown
-ENV NODE_ENV=production EXPLORER_STATE_DIR=/srv EXPLORER_DATASET_DIR=/app EXPLORER_COMMIT=${GIT_SHA}
+ENV NODE_ENV=production EXPLORER_STATE_DIR=/srv EXPLORER_RESULTS_DIR=/srv/results EXPLORER_DATASET_DIR=/app EXPLORER_COMMIT=${GIT_SHA}
 USER 65532:65532
 EXPOSE 8081
-CMD ["pnpm", "exec", "flax", "explorer", "serve"]
+# corepack keeps the pnpm it downloaded in root's home, which the service user cannot read on a read-only root.
+CMD ["node_modules/.bin/flax", "explorer", "serve"]
