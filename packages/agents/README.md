@@ -42,7 +42,7 @@ Two ways to reach a model, chosen with `agents.provider.keyMode`:
 | `sandbox` | `{ repo, tokenSecret }`: the lbx repository whose releases carry the launcher binary (default `spice-labs-inc/lbx`, public) and, for a private one, the secret holding a token. |
 | `packagesTokenSecret` | the secret holding a token that can read the repository the `@flax` packages are installed from, while that repository is private: the generated workflows give it to git before `pnpm install`. Absent for a public one. |
 | `packagesTokenApp` | `{ appIdSecret, privateKeySecret, repositories }`, instead of `packagesTokenSecret`: the secrets holding a GitHub App id and private key, and the `owner/name` repositories (all under one owner) the packages are installed from. Before `pnpm install` the generated workflows make the app a contents-read token for those repositories alone and give it to git the same way. |
-| `agentImage` | the agent image repository without a tag; `box.yml` pins a digest of it. |
+| `agentImage` | the agent image repository without a tag; `box.yml` pins a digest of it, and `check` refuses a pinned `box.yml` whose image is in any other repository. |
 | `displayName`, `commitAuthor` | how the agent is named in check runs and pull request text, and who its commits are by. |
 | `kitAction` | the reusable action every model job workflow calls, `owner/repo/path@ref`. |
 | `clusters` | Kubernetes clusters tools may read: name to the secret holding its kubeconfig. |
@@ -77,7 +77,7 @@ lbx_sha256: "<sha256 of lbx-x86_64-unknown-linux-musl>"
 image: ghcr.io/<owner>/flax-agent@sha256:<digest>
 ```
 
-The publish-image workflow prints these for an lbx release; `flax agents box-release resolve --release v0.1.0` reads the commit, the binary name and its sha256 from the release, and `flax agents box-release pin --release ... --commit ... --sha256 ... --image ...` writes the file. While `pinned` is false, job runs are refused and `check` warns.
+The publish-image workflow prints these for an lbx release; `flax agents box-release resolve --release v0.1.0` reads the commit, the binary name and its sha256 from the release, and `flax agents box-release pin --release ... --commit ... --sha256 ... --image ...` writes the file. While `pinned` is false, job runs are refused and `check` warns. Once it is true, `image` must be a digest of `agents.agentImage` in `flax.yml`.
 
 ## Commands
 
