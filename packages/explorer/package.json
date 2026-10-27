@@ -48,7 +48,7 @@
     "@types/node": "^24.0.0",
     "playwright": "^1.63.0",
     "prettier": "^3.9.9",
-    "prettier-plugin-svelte": "^3.4.0",
+    "prettier-plugin-svelte": "^4.1.1",
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",
     "vitest": "^5.0.1"
