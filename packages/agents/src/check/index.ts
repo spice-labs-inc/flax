@@ -3,6 +3,7 @@ import { loadRepo, type Repo } from "../lib/repo.ts";
 import { agentImageCheck } from "./agent-image.ts";
 import { allowlistsCheck } from "./allowlists.ts";
 import { boxCheck } from "./box.ts";
+import { boxImageCheck } from "./box-image.ts";
 import { checkJobsCheck } from "./check-jobs.ts";
 import { bundleManifestCheck } from "./bundle.ts";
 import { budgetCheck } from "./budget.ts";
@@ -37,6 +38,7 @@ export const CHECKS: readonly Check[] = [
   liveModeCheck,
   secretsCheck,
   boxCheck,
+  boxImageCheck,
   agentImageCheck,
   mcpServersCheck,
   gatewayCheck,

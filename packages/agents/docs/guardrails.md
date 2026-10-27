@@ -307,8 +307,8 @@ repository itself.
 - **Rule:** `box.yml` validates against `schema/box.schema.json`: `pinned`
   is a boolean, `box_release` a lbx release tag `vX.Y.Z` (no
   leading zeros, nothing before or after), `box_commit` a full
-  40-character commit id, `image` the
-  `ghcr.io/notes-co/lbx-agent` repository (never the full
+  40-character commit id, `image` the agent image (such as
+  `ghcr.io/notes-co/flax-agent`, never the full
   `lbx` image) by `sha256` digest, all required and no other keys
   (a `relay` or `sockets` key is refused: every run gets no network, see
   [Every run has no network](#every-run-has-no-network)). With `pinned: true`, no
@@ -328,6 +328,25 @@ repository itself.
   job running on an unknown box.
 - **Tests:** `test/box.test.ts`, `test/box-release.test.ts`,
   `test/run-job.test.ts`.
+
+## box.yml pins a digest of agents.agentImage
+
+- **Rule:** with `pinned: true`, the repository of `box.yml`'s `image`
+  (everything before `@sha256:`) is exactly the `agents.agentImage` in
+  `flax.yml`, or the default `ghcr.io/notes-co/flax-agent` when it names
+  none: the same registry, port and path, letter case included, with no
+  tag. The error names both values and says to pin a digest of
+  `agents.agentImage` in `box.yml` or to change `agents.agentImage`. An
+  unpinned box, a missing `box.yml` and one the box check refuses are left
+  to [box.yml pins the box](#boxyml-pins-the-box).
+- **Where:** `src/check/box-image.ts`.
+- **Why:** `agents.agentImage` is where the workspace's agent image is
+  published (its own image, when it names a provider plugin), and
+  `box.yml` is what every job runs in. A digest from another repository,
+  such as the kit's image in a workspace that builds its own, or a pin
+  left over after the image moved, would run a box the workspace never
+  meant to pin.
+- **Tests:** `test/box-image.test.ts`.
 
 ## The agent image pins exact versions
 
