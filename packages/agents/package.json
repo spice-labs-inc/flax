@@ -40,18 +40,18 @@
   },
   "dependencies": {
     "@flax/core": "workspace:*",
-    "@kubernetes/client-node": "2.0.0",
-    "@modelcontextprotocol/client": "2.2.0",
-    "@modelcontextprotocol/server": "2.2.0",
-    "@slack/web-api": "8.1.1",
+    "@kubernetes/client-node": "2.0.2",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
+    "@slack/web-api": "8.3.0",
     "@xterm/xterm": "5.5.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "esbuild": "0.28.2",
     "ffmpeg-static": "5.3.0",
-    "imapflow": "2.1.2",
-    "mailparser": "3.9.32",
-    "playwright": "1.63.0",
+    "imapflow": "2.10.0",
+    "mailparser": "3.14.1",
+    "playwright": "1.64.1",
     "prettier": "^3.9.9",
     "tsx": "^4.23.15",
     "yaml": "^2.9.1"
@@ -61,7 +61,7 @@
     "@types/node": "^24.13.6",
     "fast-check": "^4.10.2",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.1.0"
   },
   "files": [
     "action.yml",
