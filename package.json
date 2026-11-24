@@ -10,7 +10,7 @@
     "build": "pnpm -r --if-present build"
   },
   "devDependencies": {
-    "prettier": "^3.9.9",
+    "prettier": "^3.10.1",
     "prettier-plugin-svelte": "^3.4.0"
   }
 }
